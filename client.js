@@ -4,7 +4,7 @@ let scene, camera, renderer, mesh;
 let loadingOverlay, phongLogoCenterImg, threeJSCanvas;
 let isTabVisible = true;
 
-const DEFAULT_IMAGE_ID = "8bab1c81";
+const DEFAULT_IMAGE_ID = "a02580ab";
 
 // Interaction State
 let isUserInteracting = false,
@@ -18,17 +18,13 @@ let isUserInteracting = false,
 	fov = 90;
 
 
-
-// NEW
 let isPointerDown = false;
 let lastPointerX = 0;
 let lastPointerY = 0;
 let pointerStartX = 0;
 let pointerStartY = 0;
 
-
-let defaultURL = "library/POV-Ray/equirectangular-linear-grid-x01b.png";
-let currentImagePath = defaultURL;
+let currentImagePath = "";
 
 // Time for calculating frame delta
 let lastUpdate = Date.now();

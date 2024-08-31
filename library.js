@@ -25,7 +25,7 @@ function initializeLibrary() {
     });
 
     // Load library data
-    fetch("library.json")
+    fetch("library/library.json")
         .then((response) => response.json())
         .then((data) => {
             const tree = buildLibraryTree(data);
@@ -154,7 +154,7 @@ function setCurrentImageId(id) {
 
 
 function loadImageById(id) {
-    fetch("library.json")
+    fetch("library/library.json")
         .then((response) => response.json())
         .then((data) => {
             const file = findFileById(data, id);

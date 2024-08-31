@@ -154,10 +154,6 @@ The 360° Viewer is built using a modular architecture with the following main c
     ├── Landscapes/
     ├── Cityscapes/
     ├── Interiors/
-    ├── _thumbnails/
-    ├── _Q100/
-    ├── _Q75/
-    └── _Q50/
 ```
 
 ## Key Components
