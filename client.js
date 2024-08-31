@@ -782,7 +782,11 @@ function setupDragAndDrop() {
                     
                     console.log("Texture created");
                     
-                    window.loadImageAndCreateMaterial(texture, file.name);
+                    // Update image info with the file name
+                    window.updateImageInfo(file.name);
+                    
+                    // Load image and create material
+                    window.loadImageAndCreateMaterial(texture);
                 }).catch(function(error) {
                     console.error("Error creating ImageBitmap:", error);
                     alert('Error processing the image. Please try a different image file.');

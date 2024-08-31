@@ -163,7 +163,7 @@ function loadImageById(id) {
         .then((data) => {
             const file = findFileById(data, id);
             if (file) {
-                window.loadImage(`library/${file.Q75}`, true);
+                window.loadImage(`library/${file.Q75}`, file.path);
                 updateURLWithImageId(id);
                 setCurrentImageId(id);
                 expandFolderForImage(id);
@@ -226,17 +226,13 @@ function setCurrentImagePath(path) {
     }
 }
 
-function updateImageInfo(source, fileName = null) {
+function updateImageInfo(title) {
     let basename, extension;
-    console.log("source", source)
+    console.log("title", title);
 
-    if (fileName) {
-        // For dropped files, use the full fileName without extension
-        basename = fileName.split(".").slice(0, -1).join(".");
-        extension = fileName.split(".").pop().toUpperCase();
-    } else if (typeof source === 'string') {
-        // For images from the library, extract only the filename without folders or extension
-        const parts = source.split("/");
+    if (typeof title === 'string') {
+        // Extract only the filename without folders or extension
+        const parts = title.split("/");
         const filename = parts[parts.length - 1];
         basename = filename.split(".")[0];
         extension = filename.split(".").pop().toUpperCase();
@@ -298,14 +294,13 @@ function loadTextureFromSource(source) {
     });
 }
 
-function loadImageAndCreateMaterial(source, fileName = null) {
+function loadImageAndCreateMaterial(source) {
     showLoading();
     fadeOutCurrentImage();
 
     loadTextureFromSource(source)
         .then(texture => {
             const material = createMaterialFromTexture(texture);
-            updateImageInfo(source, fileName);
             
             if (mesh && mesh.material) {
                 mesh.material.dispose();
@@ -323,12 +318,18 @@ function loadImageAndCreateMaterial(source, fileName = null) {
         });
 }
 
-function loadImage(path, updateURL = true) {
+function loadImage(path, title) {
     const fullPath = path.startsWith('library/') ? path : `library/${path}`;
+    
+    // Call updateImageInfo with the title
+    updateImageInfo(title);
+    
+    // Call loadImageAndCreateMaterial
     loadImageAndCreateMaterial(fullPath);
-	if (window.currentImageId) {
-		updateURLWithImageId(window.currentImageId);
-	}
+
+    if (window.currentImageId) {
+        updateURLWithImageId(window.currentImageId);
+    }
 }
 
 // Expose functions to global scope
