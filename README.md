@@ -9,6 +9,9 @@ A powerful and interactive 360° image viewer built with Three.js and modern web
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
 - [Usage](#usage)
+- [Creating the Image Library](#creating-the-image-library)
+  - [Setting Up Dependencies](#setting-up-dependencies)
+  - [Steps to Create the Library](#steps-to-create-the-library)
 - [Architecture](#architecture)
 - [File Structure](#file-structure)
 - [Key Components](#key-components)
@@ -34,6 +37,7 @@ A powerful and interactive 360° image viewer built with Three.js and modern web
 
 - Modern web browser with WebGL support
 - Local development server (e.g., Live Server for VS Code)
+- Python 3.6 or higher (for library management)
 
 ### Installation
 
@@ -47,7 +51,12 @@ A powerful and interactive 360° image viewer built with Three.js and modern web
    cd 360-viewer
    ```
 
-3. Open `index.html` in your preferred browser or use a local development server.
+3. Install Python dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+4. Open `index.html` in your preferred browser or use a local development server.
 
 ## Usage
 
@@ -56,6 +65,61 @@ A powerful and interactive 360° image viewer built with Three.js and modern web
 3. Click the hamburger menu to access the image library.
 4. Drag and drop your own equirectangular images onto the viewer.
 5. Toggle between Gnomonic and Stereographic projections using the button in the toolbar.
+
+## Creating the Image Library
+
+### Setting Up Dependencies
+
+1. Ensure you have Python 3.6 or higher installed on your system.
+2. Create a `requirements.txt` file in the root directory of your project with the following content:
+   ```
+   Pillow
+   tqdm
+   ```
+3. Install the dependencies by running:
+   ```
+   pip install -r requirements.txt
+   ```
+
+### Steps to Create the Library
+
+1. Create a `library` folder in the root of your project if it doesn't exist already.
+
+2. Inside the `library` folder, create subfolders to organize your images. For example:
+   ```
+   library/
+   ├── Landscapes/
+   ├── Cityscapes/
+   └── Interiors/
+   ```
+
+3. Place your full resolution, top-quality equirectangular images in these subfolders. Supported formats are PNG and JPG.
+
+4. Open a command prompt or terminal in the project root directory.
+
+5. Run the `make_library.bat` file:
+   ```
+   make_library.bat
+   ```
+
+6. The script will perform the following actions:
+   - Scan the `library` folder and its subfolders
+   - Generate thumbnails for all images
+   - Create high-quality JPG versions of each image in three quality levels (100%, 75%, 50%)
+   - Create a `library.json` file containing metadata for all images
+
+7. Once the script completes, your library is ready to use with the 360° Viewer.
+
+### Notes
+
+- The script will only process new or modified images, so you can run it multiple times as you add new content.
+- Ensure you have sufficient disk space, as the script generates multiple versions of each image.
+- Large libraries may take some time to process. The script displays progress bars to keep you informed.
+
+### Troubleshooting
+
+- If you encounter any errors related to missing Python libraries, ensure you have installed all required dependencies using the `requirements.txt` file.
+- For permission errors, make sure you have write access to the project directory.
 
 ## Architecture
 
@@ -74,6 +138,9 @@ The 360° Viewer is built using a modular architecture with the following main c
 ├── client.js
 ├── library.js
 ├── library.json
+├── make_library.bat
+├── make_library.py
+├── requirements.txt
 ├── README.md
 │
 ├── css/
@@ -84,9 +151,13 @@ The 360° Viewer is built using a modular architecture with the following main c
 │   └── ...
 │
 └── library/
-    ├── NewAtlantis/
-    ├── PureLands/
-    └── _thumbnails/
+    ├── Landscapes/
+    ├── Cityscapes/
+    ├── Interiors/
+    ├── _thumbnails/
+    ├── _Q100/
+    ├── _Q75/
+    └── _Q50/
 ```
 
 ## Key Components
@@ -95,6 +166,7 @@ The 360° Viewer is built using a modular architecture with the following main c
 2. **library.js**: Image library management and UI.
 3. **library.json**: Image metadata and directory structure.
 4. **Shaders**: Custom vertex and fragment shaders for image projections.
+5. **make_library.py**: Python script for generating the image library and associated files.
 
 ## Configuration
 
