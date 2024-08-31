@@ -40,9 +40,11 @@ function initializeLibrary() {
             if (imgId) {
                 setTimeout(() => {
                     loadImageById(imgId);
+                    expandFolderForImage(imgId);
                 }, 200);
             } else if (window.currentImageId) {
                 window.highlightCurrentImage(window.currentImageId);
+                expandFolderForImage(window.currentImageId);
             } else {
                 console.log("No image ID specified in URL or currentImageId");
                 loadDefaultImage();
@@ -112,6 +114,8 @@ function buildLibraryTree(data, path = "") {
 }
 
 
+
+
 function toggleFolder(e) {
     e.stopPropagation();
     const subUl = this.querySelector("ul");
@@ -162,6 +166,7 @@ function loadImageById(id) {
                 window.loadImage(`library/${file.Q75}`, true);
                 updateURLWithImageId(id);
                 setCurrentImageId(id);
+                expandFolderForImage(id);
             } else {
                 console.warn("Image not found with ID:", id);
                 loadDefaultImage();
@@ -180,7 +185,6 @@ function loadDefaultImage() {
     loadImageById(DEFAULT_IMAGE_ID);
 }
 
-
 function findFileById(data, id) {
     for (const category of Object.values(data)) {
         if (category.files) {
@@ -191,7 +195,21 @@ function findFileById(data, id) {
     return null;
 }
 
-
+function expandFolderForImage(id) {
+    const imageElement = document.querySelector(`#library-tree .file[data-id="${id}"]`);
+    if (imageElement) {
+        let parent = imageElement.parentElement;
+        while (parent && !parent.classList.contains('folder')) {
+            parent = parent.parentElement;
+        }
+        if (parent) {
+            const subUl = parent.querySelector('ul');
+            if (subUl) {
+                subUl.style.display = 'block';
+            }
+        }
+    }
+}
 
 
 
