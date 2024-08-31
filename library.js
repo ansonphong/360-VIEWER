@@ -228,16 +228,20 @@ function setCurrentImagePath(path) {
 
 function updateImageInfo(source, fileName = null) {
     let basename, extension;
+    console.log("source", source)
 
     if (fileName) {
+        // For dropped files, use the full fileName without extension
         basename = fileName.split(".").slice(0, -1).join(".");
         extension = fileName.split(".").pop().toUpperCase();
     } else if (typeof source === 'string') {
-        const filename = source.split("/").pop();
-        basename = filename.split(".").slice(0, -1).join(".");
+        // For images from the library, extract only the filename without folders or extension
+        const parts = source.split("/");
+        const filename = parts[parts.length - 1];
+        basename = filename.split(".")[0];
         extension = filename.split(".").pop().toUpperCase();
     } else {
-        basename = "Dropped Image";
+        basename = "Unnamed Image";
         extension = "Unknown";
     }
 
