@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+
+        <!-- Google tag (gtag.js) -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-5KQMLC5EPS"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'G-5KQMLC5EPS');
+        </script>
+
+		<title>🌐 Phong 360 Viewer</title>
+		<link rel="stylesheet" href="styles.css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+	</head>
+	<body>
+		<div id="container"></div>
+
+		<div id="info-panel">
+			<img src="images/phong-logo.png" class="phong-logo" onclick="toggleFullscreen()" />
+			<h1 id="imageTitle" class="title">Title</h1>
+			<h2 id="imageFormat" class="subtitle">Extension / Format</h2>
+		</div>
+
+		<h1 id="phong.com" class="background-text">360.phong.com</h1>
+
+		<img src="images/phong-logo.png" id="phong-logo-center" />
+
+		<div id="drag-drop-overlay">
+			<div class="icon">DROP</div>
+			<div class="message">EQUIRECTANGULAR IMAGE</div>
+		</div>
+
+		<div id="loading-overlay"></div>
+
+		<div id="hamburger-menu" class="toolbar-button"><i class="fas fa-bars"></i></div>
+
+		<div id="library-panel">
+			<div id="toolbar-panel">
+				<button id="switchProjectionButton" class="toolbar-button switchProjection"></button>
+			</div>
+
+			<div id="library-content">
+				<h2>Library</h2>
+				<div id="library-tree"></div>
+			</div>
+		</div>
+
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+		<script src="client.js"></script>
+		<script src="library.js"></script>
+	</body>
+</html>

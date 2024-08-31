@@ -1,0 +1,333 @@
+body {
+	background: rgb(0, 0, 0);
+	overflow: hidden;
+	margin: 0px;
+}
+
+.background-text {
+	font-family: "Karla", sans-serif;
+	font-size: 64px;
+	font-weight: 100;
+	color: rgba(255, 255, 255, 0.3);
+	z-index: -1;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translateX(-50%) translateY(-150%);
+	display: none;
+}
+
+.phong-logo {
+	width: 64px;
+	opacity: 0.5;
+	display: block;
+	position: absolute;
+	left: 5px;
+	top: 5px;
+	cursor: pointer;
+	transition: 0.3s ease all;
+}
+.phong-logo:hover {
+	opacity: 1;
+}
+
+#phong-logo-center {
+	width: 15%;
+	min-width: 180px;
+	max-width: 512px;
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 1001;
+	display: none;
+	/* Add these lines to make the element not selectable */
+	user-select: none;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+}
+
+@keyframes pulse {
+	0% {
+		opacity: 0.2;
+	}
+	50% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0.2;
+	}
+}
+
+#container {
+	z-index: 2;
+}
+
+#toolbar-panel {
+	position: absolute;
+	top: 10px;
+	right: 60px;
+	display: flex;
+	z-index: 20;
+}
+
+#info-panel {
+	background-color: rgba(0, 0, 0, 0.8);
+	border-radius: 4px;
+	bottom: 10px;
+	font-family: "Karla", sans-serif;
+	padding: 12px 32px 12px 80px;
+	position: absolute;
+	left: 10px;
+	z-index: 3;
+	min-width: 150px;
+	display: none; /* Hide by default */
+}
+
+@media screen and (min-width: 769px) {
+	#info-panel {
+		display: block; /* Show when screen width is over 768px */
+	}
+}
+
+#info-panel .icon {
+	color: #e13e13 !important;
+	position: absolute;
+	right: 6px;
+	top: 6px;
+	display: none;
+}
+
+#info-panel .title,
+#info-panel .subtitle {
+	margin: 0;
+	padding: 0;
+}
+
+#info-panel .title {
+	color: rgba(255, 255, 255, 0.7);
+	font-weight: 600;
+	font-size: 14px;
+}
+
+#info-panel .subtitle {
+	color: rgba(255, 255, 255, 0.5);
+	font-weight: 100;
+	font-size: 14px;
+}
+
+.loading-spinner {
+	color: rgba(255, 255, 255, 0.3);
+	font-size: 18px;
+	position: relative;
+	top: 50%;
+	left: 50%;
+	transform: translateX(-50%) translateY(-50%);
+	margin-left: 186px;
+	margin-top: -52px;
+	z-index: -1;
+}
+
+#drag-drop-overlay {
+	display: none;
+	position: fixed;
+	top: 55px;
+	bottom: 80px;
+	left: 20px;
+	right: 75px;
+	background-color: rgba(0, 0, 0, 0.7);
+	z-index: 1000;
+	justify-content: center;
+	align-items: center;
+	flex-direction: column;
+	font-family: Arial, Helvetica, sans-serif;
+	color: white;
+	border-radius: 12px;
+	border: 1px solid #fff;
+}
+
+#drag-drop-overlay .message {
+	font-size: 18px;
+	margin-top: 5px;
+}
+
+#drag-drop-overlay .icon {
+	font-size: 86px;
+}
+
+body {
+	margin: 0;
+	overflow: hidden;
+	font-family: Arial, sans-serif;
+}
+
+#hamburger-menu {
+	position: fixed;
+	top: 10px;
+	right: 0px;
+	font-size: 26px;
+}
+
+#library-panel {
+	position: fixed;
+	right: -100%;
+	top: 0;
+	bottom: 0;
+	width: 80%;
+	max-width: 400px;
+	background-color: rgba(0, 0, 0, 0.85);
+	color: white;
+	transition: right 0.3s ease-in-out;
+	z-index: 100;
+	overflow-y: auto;
+	scrollbar-width: none; /* Firefox */
+	-ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+#library-panel::-webkit-scrollbar {
+	width: 0;
+	height: 0;
+	background: transparent; /* Chrome/Safari/Webkit */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+	#library-panel {
+		width: 100%;
+		max-width: none;
+	}
+}
+
+#library-panel.active {
+	right: 0;
+}
+
+#library-content {
+	padding: 10px 10px 10px 10px;
+}
+
+#library-content h2 {
+	margin-top: 10px;
+	padding-left: 10px;
+	height: 32px;
+}
+
+#library-tree ul {
+	list-style-type: none;
+	padding-left: 8px;
+	margin: 0;
+	padding: 0px;
+	margin-top: 10px;
+}
+
+#library-tree li {
+	margin-bottom: 10px;
+	background-color: rgba(255, 255, 255, 0.05);
+	display: block;
+	border-radius: 6px;
+	padding: 5px;
+}
+
+#library-tree .folder {
+	cursor: pointer;
+	padding: 10px;
+}
+
+#library-tree .folder > span {
+	display: block;
+}
+
+#library-tree .file {
+	cursor: pointer;
+	color: #e0e0e0;
+	font-size: 0.66em;
+	word-break: break-word; /* For most modern browsers */
+	overflow-wrap: break-word; /* Alternative property name, also works in most modern browsers */
+	hyphens: auto; /* Optionally adds hyphens where the word breaks */
+}
+
+#library-tree .file:hover {
+}
+
+#library-tree .file {
+	cursor: pointer;
+	padding: 5px;
+	transition: 0.1s all ease-out;
+	border: 1px solid transparent;
+	align-items: center;
+	margin-bottom: 5px;
+}
+
+#library-tree .file:hover {
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	background-color: rgba(255, 255, 255, 0.2);
+}
+
+#library-tree .file.current {
+	background-color: #e0e0e0;
+	color: #000;
+	font-weight: bold;
+}
+
+#library-tree .file-thumbnail {
+	display: block;
+	width: 100%;
+	min-height: 128px;
+	object-fit: cover;
+	object-position: center;
+	border-radius: 16px;
+	transition: 0.2s all ease;
+}
+
+#library-tree .file-name {
+	flex-grow: 1;
+}
+
+#library-tree .file img {
+	transition: 0.2s all ease;
+}
+
+#library-tree .file.current img {
+	opacity: 0.66;
+}
+
+.toolbar-button {
+	padding: 12px;
+	background-color: rgba(0, 0, 0, 0.5);
+	color: rgba(255, 255, 255, 0.8);
+	border: 1px solid transparent;
+	z-index: 4;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.3s ease-out;
+	cursor: pointer;
+	margin-right: 10px;
+	font-family: Arial, sans-serif;
+	font-size: 18px;
+	z-index: 1000;
+	box-shadow: 1px 1px 0px transparent;
+
+	user-select: none;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+}
+
+.toolbar-button:hover {
+	color: #fff;
+	border: 1px solid #fff;
+}
+
+.toolbar-button.active {
+	background-color: rgba(255, 255, 255, 1);
+	color: #000;
+	font-weight: bold;
+	box-shadow: 4px 4px 0px #000;
+}
+
+.toolbar-button.active:hover {
+	color: #000;
+}
