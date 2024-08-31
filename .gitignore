@@ -1,6 +1,7 @@
 # Ignore folders
 _ARCHIVE/
-library/
+library/*
+!library/index.html
 
 # Ignore image files
 *.psd
