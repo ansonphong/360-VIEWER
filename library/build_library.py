@@ -6,9 +6,6 @@ from PIL import Image
 from tqdm import tqdm
 import piexif
 import piexif.helper
-import traceback
-import io
-
 
 def generate_short_hash(data, length=8):
     return hashlib.sha256(data.encode()).hexdigest()[:length]
@@ -21,7 +18,6 @@ def scan_directory(root_dir):
     
     with tqdm(total=total_files, desc="Scanning files") as pbar:
         for dirpath, dirnames, filenames in os.walk(root_dir):
-            # Skip the _BUILD folder
             if '_BUILD' in dirpath:
                 continue
             
@@ -51,7 +47,6 @@ def scan_directory(root_dir):
                     q75_path, q75_filename = generate_jpg_path(root_dir, file_path, 'Q75')
                     q50_path, q50_filename = generate_jpg_path(root_dir, file_path, 'Q50')
                     
-                    # Generate short hash ID
                     hash_id = generate_short_hash(file_path)
                     
                     file_info = {
@@ -104,40 +99,32 @@ def generate_thumbnails(missing_thumbnails):
             except Exception as e:
                 print(f"\nError generating thumbnail for {original_path}: {str(e)}")
 
-
-
-def generate_360_exif():
-    exif_dict = {
-        "0th": {},
-        "Exif": {},
-        "GPS": {},
-        "1st": {},
-        "thumbnail": None
+def generate_xmp_metadata(width, height):
+    xmp_dict = {
+        'Xmp': {
+            'GPano:ProjectionType': 'equirectangular',
+            'GPano:UsePanoramaViewer': 'True',
+            'GPano:CroppedAreaImageWidthPixels': str(width),
+            'GPano:CroppedAreaImageHeightPixels': str(height),
+            'GPano:FullPanoWidthPixels': str(width),
+            'GPano:FullPanoHeightPixels': str(height),
+            'GPano:CroppedAreaLeftPixels': '0',
+            'GPano:CroppedAreaTopPixels': '0',
+        }
     }
-    
-    xp_keywords = u"UsePanoramaViewer=True".encode('utf-16le')
-    exif_dict["0th"][piexif.ImageIFD.XPKeywords] = xp_keywords
-    exif_dict["Exif"][piexif.ExifIFD.UserComment] = piexif.helper.UserComment.dump(
-        "ProjectionType=equirectangular",
-        encoding="unicode"
-    )
-    
-    exif_dict["0th"][piexif.ImageIFD.Make] = u"360 Camera".encode('ascii')
-    exif_dict["0th"][piexif.ImageIFD.Software] = u"Photo Sphere".encode('ascii')
-    exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = u"2023:08:31 12:00:00".encode('ascii')
-    exif_dict["GPS"][piexif.GPSIFD.GPSVersionID] = (2, 3, 0, 0)
-    
-    return exif_dict
+    return piexif.helper.UserComment.dump(json.dumps(xmp_dict))
+
+def insert_xmp_metadata(image_path, xmp_metadata):
+    exif_dict = piexif.load(image_path)
+    exif_dict["Exif"][piexif.ExifIFD.UserComment] = xmp_metadata
+    exif_bytes = piexif.dump(exif_dict)
+    piexif.insert(exif_bytes, image_path)
 
 def generate_JPGs(missing_jpgs):
     with tqdm(total=len(missing_jpgs) * 3, desc="Generating high-quality JPGs") as pbar:
         for original_path, q100_path, q75_path, q50_path in missing_jpgs:
             try:
                 with Image.open(original_path) as img:
-                    print(f"Processing image: {original_path}")
-                    print(f"Image mode: {img.mode}")
-                    print(f"Image size: {img.size}")
-
                     if img.mode == 'RGBA':
                         img = img.convert('RGB')
                     
@@ -145,62 +132,43 @@ def generate_JPGs(missing_jpgs):
                     if width != 2 * height:
                         new_height = width // 2
                         img = img.crop((0, 0, width, new_height))
-                        print(f"Image cropped to: {img.size}")
                     
-                    os.makedirs(os.path.dirname(q100_path), exist_ok=True)
-                    os.makedirs(os.path.dirname(q75_path), exist_ok=True)
-                    os.makedirs(os.path.dirname(q50_path), exist_ok=True)
-                    
-                    exif_dict = generate_360_exif()
+                    xmp_metadata = generate_xmp_metadata(width, new_height if width != 2 * height else height)
                     
                     for path, quality in [(q100_path, 100), (q75_path, 75), (q50_path, 50)]:
+                        os.makedirs(os.path.dirname(path), exist_ok=True)
                         img.save(path, "JPEG", quality=quality)
-                        exif_bytes = piexif.dump(exif_dict)
-                        piexif.insert(exif_bytes, path)
-                        verify_exif(path)
-                    
-                    print("Images saved successfully with 360 metadata")
+                        
+                        insert_xmp_metadata(path, xmp_metadata)
+                        verify_xmp(path)
                     
                     pbar.update(3)
             except Exception as e:
                 print(f"\nError generating JPGs for {original_path}: {str(e)}")
-                traceback.print_exc()
 
-def verify_exif(image_path):
+def verify_xmp(image_path):
     try:
         exif_dict = piexif.load(image_path)
+        xmp_metadata = exif_dict["Exif"][piexif.ExifIFD.UserComment]
+        xmp_dict = json.loads(piexif.helper.UserComment.load(xmp_metadata))
         
-        xp_keywords = exif_dict["0th"].get(piexif.ImageIFD.XPKeywords, b'')
-        user_comment = exif_dict["Exif"].get(piexif.ExifIFD.UserComment, b'')
+        if 'Xmp' not in xmp_dict or 'GPano:ProjectionType' not in xmp_dict['Xmp']:
+            print(f"No XMP metadata found in {image_path}")
+            return
         
-        expected_xp_keywords = u"UsePanoramaViewer=True".encode('utf-16le')
-        if isinstance(xp_keywords, tuple):
-            xp_keywords = bytes(xp_keywords)
-        if xp_keywords != expected_xp_keywords:
-            print(f"XPKeywords mismatch in {image_path}")
-            print(f"Expected: {expected_xp_keywords}")
-            print(f"Got: {xp_keywords}")
+        if xmp_dict['Xmp']['GPano:ProjectionType'] != 'equirectangular':
+            print(f"ProjectionType mismatch in {image_path}")
         
-        expected_user_comment = "ProjectionType=equirectangular"
-        if piexif.helper.UserComment.load(user_comment) != expected_user_comment:
-            print(f"UserComment mismatch in {image_path}")
-            print(f"Expected: {expected_user_comment}")
-            print(f"Got: {piexif.helper.UserComment.load(user_comment)}")
+        if xmp_dict['Xmp']['GPano:UsePanoramaViewer'] != 'True':
+            print(f"UsePanoramaViewer mismatch in {image_path}")
         
-        print(f"EXIF data verified for {image_path}")
+        print(f"XMP metadata verified for {image_path}")
     except Exception as e:
-        print(f"Error verifying EXIF data for {image_path}: {str(e)}")
-        traceback.print_exc()
-
-
-
+        print(f"Error verifying XMP metadata for {image_path}: {str(e)}")
 
 def write_library_json(library, output_file):
     with open(output_file, 'w') as f:
         json.dump(library, f, indent=2)
-
-
-
 
 def main():
     root_dir = './'
