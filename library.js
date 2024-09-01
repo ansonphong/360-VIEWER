@@ -169,7 +169,7 @@ function loadImageById(id) {
                 expandFolderForImage(id);
             } else {
                 console.warn("Image not found with ID:", id);
-                loadDefaultImage();
+                loadFirstImageInLibrary(data);
             }
         })
         .catch((error) => {
@@ -178,6 +178,20 @@ function loadImageById(id) {
         });
 }
 
+function loadFirstImageInLibrary(data) {
+    const firstCategory = Object.values(data)[0];
+    if (firstCategory && firstCategory.files && firstCategory.files.length > 0) {
+        const firstFile = firstCategory.files[0];
+        console.log("Loading first image in library:", firstFile.id);
+        window.loadImage(`library/${firstFile.Q75}`, firstFile.path);
+        updateURLWithImageId(firstFile.id);
+        setCurrentImageId(firstFile.id);
+        expandFolderForImage(firstFile.id);
+    } else {
+        console.error("No images found in the library");
+        loadDefaultImage();
+    }
+}
 
 function loadDefaultImage() {
     const DEFAULT_IMAGE_ID = "8bab1c81";

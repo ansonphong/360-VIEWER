@@ -2,6 +2,9 @@
 _ARCHIVE/
 library/*
 !library/index.html
+!library/build_library.bat
+!library/build_library.py
+!library/requirements.txt
 
 # Ignore image files
 *.psd

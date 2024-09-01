@@ -1,0 +1,2 @@
+python build_library.py
+pause
