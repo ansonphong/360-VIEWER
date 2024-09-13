@@ -91,6 +91,7 @@ var targetState = {
 };
 
 function loadInitialImage() {
+    window.removeEventListener('libraryLoaded', loadInitialImage);
     const urlParams = new URLSearchParams(window.location.search);
     const imgId = urlParams.get("img") || DEFAULT_IMAGE_ID;
     window.loadImageById(imgId);
@@ -456,14 +457,6 @@ function init() {
     // Calculate initial aspect ratio
     aspect = window.innerWidth / window.innerHeight;
 
-    // Check if the library is loaded before attempting to load an image
-    if (typeof window.loadImageById === 'function') {
-        loadInitialImage();
-    } else {
-        // If the library isn't loaded yet, wait for it
-        window.addEventListener('libraryLoaded', loadInitialImage);
-    }
-
     // Event listeners
     window.addEventListener("resize", onWindowResize);
     document.addEventListener("wheel", onDocumentMouseWheel);
@@ -471,9 +464,6 @@ function init() {
     document.addEventListener('pointermove', onPointerMove, false);
     document.addEventListener('pointerup', onPointerUp, false);
     document.addEventListener('pointercancel', onPointerUp, false);
-
-    // Prevent default touch action (e.g., scrolling) on the canvas
-    //renderer.domElement.style.touchAction = 'none';
 
     // Add touch events for pinch zooming
     renderer.domElement.addEventListener('touchstart', onTouchStart, false);
@@ -549,7 +539,6 @@ function getPinchDistance(event) {
     const touch2 = event.touches[1];
     return Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
 }
-
 
 
 // VISIBLITY

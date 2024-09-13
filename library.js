@@ -309,7 +309,6 @@ function loadTextureFromSource(source) {
 }
 
 function loadImageAndCreateMaterial(source) {
-    console.log(">> loadImageAndCreateMaterial", source)
     showLoading();
     fadeOutCurrentImage();
 
