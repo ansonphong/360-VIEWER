@@ -1,7 +1,18 @@
-body {
-	background: rgb(0, 0, 0);
-	overflow: hidden;
-	margin: 0px;
+html, body {
+    background: rgb(0, 0, 0);    /* Set background color */
+    overflow: hidden;            /* Prevent scrolling */
+    margin: 0px;                 /* Remove default margin */
+}
+
+
+canvas {
+	display: block;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	user-select: none;
 }
 
 .background-text {

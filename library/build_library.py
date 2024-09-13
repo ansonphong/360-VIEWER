@@ -1,11 +1,13 @@
 import os
 import json
+import struct
 import hashlib
 from pathlib import Path
 from PIL import Image
 from tqdm import tqdm
 import piexif
 import piexif.helper
+import xml.etree.ElementTree as ET
 
 def generate_short_hash(data, length=8):
     return hashlib.sha256(data.encode()).hexdigest()[:length]
@@ -100,25 +102,185 @@ def generate_thumbnails(missing_thumbnails):
                 print(f"\nError generating thumbnail for {original_path}: {str(e)}")
 
 def generate_xmp_metadata(width, height):
-    xmp_dict = {
-        'Xmp': {
-            'GPano:ProjectionType': 'equirectangular',
-            'GPano:UsePanoramaViewer': 'True',
-            'GPano:CroppedAreaImageWidthPixels': str(width),
-            'GPano:CroppedAreaImageHeightPixels': str(height),
-            'GPano:FullPanoWidthPixels': str(width),
-            'GPano:FullPanoHeightPixels': str(height),
-            'GPano:CroppedAreaLeftPixels': '0',
-            'GPano:CroppedAreaTopPixels': '0',
-        }
-    }
-    return piexif.helper.UserComment.dump(json.dumps(xmp_dict))
+    xmp_template = f'''<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 5.6-c140 79.160451, 2017/05/06-01:08:21        ">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about=""
+    xmlns:GPano="http://ns.google.com/photos/1.0/panorama/"
+    GPano:ProjectionType="equirectangular"
+    GPano:UsePanoramaViewer="True"
+    GPano:CroppedAreaImageWidthPixels="{width}"
+    GPano:CroppedAreaImageHeightPixels="{height}"
+    GPano:FullPanoWidthPixels="{width}"
+    GPano:FullPanoHeightPixels="{height}"
+    GPano:CroppedAreaLeftPixels="0"
+    GPano:CroppedAreaTopPixels="0"/>
+ </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>'''.encode('utf-8')
+    return xmp_template
 
 def insert_xmp_metadata(image_path, xmp_metadata):
-    exif_dict = piexif.load(image_path)
-    exif_dict["Exif"][piexif.ExifIFD.UserComment] = xmp_metadata
-    exif_bytes = piexif.dump(exif_dict)
-    piexif.insert(exif_bytes, image_path)
+    try:
+        with open(image_path, 'rb') as f:
+            data = f.read()
+        
+        app1_marker = b'\xFF\xE1'
+        xmp_header = b'http://ns.adobe.com/xap/1.0/\x00'
+        
+        # Remove existing XMP metadata
+        while True:
+            xmp_start = data.find(app1_marker + b'\x00\x00' + xmp_header)
+            if xmp_start == -1:
+                break
+            xmp_length = struct.unpack('>H', data[xmp_start+2:xmp_start+4])[0]
+            data = data[:xmp_start] + data[xmp_start + 2 + xmp_length:]
+        
+        # Prepare new XMP metadata
+        xmp_length = len(xmp_metadata) + 2 + len(xmp_header)
+        new_xmp_segment = app1_marker + struct.pack('>H', xmp_length) + xmp_header + xmp_metadata
+        
+        # Find the position to insert XMP (after SOI and APP0)
+        soi_app0_end = data.find(b'\xFF\xD8\xFF\xE0')
+        if soi_app0_end == -1:
+            soi_app0_end = 2  # Assume it's right after SOI if we can't find APP0
+        else:
+            soi_app0_end += 18
+        
+        new_data = data[:soi_app0_end] + new_xmp_segment + data[soi_app0_end:]
+        
+        with open(image_path, 'wb') as f:
+            f.write(new_data)
+        
+        print(f"XMP metadata inserted successfully in {image_path}")
+    except Exception as e:
+        print(f"Error inserting XMP metadata in {image_path}: {str(e)}")
+
+def verify_xmp(image_path):
+    try:
+        with open(image_path, 'rb') as f:
+            data = f.read()
+        
+        app1_marker = b'\xFF\xE1'
+        xmp_header = b'http://ns.adobe.com/xap/1.0/\x00'
+        
+        xmp_start = data.find(app1_marker)
+        while xmp_start != -1:
+            if data[xmp_start+4:xmp_start+4+len(xmp_header)] == xmp_header:
+                xmp_length = struct.unpack('>H', data[xmp_start+2:xmp_start+4])[0]
+                xmp_data = data[xmp_start+4+len(xmp_header):xmp_start+2+xmp_length].decode('utf-8', errors='ignore')
+                
+                if 'GPano:ProjectionType' in xmp_data and 'GPano:UsePanoramaViewer' in xmp_data:
+                    print(f"XMP metadata found and verified in {image_path}")
+                    return
+            
+            xmp_start = data.find(app1_marker, xmp_start + 1)
+        
+        print(f"No valid XMP metadata found in {image_path}")
+    except Exception as e:
+        print(f"Error verifying XMP metadata in {image_path}: {str(e)}")
+
+def generate_gpano_metadata(width, height):
+    return {
+        'GPano:ProjectionType': 'equirectangular',
+        'GPano:UsePanoramaViewer': 'True',
+        'GPano:CroppedAreaImageWidthPixels': str(width),
+        'GPano:CroppedAreaImageHeightPixels': str(height),
+        'GPano:FullPanoWidthPixels': str(width),
+        'GPano:FullPanoHeightPixels': str(height),
+        'GPano:CroppedAreaLeftPixels': '0',
+        'GPano:CroppedAreaTopPixels': '0'
+    }
+
+
+def insert_gpano_metadata(image_path, gpano_metadata):
+    try:
+        with open(image_path, 'rb') as f:
+            data = f.read()
+        
+        app1_marker = b'\xFF\xE1'
+        xmp_header = b'http://ns.adobe.com/xap/1.0/\x00'
+        
+        xmp_template = f'''<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 5.6-c140 79.160451, 2017/05/06-01:08:21        ">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about=""
+    xmlns:GPano="http://ns.google.com/photos/1.0/panorama/">
+   <GPano:ProjectionType>{gpano_metadata['GPano:ProjectionType']}</GPano:ProjectionType>
+   <GPano:UsePanoramaViewer>{gpano_metadata['GPano:UsePanoramaViewer']}</GPano:UsePanoramaViewer>
+   <GPano:CroppedAreaImageWidthPixels>{gpano_metadata['GPano:CroppedAreaImageWidthPixels']}</GPano:CroppedAreaImageWidthPixels>
+   <GPano:CroppedAreaImageHeightPixels>{gpano_metadata['GPano:CroppedAreaImageHeightPixels']}</GPano:CroppedAreaImageHeightPixels>
+   <GPano:FullPanoWidthPixels>{gpano_metadata['GPano:FullPanoWidthPixels']}</GPano:FullPanoWidthPixels>
+   <GPano:FullPanoHeightPixels>{gpano_metadata['GPano:FullPanoHeightPixels']}</GPano:FullPanoHeightPixels>
+   <GPano:CroppedAreaLeftPixels>{gpano_metadata['GPano:CroppedAreaLeftPixels']}</GPano:CroppedAreaLeftPixels>
+   <GPano:CroppedAreaTopPixels>{gpano_metadata['GPano:CroppedAreaTopPixels']}</GPano:CroppedAreaTopPixels>
+  </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>'''.encode('utf-8')
+
+        xmp_len_bytes = struct.pack('>H', len(xmp_template) + 2 + len(xmp_header))
+        new_chunk = app1_marker + xmp_len_bytes + xmp_header + xmp_template
+
+        # Find the position to insert the new XMP chunk
+        soi_marker = data[:2]
+        after_soi = data[2:]
+        app0_start = after_soi.find(b'\xFF\xE0')
+        if app0_start != -1:
+            insert_pos = app0_start + 2
+        else:
+            insert_pos = 0
+
+        # Construct the new image data
+        new_data = soi_marker + after_soi[:insert_pos] + new_chunk + after_soi[insert_pos:]
+
+        with open(image_path, 'wb') as f:
+            f.write(new_data)
+        
+        print(f"GPano metadata inserted successfully in {image_path}")
+    except Exception as e:
+        print(f"Error inserting GPano metadata in {image_path}: {str(e)}")
+
+        
+
+
+def verify_gpano(image_path):
+    try:
+        with open(image_path, 'rb') as f:
+            data = f.read()
+        
+        app1_marker = b'\xFF\xE1'
+        xmp_header = b'http://ns.adobe.com/xap/1.0/\x00'
+        
+        xmp_start = data.find(app1_marker + b'\x00\x00' + xmp_header)
+        if xmp_start == -1:
+            print(f"No XMP metadata found in {image_path}")
+            return
+        
+        xmp_length = struct.unpack('>H', data[xmp_start+2:xmp_start+4])[0]
+        xmp_data = data[xmp_start+4+len(xmp_header):xmp_start+2+xmp_length].decode('utf-8', errors='ignore')
+        
+        root = ET.fromstring(xmp_data)
+        ns = {'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#', 'GPano': 'http://ns.google.com/photos/1.0/panorama/'}
+        
+        desc = root.find('.//rdf:Description', ns)
+        if desc is None:
+            print(f"No RDF Description found in XMP metadata of {image_path}")
+            return
+        
+        gpano_tags = ['ProjectionType', 'UsePanoramaViewer', 'CroppedAreaImageWidthPixels',
+                      'CroppedAreaImageHeightPixels', 'FullPanoWidthPixels', 'FullPanoHeightPixels',
+                      'CroppedAreaLeftPixels', 'CroppedAreaTopPixels']
+        
+        for tag in gpano_tags:
+            value = desc.get(f'{{http://ns.google.com/photos/1.0/panorama/}}{tag}')
+            if value is None:
+                print(f"GPano:{tag} not found in {image_path}")
+                return
+        
+        print(f"GPano metadata verified successfully in {image_path}")
+    except Exception as e:
+        print(f"Error verifying GPano metadata in {image_path}: {str(e)}")
 
 def generate_JPGs(missing_jpgs):
     with tqdm(total=len(missing_jpgs) * 3, desc="Generating high-quality JPGs") as pbar:
@@ -133,38 +295,18 @@ def generate_JPGs(missing_jpgs):
                         new_height = width // 2
                         img = img.crop((0, 0, width, new_height))
                     
-                    xmp_metadata = generate_xmp_metadata(width, new_height if width != 2 * height else height)
+                    gpano_metadata = generate_gpano_metadata(width, new_height if width != 2 * height else height)
                     
                     for path, quality in [(q100_path, 100), (q75_path, 75), (q50_path, 50)]:
                         os.makedirs(os.path.dirname(path), exist_ok=True)
                         img.save(path, "JPEG", quality=quality)
                         
-                        insert_xmp_metadata(path, xmp_metadata)
-                        verify_xmp(path)
+                        insert_gpano_metadata(path, gpano_metadata)
+                        verify_gpano(path)
                     
                     pbar.update(3)
             except Exception as e:
                 print(f"\nError generating JPGs for {original_path}: {str(e)}")
-
-def verify_xmp(image_path):
-    try:
-        exif_dict = piexif.load(image_path)
-        xmp_metadata = exif_dict["Exif"][piexif.ExifIFD.UserComment]
-        xmp_dict = json.loads(piexif.helper.UserComment.load(xmp_metadata))
-        
-        if 'Xmp' not in xmp_dict or 'GPano:ProjectionType' not in xmp_dict['Xmp']:
-            print(f"No XMP metadata found in {image_path}")
-            return
-        
-        if xmp_dict['Xmp']['GPano:ProjectionType'] != 'equirectangular':
-            print(f"ProjectionType mismatch in {image_path}")
-        
-        if xmp_dict['Xmp']['GPano:UsePanoramaViewer'] != 'True':
-            print(f"UsePanoramaViewer mismatch in {image_path}")
-        
-        print(f"XMP metadata verified for {image_path}")
-    except Exception as e:
-        print(f"Error verifying XMP metadata for {image_path}: {str(e)}")
 
 def write_library_json(library, output_file):
     with open(output_file, 'w') as f:
