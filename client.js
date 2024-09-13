@@ -17,6 +17,10 @@ let isUserInteracting = false,
     fov = 90;
 
 
+let isZoomingIn = false;
+let isZoomingOut = false;
+let zoomInterval = null;
+
 let isPointerDown = false;
 let lastPointerX = 0;
 let lastPointerY = 0;
@@ -863,3 +867,64 @@ function handleFullscreenChange() {
         showPanels(true);
     }
 }
+
+
+function onKeyDown(event) {
+    if (event.key === '=' || event.key === '+') {
+        if (!isZoomingIn) {
+            isZoomingIn = true;
+            zoomIn();
+            startContinuousZoom('in');
+        }
+    } else if (event.key === '-' || event.key === '_') {
+        if (!isZoomingOut) {
+            isZoomingOut = true;
+            zoomOut();
+            startContinuousZoom('out');
+        }
+    }
+}
+
+function onKeyUp(event) {
+    if (event.key === '=' || event.key === '+') {
+        isZoomingIn = false;
+        stopContinuousZoom();
+    } else if (event.key === '-' || event.key === '_') {
+        isZoomingOut = false;
+        stopContinuousZoom();
+    }
+}
+
+// Function to zoom in
+function zoomIn() {
+    targetState.fov = clampFOV(targetState.fov - 5);
+}
+
+// Function to zoom out
+function zoomOut() {
+    targetState.fov = clampFOV(targetState.fov + 5);
+}
+
+// Function to start continuous zoom
+function startContinuousZoom(direction) {
+    if (zoomInterval) clearInterval(zoomInterval);
+    zoomInterval = setInterval(() => {
+        if (direction === 'in') {
+            targetState.fov = clampFOV(targetState.fov - 2);
+        } else {
+            targetState.fov = clampFOV(targetState.fov + 2);
+        }
+    }, 50);
+}
+
+// Function to stop continuous zoom
+function stopContinuousZoom() {
+    if (zoomInterval) {
+        clearInterval(zoomInterval);
+        zoomInterval = null;
+    }
+}
+
+// Add these event listeners in your init() function
+document.addEventListener('keydown', onKeyDown);
+document.addEventListener('keyup', onKeyUp);
