@@ -112,7 +112,6 @@ var targetState = {
     phi: initPhi,
     theta: initTheta,
     fov: config.fov.initTarget,
-    azimuthSign: 1,
 };
 
 function loadInitialImage() {
@@ -945,11 +944,11 @@ function onKeyUp(event) {
 }
 
 function incrementalZoomIn() {
-    targetState.fov = clampFOV(targetState.fov - 15);
+    targetState.fov = clampFOV(targetState.fov - 10);
 }
 
 function incrementalZoomOut() {
-    targetState.fov = clampFOV(targetState.fov + 15);
+    targetState.fov = clampFOV(targetState.fov + 10);
 }
 
 function incrementalPan(key) {

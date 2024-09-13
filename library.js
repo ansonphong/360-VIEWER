@@ -242,7 +242,7 @@ function setCurrentImagePath(path) {
 
 function updateImageInfo(title) {
     let basename, extension;
-    console.log("title", title);
+    //console.log("title", title);
 
     if (typeof title === 'string') {
         // Extract only the filename without folders or extension
