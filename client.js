@@ -16,7 +16,6 @@ let isUserInteracting = false,
     targetLat = 0,
     fov = 90;
 
-
 let isZoomingIn = false;
 let isZoomingOut = false;
 let isPanningLeft = false;
@@ -25,6 +24,10 @@ let isPanningUp = false;
 let isPanningDown = false;
 let zoomInterval = null;
 let panInterval = null;
+
+let lastKeyPressTime = 0;
+const DOUBLE_PRESS_DELAY = 300; // milliseconds
+
 
 // Add a new object to track active keys
 const activeKeys = {
@@ -891,20 +894,32 @@ function onKeyDown(event) {
     if (activeKeys.hasOwnProperty(event.key) && !activeKeys[event.key]) {
         activeKeys[event.key] = true;
         
+        const currentTime = Date.now();
+        const isDoubleTap = (currentTime - lastKeyPressTime) < DOUBLE_PRESS_DELAY;
+        lastKeyPressTime = currentTime;
+
         if (event.key === '=' || event.key === '+') {
-            if (!isZoomingIn) {
+            if (isDoubleTap) {
+                incrementalZoomIn();
+            } else if (!isZoomingIn) {
                 isZoomingIn = true;
                 zoomIn();
                 startContinuousZoom('in');
             }
         } else if (event.key === '-' || event.key === '_') {
-            if (!isZoomingOut) {
+            if (isDoubleTap) {
+                incrementalZoomOut();
+            } else if (!isZoomingOut) {
                 isZoomingOut = true;
                 zoomOut();
                 startContinuousZoom('out');
             }
         } else {
-            startContinuousPan();
+            if (isDoubleTap) {
+                incrementalPan(event.key);
+            } else {
+                startContinuousPan();
+            }
         }
     }
 }
@@ -929,6 +944,31 @@ function onKeyUp(event) {
     }
 }
 
+function incrementalZoomIn() {
+    targetState.fov = clampFOV(targetState.fov - 15);
+}
+
+function incrementalZoomOut() {
+    targetState.fov = clampFOV(targetState.fov + 15);
+}
+
+function incrementalPan(key) {
+    switch(key) {
+        case 'ArrowLeft':
+            targetState.lon -= 5;
+            break;
+        case 'ArrowRight':
+            targetState.lon += 5;
+            break;
+        case 'ArrowUp':
+            targetState.lat = Math.min(targetState.lat + 5, 90);
+            break;
+        case 'ArrowDown':
+            targetState.lat = Math.max(targetState.lat - 5, -90);
+            break;
+    }
+}
+
 function zoomIn() {
     targetState.fov = clampFOV(targetState.fov - 5);
 }
@@ -942,11 +982,11 @@ function startContinuousZoom(direction) {
     if (zoomInterval) clearInterval(zoomInterval);
     zoomInterval = setInterval(() => {
         if (direction === 'in') {
-            targetState.fov = clampFOV(targetState.fov - 2);
+            targetState.fov = clampFOV(targetState.fov - 4);
         } else {
-            targetState.fov = clampFOV(targetState.fov + 2);
+            targetState.fov = clampFOV(targetState.fov + 4);
         }
-    }, 50); // 10 times per second
+    }, 100); // 10 times per second
 }
 
 // Update the startContinuousPan function
@@ -963,7 +1003,7 @@ function startContinuousPan() {
         
         targetState.lon += deltaLon;
         targetState.lat = THREE.MathUtils.clamp(targetState.lat + deltaLat, -90, 90);
-    }, 50); // 20 times per second
+    }, 100); // 10 times per second
 }
 
 
