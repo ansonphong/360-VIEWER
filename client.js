@@ -26,6 +26,18 @@ let isPanningDown = false;
 let zoomInterval = null;
 let panInterval = null;
 
+// Add a new object to track active keys
+const activeKeys = {
+    ArrowUp: false,
+    ArrowDown: false,
+    ArrowLeft: false,
+    ArrowRight: false,
+    '=': false,
+    '+': false,
+    '-': false,
+    '_': false
+};
+
 
 let isPointerDown = false;
 let lastPointerX = 0;
@@ -876,116 +888,56 @@ function handleFullscreenChange() {
 
 
 function onKeyDown(event) {
-    switch(event.key) {
-        case '=':
-        case '+':
+    if (activeKeys.hasOwnProperty(event.key) && !activeKeys[event.key]) {
+        activeKeys[event.key] = true;
+        
+        if (event.key === '=' || event.key === '+') {
             if (!isZoomingIn) {
                 isZoomingIn = true;
                 zoomIn();
                 startContinuousZoom('in');
             }
-            break;
-        case '-':
-        case '_':
+        } else if (event.key === '-' || event.key === '_') {
             if (!isZoomingOut) {
                 isZoomingOut = true;
                 zoomOut();
                 startContinuousZoom('out');
             }
-            break;
-        case 'ArrowLeft':
-            if (!isPanningLeft) {
-                isPanningLeft = true;
-                panLeft();
-                startContinuousPan('left');
-            }
-            break;
-        case 'ArrowRight':
-            if (!isPanningRight) {
-                isPanningRight = true;
-                panRight();
-                startContinuousPan('right');
-            }
-            break;
-        case 'ArrowUp':
-            if (!isPanningUp) {
-                isPanningUp = true;
-                panUp();
-                startContinuousPan('up');
-            }
-            break;
-        case 'ArrowDown':
-            if (!isPanningDown) {
-                isPanningDown = true;
-                panDown();
-                startContinuousPan('down');
-            }
-            break;
+        } else {
+            startContinuousPan();
+        }
     }
 }
 
 function onKeyUp(event) {
-    switch(event.key) {
-        case '=':
-        case '+':
-            isZoomingIn = false;
-            stopContinuousZoom();
-            break;
-        case '-':
-        case '_':
-            isZoomingOut = false;
-            stopContinuousZoom();
-            break;
-        case 'ArrowLeft':
-            isPanningLeft = false;
-            stopContinuousPan();
-            break;
-        case 'ArrowRight':
-            isPanningRight = false;
-            stopContinuousPan();
-            break;
-        case 'ArrowUp':
-            isPanningUp = false;
-            stopContinuousPan();
-            break;
-        case 'ArrowDown':
-            isPanningDown = false;
-            stopContinuousPan();
-            break;
+    if (activeKeys.hasOwnProperty(event.key)) {
+        activeKeys[event.key] = false;
+        
+        if (event.key === '=' || event.key === '+' || event.key === '-' || event.key === '_') {
+            isZoomingIn = activeKeys['='] || activeKeys['+'];
+            isZoomingOut = activeKeys['-'] || activeKeys['_'];
+            if (!isZoomingIn && !isZoomingOut) {
+                stopContinuousZoom();
+            }
+        } else {
+            if (!activeKeys.ArrowUp && !activeKeys.ArrowDown && !activeKeys.ArrowLeft && !activeKeys.ArrowRight) {
+                stopContinuousPan();
+            } else {
+                startContinuousPan(); // Restart panning with remaining active keys
+            }
+        }
     }
 }
 
-// Function to zoom in
 function zoomIn() {
     targetState.fov = clampFOV(targetState.fov - 5);
 }
 
-// Function to zoom out
 function zoomOut() {
     targetState.fov = clampFOV(targetState.fov + 5);
 }
 
-// Function to pan left
-function panLeft() {
-    targetState.lon -= 5;
-}
 
-// Function to pan right
-function panRight() {
-    targetState.lon += 5;
-}
-
-// Function to pan up
-function panUp() {
-    targetState.lat = Math.min(targetState.lat + 5, 90);
-}
-
-// Function to pan down
-function panDown() {
-    targetState.lat = Math.max(targetState.lat - 5, -90);
-}
-
-// Function to start continuous zoom
 function startContinuousZoom(direction) {
     if (zoomInterval) clearInterval(zoomInterval);
     zoomInterval = setInterval(() => {
@@ -997,28 +949,24 @@ function startContinuousZoom(direction) {
     }, 50); // 10 times per second
 }
 
-// Function to start continuous pan
-function startContinuousPan(direction) {
+// Update the startContinuousPan function
+function startContinuousPan() {
     if (panInterval) clearInterval(panInterval);
     panInterval = setInterval(() => {
-        switch(direction) {
-            case 'left':
-                targetState.lon -= 1;
-                break;
-            case 'right':
-                targetState.lon += 1;
-                break;
-            case 'up':
-                targetState.lat = Math.min(targetState.lat + 1, 90);
-                break;
-            case 'down':
-                targetState.lat = Math.max(targetState.lat - 1, -90);
-                break;
-        }
+        let deltaLon = 0;
+        let deltaLat = 0;
+        
+        if (activeKeys.ArrowLeft) deltaLon -= 1;
+        if (activeKeys.ArrowRight) deltaLon += 1;
+        if (activeKeys.ArrowUp) deltaLat += 1;
+        if (activeKeys.ArrowDown) deltaLat -= 1;
+        
+        targetState.lon += deltaLon;
+        targetState.lat = THREE.MathUtils.clamp(targetState.lat + deltaLat, -90, 90);
     }, 50); // 20 times per second
 }
 
-// Function to stop continuous zoom
+
 function stopContinuousZoom() {
     if (zoomInterval) {
         clearInterval(zoomInterval);
@@ -1026,7 +974,7 @@ function stopContinuousZoom() {
     }
 }
 
-// Function to stop continuous pan
+
 function stopContinuousPan() {
     if (panInterval) {
         clearInterval(panInterval);
