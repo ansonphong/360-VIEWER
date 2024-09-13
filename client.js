@@ -490,9 +490,11 @@ function init() {
     document.addEventListener('pointercancel', onPointerUp, false);
 
     // Add touch events for pinch zooming
-    renderer.domElement.addEventListener('touchstart', onTouchStart, false);
-    renderer.domElement.addEventListener('touchmove', onTouchMove, false);
-    renderer.domElement.addEventListener('touchend', onTouchEnd, false);
+    // TODO: These aren't working at all... why aren't they firing?
+    container.addEventListener('touchstart', onTouchStart, false);
+    container.addEventListener('touchmove', onTouchMove, false);
+    container.addEventListener('touchend', onTouchEnd, false);
+    
 
     // Set up drag and drop functionality
     setupDragAndDrop();
@@ -528,15 +530,21 @@ function onTouchStart(event) {
     }
 }
 
+const PINCH_ZOOM_DAMPING = 0.05; // Adjust this value to control zoom intensity (0.1 to 0.5 is a good range)
+
 function onTouchMove(event) {
-    console.log("onTouchMove", event)
+    console.log("onTouchMove", event);
     if (isZooming && event.touches.length === 2) {
         const currentPinchDistance = getPinchDistance(event);
-        const pinchRatio = initialPinchDistance / currentPinchDistance;
+        const rawPinchRatio = initialPinchDistance / currentPinchDistance;
+        
+        // Apply damping to the pinch ratio
+        const dampedPinchRatio = 1 + (rawPinchRatio - 1) * PINCH_ZOOM_DAMPING;
+        console.log("dampedPinchRatio", dampedPinchRatio);
 
-        targetState.fov = clampFOV(state.fov * pinchRatio);
+        targetState.fov = clampFOV(state.fov * dampedPinchRatio);
         initialPinchDistance = currentPinchDistance;
-        console.log("currentPinchDistance", currentPinchDistance)
+        console.log("currentPinchDistance", currentPinchDistance);
 
     } else if (event.touches.length === 1) {
         // Handle single touch panning
@@ -699,6 +707,7 @@ function onDocumentMouseWheel(event) {
     if (elementUnderMouse === threeJSCanvas) {
         let scrollDirection = event.deltaY < 0 ? 0.95 : 1.05;
         targetState.fov = clampFOV(targetState.fov * scrollDirection);
+        console.log("targetState.fov", targetState.fov)
         //console.log("FOV:", targetState.fov);
     }
 }
