@@ -892,7 +892,7 @@ function handleFullscreenChange() {
 function onKeyDown(event) {
     if (activeKeys.hasOwnProperty(event.key) && !activeKeys[event.key]) {
         activeKeys[event.key] = true;
-        
+
         const currentTime = Date.now();
         const isDoubleTap = (currentTime - lastKeyPressTime) < DOUBLE_PRESS_DELAY;
         lastKeyPressTime = currentTime;
@@ -926,7 +926,7 @@ function onKeyDown(event) {
 function onKeyUp(event) {
     if (activeKeys.hasOwnProperty(event.key)) {
         activeKeys[event.key] = false;
-        
+
         if (event.key === '=' || event.key === '+' || event.key === '-' || event.key === '_') {
             isZoomingIn = activeKeys['='] || activeKeys['+'];
             isZoomingOut = activeKeys['-'] || activeKeys['_'];
@@ -940,6 +940,17 @@ function onKeyUp(event) {
                 startContinuousPan(); // Restart panning with remaining active keys
             }
         }
+
+
+        // Update azimuthSign based on the difference between state.lon and targetState.lon
+        const lonDifference = targetState.lon - state.lon;
+        state.azimuthSign = -Math.sign(lonDifference);
+
+        // If there's no difference, maintain the current direction
+        if (state.azimuthSign === 0) {
+            state.azimuthSign = 1;
+        }
+
     }
 }
 
@@ -952,7 +963,7 @@ function incrementalZoomOut() {
 }
 
 function incrementalPan(key) {
-    switch(key) {
+    switch (key) {
         case 'ArrowLeft':
             targetState.lon -= 5;
             break;
@@ -994,12 +1005,12 @@ function startContinuousPan() {
     panInterval = setInterval(() => {
         let deltaLon = 0;
         let deltaLat = 0;
-        
+
         if (activeKeys.ArrowLeft) deltaLon -= 1;
         if (activeKeys.ArrowRight) deltaLon += 1;
         if (activeKeys.ArrowUp) deltaLat += 1;
         if (activeKeys.ArrowDown) deltaLat -= 1;
-        
+
         targetState.lon += deltaLon;
         targetState.lat = THREE.MathUtils.clamp(targetState.lat + deltaLat, -90, 90);
     }, 100); // 10 times per second
