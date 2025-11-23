@@ -98,7 +98,19 @@
 
             // Aspect ratio and projection
             this.aspect = 1.0;
+            
+            // Load saved projection preference from localStorage (default: stereographic = 1)
             this.projectionType = 1; // 0 = gnomonic, 1 = stereographic
+            try {
+                const savedProjection = localStorage.getItem('phong360.preferences.projection');
+                if (savedProjection !== null) {
+                    this.projectionType = parseInt(savedProjection, 10);
+                    console.log('[Phong360ViewerCore] Loaded saved projection preference:', 
+                        this.projectionType === 0 ? 'gnomonic' : 'stereographic');
+                }
+            } catch (e) {
+                console.warn('Could not load projection preference from localStorage:', e);
+            }
 
             // Animation
             this.lastUpdate = Date.now();
@@ -364,6 +376,14 @@
             // Clamp FOV to new projection limits
             this.targetState.fov = this.clampFOV(this.targetState.fov);
             this.state.fov = this.clampFOV(this.state.fov);
+            
+            // Save preference to localStorage
+            try {
+                localStorage.setItem('phong360.preferences.projection', type.toString());
+                console.log('[Phong360ViewerCore] Saved projection preference:', type === 0 ? 'gnomonic' : 'stereographic');
+            } catch (e) {
+                console.warn('Could not save projection preference to localStorage:', e);
+            }
         }
 
         /**

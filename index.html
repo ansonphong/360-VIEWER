@@ -149,15 +149,20 @@
 					// Setup projection switcher
 					const switchButton = document.getElementById('switchProjectionButton');
 					if (switchButton) {
-						let currentProjection = 1; // Start with stereographic
+						// Get current projection from core (which loaded from localStorage)
+						let currentProjection = core.projectionType;
+						
+						// Set initial button state
+						switchButton.title = currentProjection === 0 ? 'Gnomonic Projection' : 'Stereographic Projection';
+						switchButton.textContent = currentProjection === 0 ? '📐 Gnomonic' : '🌐 Stereographic';
+						
+						// Handle clicks
 						switchButton.addEventListener('click', function() {
 							currentProjection = currentProjection === 0 ? 1 : 0;
 							core.switchProjection(currentProjection);
 							switchButton.title = currentProjection === 0 ? 'Gnomonic Projection' : 'Stereographic Projection';
 							switchButton.textContent = currentProjection === 0 ? '📐 Gnomonic' : '🌐 Stereographic';
 						});
-						switchButton.title = 'Stereographic Projection';
-						switchButton.textContent = '🌐 Stereographic';
 					}
 
 					// Expose globally for debugging

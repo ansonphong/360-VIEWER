@@ -38,7 +38,18 @@
             this.currentImageId = null;
             this.currentImageData = null;
             this.currentResolution = null;
+            
+            // Load saved resolution preference from localStorage
             this.userPreferredResolution = null;
+            try {
+                const savedResolution = localStorage.getItem('phong360.preferences.resolution');
+                if (savedResolution) {
+                    this.userPreferredResolution = savedResolution;
+                    console.log('[Phong360MultiImage] Loaded saved resolution preference:', savedResolution);
+                }
+            } catch (e) {
+                console.warn('Could not load resolution preference from localStorage:', e);
+            }
 
             // Callbacks
             this.callbacks = Object.assign({
@@ -175,6 +186,14 @@
             }
 
             this.userPreferredResolution = resolutionId;
+            
+            // Save preference to localStorage
+            try {
+                localStorage.setItem('phong360.preferences.resolution', resolutionId);
+            } catch (e) {
+                console.warn('Could not save resolution preference to localStorage:', e);
+            }
+            
             this.loadImageWithResolution(this.currentImageData, resolution);
 
             if (this.callbacks.onResolutionChange) {
