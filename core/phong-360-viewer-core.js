@@ -87,8 +87,10 @@
             
             // Detect mobile/touch device for sensitivity adjustment
             this.isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-            // Drag sensitivity: Higher = more sensitive (mobile gets 2x sensitivity)
-            this.dragSensitivity = this.isMobileDevice ? 0.2 : 0.1;
+            // Drag sensitivity: Higher = more sensitive
+            // Mobile: 0.25 for near 1:1 tracking with subtle smoothing
+            // Desktop: 0.1 for smooth inertia feel
+            this.dragSensitivity = this.isMobileDevice ? 0.25 : 0.1;
 
             // Touch interaction
             this.lastTouchDistance = 0;
@@ -797,13 +799,17 @@
             this.targetState.phi = THREE.MathUtils.degToRad(90 - this.targetState.lat);
             this.targetState.theta = THREE.MathUtils.degToRad(this.targetState.lon);
 
-            // Smooth interpolation (matches original formula)
-            this.state.theta += (this.targetState.theta - this.state.theta) / (this.config.viewRotation.smoothness * delta);
-            this.state.phi += (this.targetState.phi - this.state.phi) / (this.config.viewRotation.smoothness * delta);
+            // Adaptive smoothing: Mobile gets much faster response (catches up in ~0.2s)
+            // Desktop keeps smooth inertia feel
+            const rotationSmoothing = this.isMobileDevice ? 1200 : this.config.viewRotation.smoothness;
+            
+            // Smooth interpolation
+            this.state.theta += (this.targetState.theta - this.state.theta) / (rotationSmoothing * delta);
+            this.state.phi += (this.targetState.phi - this.state.phi) / (rotationSmoothing * delta);
             this.state.fov += (this.targetState.fov - this.state.fov) / (this.config.zoom.smoothing * delta);
 
-            this.state.lon += (this.targetState.lon - this.state.lon) / (this.config.viewRotation.smoothness * delta);
-            this.state.lat += (this.targetState.lat - this.state.lat) / (this.config.viewRotation.smoothness * delta);
+            this.state.lon += (this.targetState.lon - this.state.lon) / (rotationSmoothing * delta);
+            this.state.lat += (this.targetState.lat - this.state.lat) / (rotationSmoothing * delta);
 
             // Ensure FOV stays within limits
             this.state.fov = this.clampFOV(this.state.fov);
