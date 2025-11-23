@@ -428,16 +428,17 @@
         }
 
         onDocumentMouseWheel(event) {
-            event.preventDefault();
-            
-            // Check if mouse is over the canvas
+            // Check if mouse is over the canvas first
             const elementUnderMouse = document.elementFromPoint(event.clientX, event.clientY);
             const canvas = this.container.querySelector('canvas');
             
+            // Only handle zoom if mouse is over canvas
             if (elementUnderMouse === canvas) {
+                event.preventDefault(); // Only prevent default when over canvas
                 let scrollDirection = event.deltaY < 0 ? 0.95 : 1.05;
                 this.targetState.fov = this.clampFOV(this.targetState.fov * scrollDirection);
             }
+            // If not over canvas, let the event bubble (allows library panel scrolling)
         }
 
         onKeyDown(event) {
