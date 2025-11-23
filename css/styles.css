@@ -119,8 +119,7 @@ canvas {
 }
 
 #resolution-selector {
-	font-size: 12px;
-	padding: 8px 10px;
+	/* Inherits from .resolution-selector class */
 }
 
 #info-panel {
@@ -483,14 +482,42 @@ body {
 /* Resolution Selector */
 .resolution-selector {
 	min-width: 180px;
-	font-size: 14px;
+	height: 36px;
+	font-size: 13px;
+	font-weight: 500;
 	cursor: pointer;
 	margin-left: 8px;
 	font-family: "Karla", sans-serif;
+	padding: 8px 32px 8px 12px;
+	background-color: rgba(0, 0, 0, 0.5);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23ffffff' opacity='0.8' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 10px center;
+	background-size: 10px;
+	color: rgba(255, 255, 255, 0.9);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 6px;
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	transition: all 0.2s ease;
+	outline: none;
+}
+
+.resolution-selector:hover {
+	background-color: rgba(0, 0, 0, 0.7);
+	border-color: rgba(255, 255, 255, 0.4);
+	color: #fff;
+}
+
+.resolution-selector:focus {
+	border-color: rgba(255, 255, 255, 0.6);
+	box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
 }
 
 .resolution-selector option {
 	background-color: rgba(0, 0, 0, 0.95);
 	color: #fff;
-	padding: 8px;
+	padding: 10px;
+	font-weight: 500;
 }
