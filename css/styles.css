@@ -109,6 +109,32 @@ canvas {
 	border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+/* Mobile responsive toolbar */
+@media (max-width: 768px) {
+	#toolbar-panel {
+		padding: 8px;
+		margin-right: 50px; /* Less space on mobile */
+		gap: 6px;
+	}
+	
+	#toolbar-panel .toolbar-button {
+		height: 44px; /* Smaller on mobile */
+		font-size: 11px;
+	}
+	
+	#switchProjectionButton {
+		font-size: 10px !important;
+		padding: 6px 8px !important;
+	}
+	
+	.resolution-selector {
+		font-size: 11px !important;
+		height: 44px !important;
+		padding: 6px 24px 6px 10px !important;
+		min-width: 120px !important;
+	}
+}
+
 #switchProjectionButton {
 	font-size: 12px;
 	padding: 8px 10px;
