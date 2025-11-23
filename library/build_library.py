@@ -221,8 +221,8 @@ def scan_directory(root_dir, presets, thumbnail_config, include_metadata=True):
     
     with tqdm(total=total_files, desc="Processing images") as pbar:
         for dirpath, dirnames, filenames in os.walk(root_dir):
-            # Skip the _BUILD folder
-            if '_BUILD' in dirpath:
+            # Skip the _BUILD folder and other output/processing folders
+            if any(skip in dirpath for skip in ['_BUILD', '/output', '/tiles', 'tiles_diffused', '/temp', '/cache']):
                 continue
             
             rel_path = os.path.relpath(dirpath, root_dir)
