@@ -176,8 +176,8 @@
                 viewRotation: {
                     initAzimuth: 90,
                     initAltitude: 0,
-                    autoRotate: true,
-                    autoRotationRate: 1,
+                    autoRotate: false,
+                    autoRotationRate: 0,
                     smoothness: 8000
                 }
             };
