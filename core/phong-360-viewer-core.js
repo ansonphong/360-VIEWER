@@ -348,10 +348,18 @@
         onPointerMove(event) {
             if (!this.isPointerDown) return;
 
-            const sensitivity = this.config.interaction.sensitivity;
-            this.targetState.lon = (this.pointerStartX - event.clientX) * sensitivity + this.onPointerDownLon;
-            this.targetState.lat = (event.clientY - this.pointerStartY) * sensitivity + this.onPointerDownLat;
-            this.targetState.lat = Math.max(-85, Math.min(85, this.targetState.lat));
+            const deltaX = event.clientX - this.lastPointerX;
+            const deltaY = event.clientY - this.lastPointerY;
+
+            this.targetState.lon = (this.pointerStartX - event.clientX) * 0.1 + this.onPointerDownLon;
+            this.targetState.lat = (event.clientY - this.pointerStartY) * 0.1 + this.onPointerDownLat;
+
+            // Calculate the sign (direction) of the Azimuth as (-1) or (+1)
+            this.state.azimuthSign = deltaX / Math.max(Math.abs(deltaX), 0.001);
+            if (this.state.azimuthSign == 0) this.state.azimuthSign = 1;
+
+            this.lastPointerX = event.clientX;
+            this.lastPointerY = event.clientY;
         }
 
         onPointerUp(event) {
@@ -361,9 +369,15 @@
 
         onDocumentMouseWheel(event) {
             event.preventDefault();
-            const fovConfig = this.getCurrentFOVConfig();
-            const delta = event.deltaY * this.config.zoom.rate;
-            this.targetState.fov = this.clampFOV(this.targetState.fov + delta);
+            
+            // Check if mouse is over the canvas
+            const elementUnderMouse = document.elementFromPoint(event.clientX, event.clientY);
+            const canvas = this.container.querySelector('canvas');
+            
+            if (elementUnderMouse === canvas) {
+                let scrollDirection = event.deltaY < 0 ? 0.95 : 1.05;
+                this.targetState.fov = this.clampFOV(this.targetState.fov * scrollDirection);
+            }
         }
 
         onKeyDown(event) {
