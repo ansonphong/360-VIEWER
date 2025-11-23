@@ -227,69 +227,155 @@
 
 		<!-- Instructions overlay (can be shown on first load) -->
 		<style>
+			#info-button {
+				position: fixed;
+				bottom: 20px;
+				right: 20px;
+				width: 50px;
+				height: 50px;
+				border-radius: 50%;
+				background: rgba(0, 0, 0, 0.7);
+				border: 2px solid rgba(255, 255, 255, 0.3);
+				color: white;
+				font-size: 24px;
+				font-weight: bold;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				z-index: 1001;
+				transition: all 0.3s ease;
+				font-family: Arial, sans-serif;
+			}
+			
+			#info-button:hover {
+				background: rgba(0, 0, 0, 0.9);
+				border-color: rgba(255, 255, 255, 0.6);
+				transform: scale(1.1);
+			}
+			
 			#instructions {
 				position: fixed;
-				top: 50%;
-				left: 50%;
-				transform: translate(-50%, -50%);
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
 				background: rgba(0, 0, 0, 0.9);
 				color: white;
-				padding: 30px;
-				border-radius: 10px;
-				text-align: center;
 				z-index: 10000;
 				display: none;
-				max-width: 500px;
+				align-items: center;
+				justify-content: center;
+				padding: 20px;
+				backdrop-filter: blur(10px);
 			}
+			
 			#instructions.show {
-				display: block;
+				display: flex;
 			}
+			
+			#instructions-content {
+				background: rgba(20, 20, 20, 0.95);
+				border-radius: 16px;
+				padding: 30px;
+				max-width: 500px;
+				width: 100%;
+				border: 1px solid rgba(255, 255, 255, 0.2);
+				position: relative;
+			}
+			
 			#instructions h3 {
-				margin-bottom: 20px;
+				margin: 0 0 20px 0;
+				font-size: 24px;
 			}
+			
 			#instructions ul {
 				text-align: left;
 				margin: 20px 0;
-				line-height: 1.8;
+				line-height: 2;
+				padding-left: 0;
+				list-style: none;
 			}
+			
+			#instructions li {
+				margin-bottom: 12px;
+				padding-left: 8px;
+			}
+			
 			#instructions button {
-				background: #4CAF50;
+				background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
 				color: white;
 				border: none;
-				padding: 10px 30px;
-				border-radius: 5px;
+				padding: 14px 32px;
+				border-radius: 8px;
 				cursor: pointer;
 				font-size: 16px;
+				font-weight: 600;
 				margin-top: 20px;
+				width: 100%;
+				transition: all 0.2s ease;
 			}
+			
 			#instructions button:hover {
-				background: #45a049;
+				transform: translateY(-2px);
+				box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+			}
+			
+			#instructions button:active {
+				transform: translateY(0);
+			}
+			
+			/* Mobile optimization */
+			@media (max-width: 768px) {
+				#info-button {
+					bottom: 80px; /* Above mobile UI elements */
+					right: 15px;
+					width: 44px;
+					height: 44px;
+					font-size: 20px;
+				}
+				
+				#instructions-content {
+					padding: 24px;
+					max-height: 85vh;
+					overflow-y: auto;
+				}
+				
+				#instructions h3 {
+					font-size: 20px;
+				}
+				
+				#instructions ul {
+					line-height: 1.8;
+				}
+				
+				#instructions li {
+					margin-bottom: 10px;
+					font-size: 15px;
+				}
 			}
 		</style>
 
-		<div id="instructions">
-			<h3>🌐 Welcome to Phong 360 Viewer!</h3>
-			<ul>
-				<li>🖱️ <strong>Click & Drag</strong> to look around</li>
-				<li>🔍 <strong>Scroll</strong> to zoom in/out</li>
-				<li>📁 <strong>Click menu</strong> to browse library</li>
-				<li>📂 <strong>Drag & Drop</strong> your own 360° images</li>
-				<li>⌨️ <strong>Arrow keys</strong> to pan, +/- to zoom</li>
-			</ul>
-			<button onclick="document.getElementById('instructions').classList.remove('show')">
-				Got it!
-			</button>
+		<!-- Floating info button -->
+		<div id="info-button" onclick="document.getElementById('instructions').classList.add('show')" title="Help & Instructions">
+			i
 		</div>
 
-		<script>
-			// Show instructions on first visit
-			if (!localStorage.getItem('phong360_visited')) {
-				setTimeout(() => {
-					document.getElementById('instructions').classList.add('show');
-					localStorage.setItem('phong360_visited', 'true');
-				}, 1000);
-			}
-		</script>
+		<div id="instructions" onclick="event.target === this && this.classList.remove('show')">
+			<div id="instructions-content">
+				<h3>🌐 Phong 360 Viewer</h3>
+				<ul>
+					<li>🖱️ <strong>Click & Drag</strong> to look around</li>
+					<li>🔍 <strong>Scroll</strong> to zoom in/out</li>
+					<li>📁 <strong>Click menu</strong> to browse library</li>
+					<li>📂 <strong>Drag & Drop</strong> your own 360° images</li>
+					<li>⌨️ <strong>Arrow keys</strong> to pan, +/- to zoom</li>
+				</ul>
+				<button onclick="document.getElementById('instructions').classList.remove('show')">
+					Got it!
+				</button>
+			</div>
+		</div>
 
 	</body>
 </html>
