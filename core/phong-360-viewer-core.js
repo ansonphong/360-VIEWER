@@ -188,7 +188,7 @@
             this.camera.position.z = 1;
 
             // Renderer
-            this.renderer = new THREE.WebGLRenderer({ antialias: true });
+            this.renderer = new THREE.WebGLRenderer();
             this.renderer.setPixelRatio(window.devicePixelRatio);
             this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
             this.container.appendChild(this.renderer.domElement);
@@ -297,12 +297,22 @@
                 fragmentShader: this.getFragmentShader()
             });
 
+            // Check for shader compilation errors
+            if (material.program) {
+                const gl = this.renderer.getContext();
+                const programInfo = this.renderer.properties.get(material.program);
+                if (programInfo) {
+                    console.log('[Phong360ViewerCore] Shader program compiled successfully');
+                }
+            }
+
             console.log('[Phong360ViewerCore] Material created with uniforms:', {
                 lon: this.state.lon,
                 lat: this.state.lat,
                 fov: this.state.fov,
                 aspect: this.aspect,
-                projectionType: this.projectionType
+                projectionType: this.projectionType,
+                textureLoaded: !!texture.image
             });
 
             // Update mesh
