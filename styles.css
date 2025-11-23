@@ -84,12 +84,33 @@ canvas {
 
 #toolbar-panel {
 	position: relative;
-	padding: 10px;
+	padding: 12px;
 	display: flex;
-	justify-content: flex-end;
-	gap: 10px;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
 	flex-shrink: 0;
+	background-color: rgba(0, 0, 0, 0.5);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 	z-index: 20;
+}
+
+#toolbar-panel .toolbar-button {
+	flex: 1;
+	min-width: 0;
+}
+
+#switchProjectionButton {
+	font-size: 12px;
+	padding: 8px 10px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#resolution-selector {
+	font-size: 12px;
+	padding: 8px 10px;
 }
 
 #info-panel {
@@ -234,7 +255,7 @@ body {
 }
 
 #library-content {
-	padding: 10px 10px 10px 10px;
+	padding: 0;
 	flex: 1;
 	overflow-y: auto;
 	scrollbar-width: thin;
@@ -258,10 +279,8 @@ body {
 	background-color: rgba(255, 255, 255, 0.5);
 }
 
-#library-content h2 {
-	margin-top: 10px;
-	padding-left: 10px;
-	height: 32px;
+#library-tree {
+	padding: 12px;
 }
 
 #library-tree ul {
@@ -269,7 +288,7 @@ body {
 	padding-left: 8px;
 	margin: 0;
 	padding: 0px;
-	margin-top: 10px;
+	margin-top: 0;
 }
 
 #library-tree li {
