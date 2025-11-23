@@ -344,14 +344,47 @@ body {
 
 
 #library-tree .folder > span {
-	display: block;
-	padding: 12px 12px;
-	border-radius: 4px;
-	margin-bottom: 8px;
-	font-weight: 500;
-	border-left: 3px solid rgba(255, 255, 255, 0.2);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 14px 16px;
+	border-radius: 8px;
+	margin-bottom: 10px;
+	font-weight: 600;
+	font-size: 0.95em;
+	background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+	border: 1px solid rgba(255, 255, 255, 0.1);
 	cursor: pointer;
 	user-select: none;
+	transition: all 0.2s ease;
+	position: relative;
+	min-height: 48px; /* Mobile-friendly touch target */
+}
+
+/* Add chevron indicator */
+#library-tree .folder > span::before {
+	content: '▶';
+	font-size: 0.7em;
+	color: rgba(255, 255, 255, 0.6);
+	transition: transform 0.3s ease;
+}
+
+/* Rotate chevron when expanded */
+#library-tree .folder.expanded > span::before {
+	transform: rotate(90deg);
+}
+
+/* Hover effect */
+#library-tree .folder > span:hover {
+	background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%);
+	border-color: rgba(255, 255, 255, 0.2);
+	transform: translateX(2px);
+}
+
+/* Active/pressed effect */
+#library-tree .folder > span:active {
+	transform: scale(0.98);
+	background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
 }
 
 #library-tree .file {
