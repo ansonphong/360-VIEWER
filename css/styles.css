@@ -95,7 +95,6 @@ canvas {
 	align-items: center;
 	gap: 8px;
 	flex-shrink: 0;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 	min-height: 48px; /* Match hamburger button height */
 	z-index: 20;
 }
@@ -103,7 +102,7 @@ canvas {
 #toolbar-panel .toolbar-button {
 	flex: 1;
 	min-width: 0;
-	height: 36px; /* Consistent height */
+	height: 50px; /* Updated to 50px */
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -482,7 +481,7 @@ body {
 /* Resolution Selector */
 .resolution-selector {
 	min-width: 180px;
-	height: 36px;
+	height: 50px;
 	font-size: 13px;
 	font-weight: 500;
 	cursor: pointer;
