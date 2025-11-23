@@ -396,7 +396,7 @@ body {
 	min-height: 128px;
 	object-fit: cover;
 	object-position: center;
-	border-radius: 16px;
+	border-radius: 6px;
 	transition: 0.2s all ease;
 }
 
