@@ -37,11 +37,11 @@
                 imageUrl: null,
                 width: 4096,
                 height: 2048,
-                config: this.getDefaultConfig()
+                config: {}
             }, options);
 
-            // Merge config
-            this.config = Object.assign(this.getDefaultConfig(), this.options.config || {});
+            // Deep merge config (shallow merge loses nested properties!)
+            this.config = this.deepMergeConfig(this.getDefaultConfig(), this.options.config || {});
 
             // State management
             this.state = {
@@ -144,6 +144,34 @@
                     smoothness: 8000
                 }
             };
+        }
+
+        /**
+         * Deep merge configuration objects
+         */
+        deepMergeConfig(target, source) {
+            const output = Object.assign({}, target);
+            if (this.isObject(target) && this.isObject(source)) {
+                Object.keys(source).forEach(key => {
+                    if (this.isObject(source[key])) {
+                        if (!(key in target)) {
+                            Object.assign(output, { [key]: source[key] });
+                        } else {
+                            output[key] = this.deepMergeConfig(target[key], source[key]);
+                        }
+                    } else {
+                        Object.assign(output, { [key]: source[key] });
+                    }
+                });
+            }
+            return output;
+        }
+
+        /**
+         * Check if value is an object
+         */
+        isObject(item) {
+            return item && typeof item === 'object' && !Array.isArray(item);
         }
 
         /**
