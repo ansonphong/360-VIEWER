@@ -224,8 +224,12 @@
                 const li = document.createElement('li');
                 li.className = 'folder';
                 li.setAttribute('data-folder-name', key);
-                li.innerHTML = `<span>${value.name || key}</span>`;
-                li.addEventListener('click', this.onFolderClick.bind(this));
+                
+                // Create folder title span
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = value.name || key;
+                titleSpan.addEventListener('click', this.onFolderClick.bind(this));
+                li.appendChild(titleSpan);
 
                 const subUl = document.createElement('ul');
                 subUl.style.display = 'none';
@@ -288,7 +292,8 @@
          */
         onFolderClick(event) {
             event.stopPropagation();
-            const folder = event.currentTarget;
+            // Get the parent li.folder element (span was clicked)
+            const folder = event.currentTarget.parentElement;
             const subList = folder.querySelector('ul');
             
             if (subList) {
