@@ -84,6 +84,11 @@
             this.lastPointerY = 0;
             this.onPointerDownLon = 0;
             this.onPointerDownLat = 0;
+            
+            // Detect mobile/touch device for sensitivity adjustment
+            this.isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+            // Drag sensitivity: Higher = more sensitive (mobile gets 2x sensitivity)
+            this.dragSensitivity = this.isMobileDevice ? 0.2 : 0.1;
 
             // Touch interaction
             this.lastTouchDistance = 0;
@@ -570,8 +575,9 @@
             const deltaX = event.clientX - this.lastPointerX;
             const deltaY = event.clientY - this.lastPointerY;
 
-            this.targetState.lon = (this.pointerStartX - event.clientX) * 0.1 + this.onPointerDownLon;
-            this.targetState.lat = (event.clientY - this.pointerStartY) * 0.1 + this.onPointerDownLat;
+            // Use dynamic sensitivity based on device type
+            this.targetState.lon = (this.pointerStartX - event.clientX) * this.dragSensitivity + this.onPointerDownLon;
+            this.targetState.lat = (event.clientY - this.pointerStartY) * this.dragSensitivity + this.onPointerDownLat;
 
             // Calculate the sign (direction) of the Azimuth as (-1) or (+1)
             this.state.azimuthSign = deltaX / Math.max(Math.abs(deltaX), 0.001);
