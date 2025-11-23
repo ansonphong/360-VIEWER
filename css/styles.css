@@ -350,6 +350,12 @@ body {
 
 #library-tree .folder > span {
 	display: block;
+	padding: 8px 12px;
+	background: rgba(255, 255, 255, 0.08);
+	border-radius: 4px;
+	margin-bottom: 8px;
+	font-weight: 500;
+	border-left: 3px solid rgba(255, 255, 255, 0.2);
 }
 
 #library-tree .file {
