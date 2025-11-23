@@ -215,24 +215,24 @@
                 if (preferred) return preferred;
             }
 
-            // Find default resolution first (4K should be default)
+            // Find default resolution (4K) and 2K
             const defaultRes = resolutions.find(r => r.default);
+            const mobile2K = resolutions.find(r => r.id === '2k' || r.width <= 2048);
 
-            // Auto-adaptive logic (but strongly prefers default 4K on first load)
+            // Check device capabilities
+            const pixelRatio = window.devicePixelRatio || 1;
+            const viewportWidth = window.innerWidth;
+
+            // Auto-adaptive logic
             if (this.adaptiveLoading) {
                 // Check network connection if available
                 const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
                 if (connection) {
                     // Only downgrade from default if connection is really slow
                     if (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
-                        const lowRes = resolutions.find(r => r.bandwidth === 'low');
-                        if (lowRes) return lowRes;
+                        if (mobile2K) return mobile2K;
                     }
                 }
-
-                // Check device capabilities
-                const pixelRatio = window.devicePixelRatio || 1;
-                const viewportWidth = window.innerWidth;
 
                 // Very high DPI display or very large viewport - prefer 8K
                 if (pixelRatio >= 2.5 || viewportWidth > 3000) {
@@ -240,8 +240,12 @@
                     if (highRes) return highRes;
                 }
                 
-                // For all other cases - use default (4K) on first load
-                // This ensures 4K is the default for desktop, tablet, and most mobile devices
+                // Mobile devices (small viewport) - default to 2K for better performance
+                if (viewportWidth < 1024) {
+                    if (mobile2K) return mobile2K;
+                }
+                
+                // Desktop - use default (4K)
                 if (defaultRes) return defaultRes;
             }
 
