@@ -88,9 +88,9 @@
             // Detect mobile/touch device for sensitivity adjustment
             this.isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
             // Drag sensitivity: Higher = more sensitive
-            // Mobile: 0.25 for near 1:1 tracking with subtle smoothing
-            // Desktop: 0.1 for smooth inertia feel
-            this.dragSensitivity = this.isMobileDevice ? 0.25 : 0.1;
+            // Mobile: 0.5 for highly responsive 1:1 tracking
+            // Desktop: 0.1 for smooth inertia feel (PERFECT - don't change)
+            this.dragSensitivity = this.isMobileDevice ? 0.5 : 0.1;
 
             // Touch interaction
             this.lastTouchDistance = 0;
@@ -799,9 +799,9 @@
             this.targetState.phi = THREE.MathUtils.degToRad(90 - this.targetState.lat);
             this.targetState.theta = THREE.MathUtils.degToRad(this.targetState.lon);
 
-            // Adaptive smoothing: Mobile gets much faster response (catches up in ~0.2s)
-            // Desktop keeps smooth inertia feel
-            const rotationSmoothing = this.isMobileDevice ? 1200 : this.config.viewRotation.smoothness;
+            // Adaptive smoothing: Mobile gets ultra-fast response for 1:1 feel
+            // Desktop keeps smooth inertia feel (PERFECT - don't change)
+            const rotationSmoothing = this.isMobileDevice ? 500 : this.config.viewRotation.smoothness;
             
             // Smooth interpolation
             this.state.theta += (this.targetState.theta - this.state.theta) / (rotationSmoothing * delta);
