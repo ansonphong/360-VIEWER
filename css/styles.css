@@ -340,17 +340,12 @@ body {
 	background-color: rgba(255, 255, 255, 0.05);
 	display: block;
 	border-radius: 6px;
-	padding: 5px;
 }
 
-#library-tree .folder {
-	padding: 10px;
-}
 
 #library-tree .folder > span {
 	display: block;
-	padding: 8px 12px;
-	background: rgba(255, 255, 255, 0.08);
+	padding: 12px 12px;
 	border-radius: 4px;
 	margin-bottom: 8px;
 	font-weight: 500;
