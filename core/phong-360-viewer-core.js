@@ -95,6 +95,15 @@
             // Touch interaction
             this.lastTouchDistance = 0;
             this.isTouching = false;
+            
+            // Mobile-specific direct touch tracking (best practice for responsive feel)
+            this.touchStartX = 0;
+            this.touchStartY = 0;
+            this.touchCurrentX = 0;
+            this.touchCurrentY = 0;
+            this.touchStartLon = 0;
+            this.touchStartLat = 0;
+            this.isTouchDragging = false;
 
             // Keyboard interaction
             this.activeKeys = {
@@ -561,6 +570,9 @@
         // ============================================================================
 
         onPointerDown(event) {
+            // Skip pointer events on touch devices (they use touch handlers instead)
+            if (this.isMobileDevice) return;
+            
             this.isPointerDown = true;
             this.isUserInteracting = true;
             this.pointerStartX = event.clientX;
@@ -572,14 +584,16 @@
         }
 
         onPointerMove(event) {
+            // Skip pointer events on touch devices (they use touch handlers instead)
+            if (this.isMobileDevice) return;
             if (!this.isPointerDown) return;
 
             const deltaX = event.clientX - this.lastPointerX;
             const deltaY = event.clientY - this.lastPointerY;
 
-            // Use dynamic sensitivity based on device type
-            this.targetState.lon = (this.pointerStartX - event.clientX) * this.dragSensitivity + this.onPointerDownLon;
-            this.targetState.lat = (event.clientY - this.pointerStartY) * this.dragSensitivity + this.onPointerDownLat;
+            // Desktop: smooth interpolation with target state (PERFECT - unchanged)
+            this.targetState.lon = (this.pointerStartX - event.clientX) * 0.1 + this.onPointerDownLon;
+            this.targetState.lat = (event.clientY - this.pointerStartY) * 0.1 + this.onPointerDownLat;
 
             // Calculate the sign (direction) of the Azimuth as (-1) or (+1)
             this.state.azimuthSign = deltaX / Math.max(Math.abs(deltaX), 0.001);
@@ -590,6 +604,9 @@
         }
 
         onPointerUp(event) {
+            // Skip pointer events on touch devices (they use touch handlers instead)
+            if (this.isMobileDevice) return;
+            
             this.isPointerDown = false;
             this.isUserInteracting = false;
         }
@@ -711,19 +728,65 @@
         }
 
         onTouchStart(event) {
+            // Handle pinch zoom (2 fingers)
             if (event.touches.length === 2) {
                 this.lastTouchDistance = this.getPinchDistance(event);
                 this.isTouching = true;
+                this.isTouchDragging = false; // Stop drag when pinching
+                return;
+            }
+            
+            // Handle single-finger drag (mobile-specific direct manipulation)
+            if (event.touches.length === 1) {
+                const touch = event.touches[0];
+                this.isTouchDragging = true;
+                this.isUserInteracting = true;
+                this.touchStartX = touch.clientX;
+                this.touchStartY = touch.clientY;
+                this.touchCurrentX = touch.clientX;
+                this.touchCurrentY = touch.clientY;
+                this.touchStartLon = this.state.lon; // Use current state, not target
+                this.touchStartLat = this.state.lat;
             }
         }
 
         onTouchMove(event) {
+            // Handle pinch zoom (2 fingers)
             if (event.touches.length === 2 && this.isTouching) {
                 event.preventDefault();
                 const currentDistance = this.getPinchDistance(event);
                 const delta = (this.lastTouchDistance - currentDistance) * 0.5;
                 this.targetState.fov = this.clampFOV(this.targetState.fov + delta);
                 this.lastTouchDistance = currentDistance;
+                return;
+            }
+            
+            // Handle single-finger drag (mobile-specific DIRECT manipulation)
+            if (event.touches.length === 1 && this.isTouchDragging) {
+                event.preventDefault();
+                const touch = event.touches[0];
+                this.touchCurrentX = touch.clientX;
+                this.touchCurrentY = touch.clientY;
+                
+                // Calculate delta from start position
+                const deltaX = this.touchStartX - touch.clientX;
+                const deltaY = touch.clientY - this.touchStartY;
+                
+                // DIRECT state manipulation for 1:1 feel (no interpolation during drag)
+                // This is best practice for mobile: update state directly, not target
+                const sensitivity = 0.3; // Higher sensitivity for responsive feel
+                this.state.lon = this.touchStartLon + (deltaX * sensitivity);
+                this.state.lat = Math.max(-85, Math.min(85, this.touchStartLat + (deltaY * sensitivity)));
+                
+                // Also update target to match (prevents snap-back after release)
+                this.targetState.lon = this.state.lon;
+                this.targetState.lat = this.state.lat;
+                
+                // Update angles for shader
+                this.state.theta = THREE.MathUtils.degToRad(this.state.lon);
+                this.state.phi = THREE.MathUtils.degToRad(90 - this.state.lat);
+                this.targetState.theta = this.state.theta;
+                this.targetState.phi = this.state.phi;
             }
         }
 
@@ -731,6 +794,11 @@
             if (event.touches.length < 2) {
                 this.isTouching = false;
                 this.lastTouchDistance = 0;
+            }
+            
+            if (event.touches.length === 0) {
+                this.isTouchDragging = false;
+                this.isUserInteracting = false;
             }
         }
 
@@ -786,7 +854,7 @@
             const delta = (now - this.lastUpdate) / 1000; // Delta in seconds
             this.lastUpdate = now;
 
-            // Auto-rotation (matches original)
+            // Auto-rotation (only when not interacting)
             if (this.config.viewRotation.autoRotate && !this.isUserInteracting) {
                 this.targetState.lon = this.targetState.lon - (this.config.viewRotation.autoRotationRate * this.state.azimuthSign * delta);
             }
@@ -799,17 +867,21 @@
             this.targetState.phi = THREE.MathUtils.degToRad(90 - this.targetState.lat);
             this.targetState.theta = THREE.MathUtils.degToRad(this.targetState.lon);
 
-            // Adaptive smoothing: Mobile gets ultra-fast response for 1:1 feel
-            // Desktop keeps smooth inertia feel (PERFECT - don't change)
-            const rotationSmoothing = this.isMobileDevice ? 500 : this.config.viewRotation.smoothness;
-            
-            // Smooth interpolation
-            this.state.theta += (this.targetState.theta - this.state.theta) / (rotationSmoothing * delta);
-            this.state.phi += (this.targetState.phi - this.state.phi) / (rotationSmoothing * delta);
-            this.state.fov += (this.targetState.fov - this.state.fov) / (this.config.zoom.smoothing * delta);
+            // SKIP smooth interpolation during mobile touch drag (direct manipulation)
+            // Only apply smoothing for desktop pointer interaction
+            if (!this.isTouchDragging) {
+                // Desktop: Use smooth inertia (PERFECT - unchanged)
+                const rotationSmoothing = this.config.viewRotation.smoothness;
+                
+                // Smooth interpolation
+                this.state.theta += (this.targetState.theta - this.state.theta) / (rotationSmoothing * delta);
+                this.state.phi += (this.targetState.phi - this.state.phi) / (rotationSmoothing * delta);
+                this.state.fov += (this.targetState.fov - this.state.fov) / (this.config.zoom.smoothing * delta);
 
-            this.state.lon += (this.targetState.lon - this.state.lon) / (rotationSmoothing * delta);
-            this.state.lat += (this.targetState.lat - this.state.lat) / (rotationSmoothing * delta);
+                this.state.lon += (this.targetState.lon - this.state.lon) / (rotationSmoothing * delta);
+                this.state.lat += (this.targetState.lat - this.state.lat) / (rotationSmoothing * delta);
+            }
+            // Mobile touch: State is already updated directly in onTouchMove (1:1 tracking)
 
             // Ensure FOV stays within limits
             this.state.fov = this.clampFOV(this.state.fov);
