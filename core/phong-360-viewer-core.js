@@ -133,18 +133,15 @@
                     initTarget: 60
                 },
                 zoom: {
-                    rate: 0.06,
-                    rateIncremental: 3
+                    increment: 2,
+                    smoothing: 6000
                 },
                 viewRotation: {
-                    initAzimuth: 0,
+                    initAzimuth: 90,
                     initAltitude: 0,
-                    autoRotate: false,
-                    autoRotationRate: 0.5
-                },
-                interaction: {
-                    sensitivity: 0.25,
-                    smoothingFactor: 0.08
+                    autoRotate: true,
+                    autoRotationRate: 1,
+                    smoothness: 8000
                 }
             };
         }
@@ -274,12 +271,12 @@
             // const internalFormat = texture.format === THREE.RGBAFormat ? THREE.RGBA8 : THREE.RGB8;
             // texture.internalFormat = internalFormat;
 
-            // Create shader material
+            // Create shader material with uniforms in DEGREES (converted to radians in shader/update)
             const material = new THREE.ShaderMaterial({
                 uniforms: {
                     equirectangularMap: { value: texture },
-                    lon: { value: THREE.MathUtils.degToRad(this.state.lon) },
-                    lat: { value: THREE.MathUtils.degToRad(this.state.lat) },
+                    lon: { value: this.state.lon },  // In degrees
+                    lat: { value: this.state.lat },  // In degrees
                     fov: { value: this.state.fov },
                     aspect: { value: this.aspect },
                     projectionType: { value: this.projectionType }
@@ -535,30 +532,43 @@
             if (!this.isTabVisible) return;
             
             this.update();
-            this.renderer.render(this.scene, this.camera);
+            
+            // Only render if mesh has material
+            if (this.mesh && this.mesh.material) {
+                this.renderer.render(this.scene, this.camera);
+            }
         }
 
         update() {
             const now = Date.now();
-            const dt = (now - this.lastUpdate) / 1000;
+            const delta = (now - this.lastUpdate) / 1000; // Delta in seconds
             this.lastUpdate = now;
 
-            // Auto-rotation
+            // Auto-rotation (matches original)
             if (this.config.viewRotation.autoRotate && !this.isUserInteracting) {
-                this.targetState.lon += this.config.viewRotation.autoRotationRate * dt * 10;
+                this.targetState.lon = this.targetState.lon - (this.config.viewRotation.autoRotationRate * this.state.azimuthSign * delta);
             }
 
-            // Smooth interpolation
-            const smoothing = this.config.interaction.smoothingFactor;
-            this.state.lon += (this.targetState.lon - this.state.lon) * smoothing;
-            this.state.lat += (this.targetState.lat - this.state.lat) * smoothing;
-            this.state.fov += (this.targetState.fov - this.state.fov) * smoothing;
+            // Clamp latitude
+            const latRange = 90;
+            this.targetState.lat = Math.max(-latRange, Math.min(latRange, this.targetState.lat));
 
-            // Update phi/theta
-            this.state.phi = THREE.MathUtils.degToRad(90 - this.state.lat);
-            this.state.theta = THREE.MathUtils.degToRad(this.state.lon);
+            // Calculate target angles
+            this.targetState.phi = THREE.MathUtils.degToRad(90 - this.targetState.lat);
+            this.targetState.theta = THREE.MathUtils.degToRad(this.targetState.lon);
 
-            // Update shader uniforms
+            // Smooth interpolation (matches original formula)
+            this.state.theta += (this.targetState.theta - this.state.theta) / (this.config.viewRotation.smoothness * delta);
+            this.state.phi += (this.targetState.phi - this.state.phi) / (this.config.viewRotation.smoothness * delta);
+            this.state.fov += (this.targetState.fov - this.state.fov) / (this.config.zoom.smoothing * delta);
+
+            this.state.lon += (this.targetState.lon - this.state.lon) / (this.config.viewRotation.smoothness * delta);
+            this.state.lat += (this.targetState.lat - this.state.lat) / (this.config.viewRotation.smoothness * delta);
+
+            // Ensure FOV stays within limits
+            this.state.fov = this.clampFOV(this.state.fov);
+
+            // Update shader uniforms (convert degrees to radians)
             if (this.mesh && this.mesh.material && this.mesh.material.uniforms) {
                 this.mesh.material.uniforms.lon.value = THREE.MathUtils.degToRad(this.state.lon);
                 this.mesh.material.uniforms.lat.value = THREE.MathUtils.degToRad(this.state.lat);
