@@ -83,10 +83,12 @@ canvas {
 }
 
 #toolbar-panel {
-	position: absolute;
-	top: 10px;
-	right: 60px;
+	position: relative;
+	padding: 10px;
 	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+	flex-shrink: 0;
 	z-index: 20;
 }
 
@@ -198,15 +200,25 @@ body {
 	color: white;
 	transition: right 0.3s ease-in-out;
 	z-index: 100;
-	overflow-y: auto;
-	scrollbar-width: none; /* Firefox */
-	-ms-overflow-style: none; /* Internet Explorer 10+ */
+	display: flex;
+	flex-direction: column;
+	overflow: hidden; /* Panel itself doesn't scroll, only content inside */
 }
 
 #library-panel::-webkit-scrollbar {
 	width: 0;
 	height: 0;
 	background: transparent; /* Chrome/Safari/Webkit */
+}
+
+#toolbar-panel {
+	position: relative; /* Changed from absolute to relative */
+	padding: 10px;
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+	flex-shrink: 0; /* Don't shrink toolbar */
+	z-index: 20;
 }
 
 /* Responsive adjustments */
@@ -223,6 +235,27 @@ body {
 
 #library-content {
 	padding: 10px 10px 10px 10px;
+	flex: 1;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+#library-content::-webkit-scrollbar {
+	width: 8px;
+}
+
+#library-content::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+#library-content::-webkit-scrollbar-thumb {
+	background-color: rgba(255, 255, 255, 0.3);
+	border-radius: 4px;
+}
+
+#library-content::-webkit-scrollbar-thumb:hover {
+	background-color: rgba(255, 255, 255, 0.5);
 }
 
 #library-content h2 {
