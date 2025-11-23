@@ -104,6 +104,10 @@
             this.touchStartLon = 0;
             this.touchStartLat = 0;
             this.isTouchDragging = false;
+            
+            // Pinch zoom state (Google Maps style)
+            this.isPinching = false;
+            this.pinchStartFov = 0;
 
             // Keyboard interaction
             this.activeKeys = {
@@ -728,11 +732,15 @@
         }
 
         onTouchStart(event) {
-            // Handle pinch zoom (2 fingers)
+            // Handle pinch zoom (2 fingers) - Google Maps style
             if (event.touches.length === 2) {
+                event.preventDefault();
                 this.lastTouchDistance = this.getPinchDistance(event);
                 this.isTouching = true;
+                this.isPinching = true;
                 this.isTouchDragging = false; // Stop drag when pinching
+                this.isUserInteracting = true;
+                this.pinchStartFov = this.state.fov; // Use current state for direct manipulation
                 return;
             }
             
@@ -751,13 +759,29 @@
         }
 
         onTouchMove(event) {
-            // Handle pinch zoom (2 fingers)
+            // Handle pinch zoom (2 fingers) - DIRECT FOV manipulation like Google Maps
             if (event.touches.length === 2 && this.isTouching) {
                 event.preventDefault();
                 const currentDistance = this.getPinchDistance(event);
-                const delta = (this.lastTouchDistance - currentDistance) * 0.5;
-                this.targetState.fov = this.clampFOV(this.targetState.fov + delta);
+                const initialDistance = this.lastTouchDistance;
+                
+                // Calculate zoom ratio (pinch in = zoom out, spread = zoom in)
+                const ratio = initialDistance / currentDistance;
+                
+                // DIRECT state manipulation for instant 1:1 feedback
+                // More sensitivity than desktop for responsive feel
+                const sensitivity = 1.5; // Higher = more responsive to pinch
+                const fovChange = (ratio - 1) * this.pinchStartFov * sensitivity;
+                
+                // Update state directly (no interpolation during pinch)
+                this.state.fov = this.clampFOV(this.pinchStartFov + fovChange);
+                
+                // Keep target in sync (prevents snap-back)
+                this.targetState.fov = this.state.fov;
+                
+                // Update last distance for next frame (allows continuous pinching)
                 this.lastTouchDistance = currentDistance;
+                this.pinchStartFov = this.state.fov; // Update baseline for smooth continuous zoom
                 return;
             }
             
@@ -793,11 +817,13 @@
         onTouchEnd(event) {
             if (event.touches.length < 2) {
                 this.isTouching = false;
+                this.isPinching = false;
                 this.lastTouchDistance = 0;
             }
             
             if (event.touches.length === 0) {
                 this.isTouchDragging = false;
+                this.isPinching = false;
                 this.isUserInteracting = false;
             }
         }
@@ -867,9 +893,9 @@
             this.targetState.phi = THREE.MathUtils.degToRad(90 - this.targetState.lat);
             this.targetState.theta = THREE.MathUtils.degToRad(this.targetState.lon);
 
-            // SKIP smooth interpolation during mobile touch drag (direct manipulation)
+            // SKIP smooth interpolation during mobile touch drag or pinch (direct manipulation)
             // Only apply smoothing for desktop pointer interaction
-            if (!this.isTouchDragging) {
+            if (!this.isTouchDragging && !this.isPinching) {
                 // Desktop: Use smooth inertia (PERFECT - unchanged)
                 const rotationSmoothing = this.config.viewRotation.smoothness;
                 
@@ -881,7 +907,7 @@
                 this.state.lon += (this.targetState.lon - this.state.lon) / (rotationSmoothing * delta);
                 this.state.lat += (this.targetState.lat - this.state.lat) / (rotationSmoothing * delta);
             }
-            // Mobile touch: State is already updated directly in onTouchMove (1:1 tracking)
+            // Mobile touch/pinch: State is already updated directly in touch handlers (1:1 tracking)
 
             // Ensure FOV stays within limits
             this.state.fov = this.clampFOV(this.state.fov);
