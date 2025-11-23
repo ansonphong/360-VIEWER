@@ -670,7 +670,7 @@
             if (this.zoomInterval) return;
             
             this.zoomInterval = setInterval(() => {
-                const delta = direction === 'in' ? -this.config.zoom.rateIncremental : this.config.zoom.rateIncremental;
+                const delta = direction === 'in' ? -this.config.zoom.increment : this.config.zoom.increment;
                 this.targetState.fov = this.clampFOV(this.targetState.fov + delta);
             }, 16);
         }
