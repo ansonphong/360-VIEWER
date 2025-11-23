@@ -47,7 +47,8 @@
             this.callbacks = Object.assign({
                 onLibraryLoad: null,        // (libraryData) => {}
                 onImageSelect: null,        // (imageId) => {}
-                onPanelToggle: null         // (isOpen) => {}
+                onPanelToggle: null,        // (isOpen) => {}
+                onImageInfoUpdate: null     // (info) => {} - fires when image loads with display info
             }, options.callbacks || {});
 
             // UI state
@@ -111,8 +112,34 @@
             });
 
             // Listen to multi-viewer events
+            this.multiViewer.callbacks.onLoadStart = () => {
+                if (this.callbacks.onImageInfoUpdate) {
+                    this.callbacks.onImageInfoUpdate({
+                        name: 'Loading...',
+                        resolution: '',
+                        width: 0,
+                        height: 0,
+                        dimensions: '',
+                        format: '360° Viewer'
+                    });
+                }
+            };
+
             this.multiViewer.callbacks.onImageLoad = (imageData, resolution) => {
                 this.onImageLoaded(imageData, resolution);
+            };
+
+            this.multiViewer.callbacks.onImageError = (error) => {
+                if (this.callbacks.onImageInfoUpdate) {
+                    this.callbacks.onImageInfoUpdate({
+                        name: 'Error Loading Image',
+                        resolution: '',
+                        width: 0,
+                        height: 0,
+                        dimensions: '',
+                        format: error.message || 'Unknown error'
+                    });
+                }
             };
 
             this.multiViewer.callbacks.onResolutionChange = (resolution) => {
@@ -293,8 +320,21 @@
          * Handle image loaded
          */
         onImageLoaded(imageData, resolution) {
+            // Update tree selection and resolution selector (Library UI's responsibility)
             this.highlightCurrentImage(imageData.id);
             this.updateResolutionSelector();
+            
+            // Fire callback with formatted info (let consumer update their UI)
+            if (this.callbacks.onImageInfoUpdate) {
+                this.callbacks.onImageInfoUpdate({
+                    name: imageData.name || 'Unknown',
+                    resolution: resolution.label || 'Unknown',
+                    width: resolution.width,
+                    height: resolution.height,
+                    dimensions: `${resolution.width}×${resolution.height}`,
+                    format: 'Equirectangular'
+                });
+            }
         }
 
         /**

@@ -126,6 +126,23 @@
 							},
 							onImageSelect: function(imageId) {
 								console.log('Image selected:', imageId);
+							},
+							onImageInfoUpdate: function(info) {
+								// Update info panel with image details
+								const titleEl = document.getElementById('imageTitle');
+								const formatEl = document.getElementById('imageFormat');
+								
+								if (titleEl) {
+									titleEl.textContent = info.name;
+								}
+								
+								if (formatEl) {
+									if (info.dimensions && info.resolution) {
+										formatEl.textContent = `${info.resolution} (${info.dimensions}) / ${info.format}`;
+									} else {
+										formatEl.textContent = info.format;
+									}
+								}
 							}
 						}
 					});
