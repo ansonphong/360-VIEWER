@@ -70,6 +70,10 @@
 				<select id="resolution-selector" class="toolbar-button resolution-selector">
 					<option>Loading...</option>
 				</select>
+				<!-- Info button inside panel -->
+				<button id="info-button" class="toolbar-button" onclick="document.getElementById('instructions').classList.add('show')" title="Help & Instructions">
+					<i class="fas fa-info-circle"></i>
+				</button>
 			</div>
 
 			<div id="library-content">
@@ -228,30 +232,12 @@
 		<!-- Instructions overlay (can be shown on first load) -->
 		<style>
 			#info-button {
-				position: fixed;
-				bottom: 20px;
-				right: 20px;
-				width: 50px;
-				height: 50px;
-				border-radius: 50%;
-				background: rgba(0, 0, 0, 0.7);
-				border: 2px solid rgba(255, 255, 255, 0.3);
-				color: white;
-				font-size: 24px;
-				font-weight: bold;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				cursor: pointer;
-				z-index: 1001;
-				transition: all 0.3s ease;
-				font-family: Arial, sans-serif;
+				font-size: 18px !important;
+				min-width: 50px !important;
 			}
 			
-			#info-button:hover {
-				background: rgba(0, 0, 0, 0.9);
-				border-color: rgba(255, 255, 255, 0.6);
-				transform: scale(1.1);
+			#info-button i {
+				font-size: 18px;
 			}
 			
 			#instructions {
@@ -327,14 +313,6 @@
 			
 			/* Mobile optimization */
 			@media (max-width: 768px) {
-				#info-button {
-					bottom: 80px; /* Above mobile UI elements */
-					right: 15px;
-					width: 44px;
-					height: 44px;
-					font-size: 20px;
-				}
-				
 				#instructions-content {
 					padding: 24px;
 					max-height: 85vh;
@@ -355,11 +333,6 @@
 				}
 			}
 		</style>
-
-		<!-- Floating info button -->
-		<div id="info-button" onclick="document.getElementById('instructions').classList.add('show')" title="Help & Instructions">
-			i
-		</div>
 
 		<div id="instructions" onclick="event.target === this && this.classList.remove('show')">
 			<div id="instructions-content">
