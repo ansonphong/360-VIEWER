@@ -1,8 +1,8 @@
-# Phong 360 Viewer - Library Format Specification
+# 📚 Library Format Specification
 
-## Version 2.0.0
+## Version 3.0.0
 
-This document describes the standardized library format for the Phong 360 Viewer. The format is designed to be flexible, extensible, and compatible with various embedding scenarios including WordPress, static sites, and custom applications.
+This document describes the library format for Phong 360 Viewer. The format is JSON-based, extensible, and designed for maximum compatibility across WordPress, static sites, and custom applications.
 
 ## Table of Contents
 
@@ -29,34 +29,31 @@ The library format defines how 360° equirectangular images are organized, descr
 
 ## Format Versions
 
-### Version 2.0 (Current)
+### Version 3.0 (Current)
+- Semantic resolution naming (8K, 4K, 2K)
+- Resolution metadata (fileSize, bandwidth, deviceRecommendation)
+- Configurable via `resolutions.json`
+- Adaptive loading support
+- localStorage preference integration
+
+### Version 2.0 (Legacy)
 - Nested category structure with `_categories` object
-- Rich metadata support with `_metadata` object
-- Extended image properties (dimensions, format, panorama detection)
-- Backwards compatible with v1.x through conversion utility
+- Quality-based naming (Q100, Q75, Q50)
+- Basic metadata support
 
-### Version 1.x (Legacy)
-- Flat category structure
-- Minimal metadata
-- Simpler but less flexible
-- Still supported for compatibility
-
-## Library Structure v2.0
+## Library Structure v3.0
 
 ### Complete Schema
 
 ```json
 {
   "_metadata": {
-    "version": "2.0.0",
-    "generated": "2025-01-15T10:30:00",
+    "version": "3.0.0",
+    "generated": "2025-11-23T10:30:00",
     "total_images": 25,
     "total_categories": 5,
     "image_format": "equirectangular",
-    "quality_levels": ["Q100", "Q75", "Q50"],
-    "custom": {
-      // Optional custom metadata
-    }
+    "resolutions": ["8K", "4K", "2K"]
   },
   "_categories": {
     "CategoryName": {
@@ -68,20 +65,47 @@ The library format defines how 360° equirectangular images are organized, descr
           "name": "Image Name",
           "filename": "original-filename.jpg",
           "path": "CategoryName/original-filename.jpg",
-          "thumbnail": "_BUILD/thumbnails/CategoryName-original-filename.jpg",
-          "Q100": "_BUILD/Q100/CategoryName-original-filename.jpg",
-          "Q75": "_BUILD/Q75/CategoryName-original-filename.jpg",
-          "Q50": "_BUILD/Q50/CategoryName-original-filename.jpg",
-          "metadata": {
-            "width": 8192,
-            "height": 4096,
-            "format": "JPEG",
-            "mode": "RGB",
-            "is_panorama": true
+          "thumbnail": {
+            "path": "_BUILD/thumbnails/CategoryName-original-filename.jpg",
+            "width": 512,
+            "height": 256
           },
-          "custom": {
-            // Optional custom fields
-          }
+          "resolutions": [
+            {
+              "id": "8k",
+              "label": "8K",
+              "path": "_BUILD/8K/CategoryName-original-filename.jpg",
+              "width": 8192,
+              "height": 4096,
+              "quality": 95,
+              "fileSize": 12500000,
+              "bandwidth": "high",
+              "deviceRecommendation": "desktop"
+            },
+            {
+              "id": "4k",
+              "label": "4K",
+              "path": "_BUILD/4K/CategoryName-original-filename.jpg",
+              "width": 4096,
+              "height": 2048,
+              "quality": 90,
+              "fileSize": 3800000,
+              "bandwidth": "medium",
+              "deviceRecommendation": "desktop,tablet",
+              "default": true
+            },
+            {
+              "id": "2k",
+              "label": "2K",
+              "path": "_BUILD/2K/CategoryName-original-filename.jpg",
+              "width": 2048,
+              "height": 1024,
+              "quality": 85,
+              "fileSize": 950000,
+              "bandwidth": "low",
+              "deviceRecommendation": "mobile,tablet"
+            }
+          ]
         }
       ],
       "subcategories": {

@@ -13,6 +13,7 @@ canvas {
 	width: 100vw;
 	height: 100vh;
 	user-select: none;
+	background: #000;
 }
 
 .background-text {
@@ -80,18 +81,18 @@ canvas {
 	right:0;
 	top:0;
 	bottom:0;
+	background: #000;
 }
 
 #toolbar-panel {
 	position: relative;
 	padding: 12px;
-	margin-right: 50px; /* Space for hamburger menu button */
+	margin-right: 60px; /* Space for hamburger menu button */
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 	gap: 8px;
 	flex-shrink: 0;
-	background-color: rgba(0, 0, 0, 0.5);
 	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 	min-height: 48px; /* Match hamburger button height */
 	z-index: 20;
@@ -104,6 +105,7 @@ canvas {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	border:1px solid #333;
 }
 
 #switchProjectionButton {
@@ -212,7 +214,7 @@ body {
 #hamburger-menu {
 	position: fixed;
 	top: 10px;
-	right: 0px;
+	right: 10px;
 	font-size: 26px;
 }
 
@@ -370,7 +372,6 @@ body {
 	justify-content: center;
 	transition: all 0.3s ease-out;
 	cursor: pointer;
-	margin-right: 10px;
 	font-family: Arial, sans-serif;
 	font-size: 18px;
 	z-index: 1000;
