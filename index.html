@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="background: #000;">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
@@ -10,6 +10,13 @@
 				background: #000;
 				margin: 0;
 				overflow: hidden;
+			}
+			#container {
+				background: #000;
+			}
+			canvas {
+				background: #000;
+				background-color: #000;
 			}
 		</style>
 
@@ -27,9 +34,9 @@
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 	</head>
-	<body>
+	<body style="background: #000;">
 		<!-- Container for 360 Viewer -->
-		<div id="container"></div>
+		<div id="container" style="background: #000;"></div>
 
 		<!-- Info Panel -->
 		<div id="info-panel">
@@ -48,8 +55,10 @@
 			<div class="message">EQUIRECTANGULAR IMAGE</div>
 		</div>
 
-		<!-- Loading Overlay -->
-		<div id="loading-overlay"></div>
+		<!-- Loading Overlay with Spinner -->
+		<div id="loading-overlay">
+			<div class="spinner"></div>
+		</div>
 
 		<!-- Hamburger Menu -->
 		<div id="hamburger-menu" class="toolbar-button"><i class="fas fa-bars"></i></div>
@@ -177,7 +186,7 @@
 					// Expose globally for debugging
 					window.phong360 = { core, multiViewer, libraryUI };
 					
-					console.log('Phong 360 Viewer initialized with modular architecture!');
+					console.log('Phong 360 Viewer initialized with smooth transitions built-in!');
 					
 				} catch (error) {
 					console.error('Error initializing Phong 360 Viewer:', error);

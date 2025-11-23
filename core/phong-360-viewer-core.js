@@ -69,6 +69,11 @@
 
             // Container reference
             this.container = null;
+            
+            // Loading state
+            this.isLoading = false;
+            this.isFirstLoad = true;
+            this.loadingOverlay = null;
 
             // Interaction state
             this.isUserInteracting = false;
@@ -222,13 +227,15 @@
         setupScene() {
             // Scene
             this.scene = new THREE.Scene();
+            this.scene.background = new THREE.Color(0x000000); // Set scene background to black
 
             // Camera
             this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
             this.camera.position.z = 1;
 
             // Renderer
-            this.renderer = new THREE.WebGLRenderer();
+            this.renderer = new THREE.WebGLRenderer({ alpha: false, antialias: true });
+            this.renderer.setClearColor(0x000000, 1); // Set black background
             this.renderer.setPixelRatio(window.devicePixelRatio);
             this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
             this.container.appendChild(this.renderer.domElement);
@@ -240,6 +247,77 @@
 
             // Calculate aspect ratio
             this.aspect = this.container.clientWidth / this.container.clientHeight;
+            
+            // Create loading overlay (starts visible)
+            this.createLoadingOverlay();
+            this.showLoading(); // Show it initially
+        }
+        
+        /**
+         * Create loading overlay with spinner
+         */
+        createLoadingOverlay() {
+            // Get or create loading overlay
+            this.loadingOverlay = document.getElementById('loading-overlay');
+            
+            if (!this.loadingOverlay) {
+                // Create it if it doesn't exist
+                this.loadingOverlay = document.createElement('div');
+                this.loadingOverlay.id = 'loading-overlay';
+                this.loadingOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: #000;
+                    z-index: 10;
+                    display: none;
+                    justify-content: center;
+                    align-items: center;
+                    flex-direction: column;
+                    transition: opacity 200ms ease-in-out;
+                `;
+                
+                // Create spinner
+                const spinner = document.createElement('div');
+                spinner.className = 'spinner';
+                spinner.style.cssText = `
+                    border: 4px solid rgba(255, 255, 255, 0.1);
+                    border-top: 4px solid rgba(255, 255, 255, 0.8);
+                    border-radius: 50%;
+                    width: 50px;
+                    height: 50px;
+                    animation: spin 1s linear infinite;
+                `;
+                
+                this.loadingOverlay.appendChild(spinner);
+                document.body.appendChild(this.loadingOverlay);
+            }
+        }
+        
+        /**
+         * Show loading spinner
+         */
+        showLoading() {
+            if (this.loadingOverlay) {
+                this.loadingOverlay.style.display = 'flex';
+                this.loadingOverlay.style.opacity = '1';
+            }
+        }
+        
+        /**
+         * Hide loading spinner
+         */
+        hideLoading() {
+            if (this.loadingOverlay) {
+                this.loadingOverlay.style.opacity = '0';
+                setTimeout(() => {
+                    if (this.loadingOverlay) {
+                        this.loadingOverlay.style.display = 'none';
+                    }
+                }, 200);
+            }
         }
 
         /**
@@ -279,26 +357,56 @@
          * @param {number} width - Image width
          * @param {number} height - Image height
          */
-        loadImage(url, width = 4096, height = 2048) {
+        async loadImage(url, width = 4096, height = 2048) {
+            // Prevent concurrent loads
+            if (this.isLoading) {
+                console.log('[Phong360ViewerCore] Already loading, ignoring request');
+                return;
+            }
+            
+            this.isLoading = true;
             console.log('[Phong360ViewerCore] Loading image:', url);
+            
+            // Show loading overlay (always - whether first load or switching)
+            this.showLoading();
+            
+            // If not first load, dispose old texture
+            if (!this.isFirstLoad) {
+                this.disposeCurrentTexture();
+            }
             
             const loader = new THREE.TextureLoader();
             
-            loader.load(
-                url,
-                (texture) => {
-                    console.log('[Phong360ViewerCore] Texture loaded successfully:', url);
-                    console.log('[Phong360ViewerCore] Texture dimensions:', texture.image.width, 'x', texture.image.height);
-                    this.applyTexture(texture);
-                    console.log('[Phong360ViewerCore] Material applied to mesh');
-                },
-                (progress) => {
-                    // Optional: track loading progress
-                },
-                (error) => {
-                    console.error('[Phong360ViewerCore] Error loading image:', url, error);
-                }
-            );
+            return new Promise((resolve, reject) => {
+                loader.load(
+                    url,
+                    (texture) => {
+                        console.log('[Phong360ViewerCore] Texture loaded successfully:', url);
+                        console.log('[Phong360ViewerCore] Texture dimensions:', texture.image.width, 'x', texture.image.height);
+                        
+                        this.applyTexture(texture);
+                        console.log('[Phong360ViewerCore] Material applied to mesh');
+                        
+                        // Hide loading overlay after a brief moment to ensure render
+                        setTimeout(() => {
+                            this.hideLoading();
+                            this.isLoading = false;
+                            this.isFirstLoad = false;
+                        }, 200);
+                        
+                        resolve(texture);
+                    },
+                    (progress) => {
+                        // Optional: track loading progress
+                    },
+                    (error) => {
+                        console.error('[Phong360ViewerCore] Error loading image:', url, error);
+                        this.hideLoading();
+                        this.isLoading = false;
+                        reject(error);
+                    }
+                );
+            });
         }
 
         /**
@@ -383,6 +491,37 @@
                 console.log('[Phong360ViewerCore] Saved projection preference:', type === 0 ? 'gnomonic' : 'stereographic');
             } catch (e) {
                 console.warn('Could not save projection preference to localStorage:', e);
+            }
+        }
+
+        /**
+         * Set canvas opacity for fade transitions
+         * @param {number} opacity - Target opacity (0-1)
+         * @param {number} duration - Transition duration in ms
+         * @returns {Promise} Resolves when transition completes
+         */
+        setCanvasOpacity(opacity, duration = 300) {
+            return new Promise((resolve) => {
+                const canvas = this.renderer.domElement;
+                canvas.style.transition = `opacity ${duration}ms ease-in-out`;
+                canvas.style.opacity = opacity;
+                setTimeout(resolve, duration);
+            });
+        }
+
+        /**
+         * Dispose current texture and materials
+         */
+        disposeCurrentTexture() {
+            if (this.mesh && this.mesh.material) {
+                if (this.mesh.material.uniforms && this.mesh.material.uniforms.equirectangularMap.value) {
+                    this.mesh.material.uniforms.equirectangularMap.value.dispose();
+                }
+                this.mesh.material.dispose();
+            }
+            // Hint for garbage collection
+            if (this.renderer) {
+                this.renderer.renderLists.dispose();
             }
         }
 
