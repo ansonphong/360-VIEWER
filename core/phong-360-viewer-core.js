@@ -573,10 +573,10 @@
 
         getVertexShader() {
             return `
-                varying vec2 vUv;
+                varying vec2 vUV;
                 void main() {
-                    vUv = uv;
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    vUV = uv;
+                    gl_Position = vec4(position, 1.0);
                 }
             `;
         }
@@ -592,73 +592,137 @@
                 uniform float lat;
                 uniform float fov;
                 uniform float aspect;
-                uniform int projectionType;
+                uniform int projectionType; // 0 for gnomonic, 1 for stereographic
+                varying vec2 vUV;
 
-                varying vec2 vUv;
-
-                vec2 equirectangularUV(vec3 dir) {
-                    float u = 0.5 + atan(dir.z, dir.x) / PI2;
-                    float v = 0.5 - asin(dir.y) / PI;
-                    return vec2(u, v);
+                // Sampling function with bilinear interpolation
+                vec4 sampleEquirectangular(sampler2D tex, vec2 uv) {
+                    vec2 texSize = vec2(textureSize(tex, 0));
+                    
+                    uv.x = mod(uv.x, 1.0);
+                    uv.y = clamp(uv.y, 0.0, 1.0);
+                    
+                    vec2 texel = uv * texSize - 0.5;
+                    ivec2 st = ivec2(floor(texel));
+                    vec2 t = fract(texel);
+                    
+                    st.x = (st.x + int(texSize.x)) % int(texSize.x);
+                    st.y = clamp(st.y, 0, int(texSize.y) - 1);
+                    
+                    vec4 tx0y0 = texelFetch(tex, st, 0);
+                    vec4 tx1y0 = texelFetch(tex, ivec2((st.x + 1) % int(texSize.x), st.y), 0);
+                    vec4 tx0y1 = texelFetch(tex, ivec2(st.x, min(st.y + 1, int(texSize.y) - 1)), 0);
+                    vec4 tx1y1 = texelFetch(tex, ivec2((st.x + 1) % int(texSize.x), min(st.y + 1, int(texSize.y) - 1)), 0);
+                    
+                    vec4 tx_y0 = mix(tx0y0, tx1y0, t.x);
+                    vec4 tx_y1 = mix(tx0y1, tx1y1, t.x);
+                    return mix(tx_y0, tx_y1, t.y);
                 }
 
-                vec3 stereographicToCartesian(vec2 st, float fovRad) {
-                    float r = length(st);
-                    if (r > 1.0) return vec3(0.0);
+                // Gnomonic projection function
+                vec2 gnomonicProjection(in vec2 screenCoord, in vec2 centralPoint, in float fovRadians) {
+                    vec2 cp = (centralPoint * 2.0 - 1.0) * vec2(PI, PI_2);
                     
-                    float theta = atan(st.y, st.x);
-                    float rho = 2.0 * atan(r * tan(fovRad * 0.25));
+                    // Calculate the tangent of half the FOV
+                    float tanHalfFov = tan(fovRadians * 0.5);
                     
-                    float sinRho = sin(rho);
-                    return vec3(
-                        sinRho * cos(theta),
-                        sinRho * sin(theta),
-                        cos(rho)
-                    );
+                    // Scale the screen coordinates based on FOV
+                    vec2 scaledCoord = (screenCoord * 2.0 - 1.0) * vec2(aspect * tanHalfFov, tanHalfFov);
+                    
+                    float x = scaledCoord.x;
+                    float y = scaledCoord.y;
+
+                    float rou = sqrt(x * x + y * y);
+                    float c = atan(rou);
+                    float sin_c = sin(c), cos_c = cos(c);
+
+                    float lat = asin(cos_c * sin(cp.y) + (y * sin_c * cos(cp.y)) / max(rou, 1e-6));
+                    float lon = cp.x + atan(x * sin_c, rou * cos(cp.y) * cos_c - y * sin(cp.y) * sin_c);
+
+                    // Improved pole handling
+                    if (abs(lat) > 0.499 * PI) {
+                        lon = cp.x;
+                    }
+
+                    lat = (lat / PI_2 + 1.0) * 0.5;
+                    lon = mod(lon, PI2) / PI2;
+
+                    return vec2(lon, lat);
                 }
 
-                vec3 gnomonicToCartesian(vec2 st, float fovRad) {
-                    float scale = tan(fovRad * 0.5);
-                    vec3 dir = normalize(vec3(st.x * scale, st.y * scale, 1.0));
-                    return dir;
+                vec2 stereographicProjection(in vec2 screenCoord, in vec2 centralPoint, in float fovRadians) {
+                    vec2 cp = centralPoint * vec2(PI2, PI) - vec2(PI, PI_2);
+                    
+                    // Calculate the scale based on FOV
+                    // We use tan(fovRadians * 0.25) instead of 1.0 / tan(fovRadians * 0.25)
+                    // This inverts the behavior: higher FOV = zoomed out, lower FOV = zoomed in
+                    float scale = tan(fovRadians * 0.25);  // Use quarter of FOV for stereographic
+                    
+                    vec2 sp = (screenCoord - 0.5) * 2.0 * vec2(aspect, 1.0) * scale;
+
+                    float rho = length(sp);
+                    float c = 2.0 * atan(rho);
+                    float sin_c = sin(c);
+                    float cos_c = cos(c);
+
+                    float lat = asin(cos_c * sin(cp.y) + (sp.y * sin_c * cos(cp.y)) / max(rho, 1e-6));
+                    float lon = cp.x + atan(sp.x * sin_c, rho * cos(cp.y) * cos_c - sp.y * sin(cp.y) * sin_c);
+
+                    lat = (lat / PI + 0.5);
+                    lon = mod(lon / PI2, 1.0);
+
+                    return vec2(lon, lat);
                 }
 
-                mat3 rotationMatrix(float lon, float lat) {
-                    float cosLon = cos(lon);
-                    float sinLon = sin(lon);
-                    float cosLat = cos(lat);
-                    float sinLat = sin(lat);
+                // Anti-aliasing function
+                vec4 sampleWithAA(vec2 uv, vec2 centralPoint, float fovRadians) {
+                    const float AA_SCALE = 0.5 / 2048.0;
+                    vec4 color = vec4(0.0);
                     
-                    return mat3(
-                        cosLon, 0.0, -sinLon,
-                        sinLat * sinLon, cosLat, sinLat * cosLon,
-                        cosLat * sinLon, -sinLat, cosLat * cosLon
-                    );
+                    for (int i = 0; i < 4; i++) {
+                        for (int j = 0; j < 4; j++) {
+                            vec2 offset = vec2(float(i), float(j)) * AA_SCALE;
+                            vec2 coord;
+                            if (projectionType == 0) {
+                                coord = gnomonicProjection(uv + offset, centralPoint, fovRadians);
+                            } else {
+                                coord = stereographicProjection(uv + offset, centralPoint, fovRadians);
+                            }
+                            color += sampleEquirectangular(equirectangularMap, coord);
+                        }
+                    }
+                    
+                    return color * 0.0625; // 1/16
                 }
 
                 void main() {
-                    vec2 st = (vUv - 0.5) * 2.0;
-                    st.x *= aspect;
-                    
-                    float fovRad = fov * PI / 180.0;
-                    
-                    vec3 dir;
+                    vec2 centralPoint = vec2(lon / PI2, (lat + PI_2) / PI);
+                    float fovRadians = radians(fov);
+
+                    vec2 coord;
                     if (projectionType == 0) {
-                        dir = gnomonicToCartesian(st, fovRad);
+                        coord = gnomonicProjection(vUV, centralPoint, fovRadians);
                     } else {
-                        dir = stereographicToCartesian(st, fovRad);
+                        coord = stereographicProjection(vUV, centralPoint, fovRadians);
                     }
+
+                    vec4 color = sampleWithAA(vUV, centralPoint, fovRadians);
+
+                    // Pole handling
+                    float poleTransition = smoothstep(0.99, 1.0, abs(2.0 * coord.y - 1.0));
                     
-                    if (length(dir) < 0.001) {
-                        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-                        return;
+                    if (poleTransition > 0.0) {
+                        vec4 poleColor;
+                        if (coord.y > 0.5) {
+                            poleColor = sampleEquirectangular(equirectangularMap, vec2(coord.x, 0.9999));
+                        } else {
+                            poleColor = sampleEquirectangular(equirectangularMap, vec2(coord.x, 0.0001));
+                        }
+                        
+                        color = mix(color, poleColor, poleTransition);
                     }
-                    
-                    mat3 rot = rotationMatrix(lon, lat);
-                    vec3 rotatedDir = rot * dir;
-                    
-                    vec2 uv = equirectangularUV(rotatedDir);
-                    gl_FragColor = texture2D(equirectangularMap, uv);
+
+                    gl_FragColor = color;
                 }
             `;
         }
