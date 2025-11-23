@@ -218,13 +218,13 @@
             document.addEventListener('pointerup', this.onPointerUp.bind(this));
             document.addEventListener('pointercancel', this.onPointerUp.bind(this));
 
-            // Mouse wheel
-            document.addEventListener('wheel', this.onDocumentMouseWheel.bind(this));
+            // Mouse wheel (non-passive to allow preventDefault)
+            document.addEventListener('wheel', this.onDocumentMouseWheel.bind(this), { passive: false });
 
-            // Touch events
-            this.container.addEventListener('touchstart', this.onTouchStart.bind(this), false);
-            this.container.addEventListener('touchmove', this.onTouchMove.bind(this), false);
-            this.container.addEventListener('touchend', this.onTouchEnd.bind(this), false);
+            // Touch events (non-passive to allow preventDefault)
+            this.container.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: false });
+            this.container.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
+            this.container.addEventListener('touchend', this.onTouchEnd.bind(this), { passive: false });
 
             // Keyboard
             document.addEventListener('keydown', this.onKeyDown.bind(this));
@@ -270,8 +270,9 @@
             texture.wrapT = THREE.ClampToEdgeWrapping;
             texture.repeat.x = -1;
 
-            const internalFormat = texture.format === THREE.RGBAFormat ? THREE.RGBA8 : THREE.RGB8;
-            texture.internalFormat = internalFormat;
+            // Don't set internalFormat for Three.js r128 - it causes errors
+            // const internalFormat = texture.format === THREE.RGBAFormat ? THREE.RGBA8 : THREE.RGB8;
+            // texture.internalFormat = internalFormat;
 
             // Create shader material
             const material = new THREE.ShaderMaterial({
