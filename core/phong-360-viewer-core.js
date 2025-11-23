@@ -240,16 +240,23 @@
          * @param {number} height - Image height
          */
         loadImage(url, width = 4096, height = 2048) {
+            console.log('[Phong360ViewerCore] Loading image:', url);
+            
             const loader = new THREE.TextureLoader();
             
             loader.load(
                 url,
                 (texture) => {
+                    console.log('[Phong360ViewerCore] Texture loaded successfully:', url);
+                    console.log('[Phong360ViewerCore] Texture dimensions:', texture.image.width, 'x', texture.image.height);
                     this.applyTexture(texture);
+                    console.log('[Phong360ViewerCore] Material applied to mesh');
                 },
-                undefined,
+                (progress) => {
+                    // Optional: track loading progress
+                },
                 (error) => {
-                    console.error('Error loading image:', error);
+                    console.error('[Phong360ViewerCore] Error loading image:', url, error);
                 }
             );
         }
@@ -258,6 +265,8 @@
          * Apply texture to mesh
          */
         applyTexture(texture) {
+            console.log('[Phong360ViewerCore] Applying texture to mesh...');
+            
             // Configure texture
             texture.generateMipmaps = true;
             texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -267,9 +276,12 @@
             texture.wrapT = THREE.ClampToEdgeWrapping;
             texture.repeat.x = -1;
 
-            // Don't set internalFormat for Three.js r128 - it causes errors
-            // const internalFormat = texture.format === THREE.RGBAFormat ? THREE.RGBA8 : THREE.RGB8;
-            // texture.internalFormat = internalFormat;
+            console.log('[Phong360ViewerCore] Texture configured:', {
+                anisotropy: texture.anisotropy,
+                wrapS: texture.wrapS,
+                wrapT: texture.wrapT,
+                repeatX: texture.repeat.x
+            });
 
             // Create shader material with uniforms in DEGREES (converted to radians in shader/update)
             const material = new THREE.ShaderMaterial({
@@ -285,11 +297,21 @@
                 fragmentShader: this.getFragmentShader()
             });
 
+            console.log('[Phong360ViewerCore] Material created with uniforms:', {
+                lon: this.state.lon,
+                lat: this.state.lat,
+                fov: this.state.fov,
+                aspect: this.aspect,
+                projectionType: this.projectionType
+            });
+
             // Update mesh
             if (this.mesh.material) {
+                console.log('[Phong360ViewerCore] Disposing old material');
                 this.mesh.material.dispose();
             }
             this.mesh.material = material;
+            console.log('[Phong360ViewerCore] Material assigned to mesh successfully');
         }
 
         /**
