@@ -196,7 +196,10 @@
                 if (preferred) return preferred;
             }
 
-            // Auto-adaptive logic
+            // Find default resolution first (4K should be default)
+            const defaultRes = resolutions.find(r => r.default);
+
+            // Auto-adaptive logic (but can be overridden by returning to default)
             if (this.adaptiveLoading) {
                 // Check network connection if available
                 const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -206,7 +209,7 @@
                         const lowRes = resolutions.find(r => r.bandwidth === 'low');
                         if (lowRes) return lowRes;
                     }
-                    // 3G - medium bandwidth
+                    // 3G - medium bandwidth (use default if available)
                     else if (connection.effectiveType === '3g') {
                         const medRes = resolutions.find(r => r.bandwidth === 'medium');
                         if (medRes) return medRes;
@@ -222,27 +225,23 @@
                 const pixelRatio = window.devicePixelRatio || 1;
                 const viewportWidth = window.innerWidth;
 
-                // High DPI display or large viewport - prefer high resolution
-                if (pixelRatio >= 2 || viewportWidth > 2560) {
+                // Very high DPI display or very large viewport - prefer 8K
+                if (pixelRatio >= 2.5 || viewportWidth > 3000) {
                     const highRes = resolutions.find(r => r.id === '8k' || r.width >= 8192);
                     if (highRes) return highRes;
                 }
                 
-                // Standard desktop - prefer 4K
-                if (viewportWidth >= 1920) {
-                    const medRes = resolutions.find(r => r.id === '4k' || r.width >= 4096);
-                    if (medRes) return medRes;
-                }
+                // For standard desktops and most cases - use default (4K)
+                if (defaultRes) return defaultRes;
                 
                 // Mobile or small viewport - prefer 2K
-                if (viewportWidth < 1920) {
+                if (viewportWidth < 1280) {
                     const lowRes = resolutions.find(r => r.id === '2k' || r.width <= 2048);
                     if (lowRes) return lowRes;
                 }
             }
 
-            // Fallback to default resolution
-            const defaultRes = resolutions.find(r => r.default);
+            // Return default resolution (4K)
             if (defaultRes) return defaultRes;
 
             // Ultimate fallback - middle resolution
