@@ -85,6 +85,7 @@ canvas {
 #toolbar-panel {
 	position: relative;
 	padding: 12px;
+	padding-right: 60px; /* Space for hamburger menu */
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -92,12 +93,17 @@ canvas {
 	flex-shrink: 0;
 	background-color: rgba(0, 0, 0, 0.5);
 	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	min-height: 48px; /* Match hamburger button height */
 	z-index: 20;
 }
 
 #toolbar-panel .toolbar-button {
 	flex: 1;
 	min-width: 0;
+	height: 36px; /* Consistent height */
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 #switchProjectionButton {
