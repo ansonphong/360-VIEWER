@@ -58,24 +58,35 @@ function initializeLibrary() {
 
 function buildLibraryTree(data, path = "") {
     const ul = document.createElement("ul");
+    
+    // Handle v3.0 format with _categories
+    const categories = data._categories || data;
 
-    for (const [key, value] of Object.entries(data)) {
+    for (const [key, value] of Object.entries(categories)) {
+        // Skip metadata
+        if (key.startsWith('_')) continue;
+        
         const li = document.createElement("li");
         li.className = "folder";
         li.setAttribute("data-folder-name", key);
-        li.innerHTML = `<span>${key}</span>`;
+        li.innerHTML = `<span>${value.name || key}</span>`;
         li.addEventListener("click", toggleFolder);
 
         const subUl = document.createElement("ul");
         subUl.style.display = "none";
 
-        if (value.files) {
-            value.files.forEach((file) => {
+        // Handle v3.0 'images', v2.0 'images', and v1.x 'files' format
+        const images = value.images || value.files || [];
+        
+        if (images.length > 0) {
+            images.forEach((file) => {
                 const fileLi = document.createElement("li");
                 fileLi.className = "file";
 
+                // v3.0: thumbnail is an object with path property
+                const thumbnailPath = file.thumbnail?.path || file.thumbnail;
                 const thumbnailImg = document.createElement("img");
-                thumbnailImg.src = `library/${file.thumbnail}`;
+                thumbnailImg.src = `library/${thumbnailPath}`;
                 thumbnailImg.alt = file.name;
                 thumbnailImg.className = "file-thumbnail";
 
@@ -96,8 +107,17 @@ function buildLibraryTree(data, path = "") {
             });
         }
 
+        // Handle subcategories (v2.0+)
+        if (value.subcategories) {
+            for (const [subKey, subValue] of Object.entries(value.subcategories)) {
+                const subTree = buildLibraryTree({ [subKey]: subValue }, `${path}${key}/`);
+                subUl.appendChild(subTree);
+            }
+        }
+        
+        // Handle nested objects (v1.x compatibility)
         for (const [subKey, subValue] of Object.entries(value)) {
-            if (subKey !== "files") {
+            if (subKey !== "files" && subKey !== "images" && subKey !== "name" && subKey !== "subcategories") {
                 const subTree = buildLibraryTree({ [subKey]: subValue }, `${path}${key}/`);
                 subUl.appendChild(subTree);
             }
@@ -163,7 +183,12 @@ function loadImageById(id) {
         .then((data) => {
             const file = findFileById(data, id);
             if (file) {
-                window.loadImage(`library/${file.Q75}`, file.path);
+                // v3.0: Delegate to viewer for resolution selection
+                if (window.phong360Viewer) {
+                    window.phong360Viewer.loadImageById(id);
+                } else {
+                    console.error("Viewer not initialized");
+                }
                 updateURLWithImageId(id);
                 setCurrentImageId(id);
                 expandFolderForImage(id);
@@ -179,18 +204,34 @@ function loadImageById(id) {
 }
 
 function loadFirstImageInLibrary(data) {
-    const firstCategory = Object.values(data)[0];
-    if (firstCategory && firstCategory.files && firstCategory.files.length > 0) {
-        const firstFile = firstCategory.files[0];
-        console.log("Loading first image in library:", firstFile.id);
-        window.loadImage(`library/${firstFile.Q75}`, firstFile.path);
-        updateURLWithImageId(firstFile.id);
-        setCurrentImageId(firstFile.id);
-        expandFolderForImage(firstFile.id);
-    } else {
-        console.error("No images found in the library");
-        loadDefaultImage();
+    // Handle v3.0 format with _categories
+    const categories = data._categories || data;
+    
+    // Find first category with images
+    for (const category of Object.values(categories)) {
+        if (typeof category !== 'object' || category === null) continue;
+        
+        const images = category.images || category.files;
+        if (images && images.length > 0) {
+            const firstFile = images[0];
+            console.log("Loading first image in library:", firstFile.id);
+            
+            // v3.0: Delegate to viewer for resolution selection
+            if (window.phong360Viewer) {
+                window.phong360Viewer.loadImageById(firstFile.id);
+            } else {
+                console.error("Viewer not initialized");
+            }
+            
+            updateURLWithImageId(firstFile.id);
+            setCurrentImageId(firstFile.id);
+            expandFolderForImage(firstFile.id);
+            return;
+        }
     }
+    
+    console.error("No images found in the library");
+    loadDefaultImage();
 }
 
 function loadDefaultImage() {
@@ -200,9 +241,23 @@ function loadDefaultImage() {
 }
 
 function findFileById(data, id) {
-    for (const category of Object.values(data)) {
-        if (category.files) {
-            const file = category.files.find(file => file.id === id);
+    // Handle v2.0 format with _categories
+    const categories = data._categories || data;
+    
+    for (const category of Object.values(categories)) {
+        // Skip metadata
+        if (typeof category !== 'object' || category === null) continue;
+        
+        // Check images (v2.0) or files (v1.x)
+        const images = category.images || category.files;
+        if (images) {
+            const file = images.find(file => file.id === id);
+            if (file) return file;
+        }
+        
+        // Check subcategories recursively (v2.0)
+        if (category.subcategories) {
+            const file = findFileById({ _categories: category.subcategories }, id);
             if (file) return file;
         }
     }

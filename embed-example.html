@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phong 360 Viewer - Embed Example</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .description {
+            margin-bottom: 30px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .example {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .example-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .example-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .example-description {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .viewer-container {
+            width: 100%;
+            height: 500px;
+            background: #000;
+            position: relative;
+        }
+
+        .viewer-container.drag-over {
+            background: #1a1a1a;
+            outline: 3px dashed #4CAF50;
+            outline-offset: -10px;
+        }
+
+        .code-block {
+            padding: 20px;
+            background: #f8f8f8;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .code-block pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 8px 16px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #1976D2;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .info-box {
+            padding: 15px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #1565C0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 Phong 360 Viewer - Embedding Examples</h1>
+        <p class="description">
+            This page demonstrates different ways to embed the Phong 360 Viewer in your web applications.
+            Each example includes working code that you can copy and adapt for your own projects.
+        </p>
+
+        <div class="info-box">
+            <strong>Requirements:</strong>
+            Make sure to include Three.js before loading the viewer. The viewer automatically initializes when you create a new Phong360Viewer instance.
+        </div>
+
+        <!-- Example 1: Basic Embed -->
+        <div class="example">
+            <div class="example-header">
+                <div class="example-title">Example 1: Basic Embed with Library URL</div>
+                <div class="example-description">Load a 360 viewer with images from a library.json file</div>
+            </div>
+            <div id="viewer-1" class="viewer-container"></div>
+            <div class="controls">
+                <button onclick="example1Viewer.switchProjection(0)">Gnomonic Projection</button>
+                <button onclick="example1Viewer.switchProjection(1)">Stereographic Projection</button>
+                <button onclick="example1Viewer.loadFirstImage()">Reset to First Image</button>
+            </div>
+            <div class="code-block">
+                <pre>&lt;!-- Include Three.js --&gt;
+&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"&gt;&lt;/script&gt;
+
+&lt;!-- Include Phong 360 Viewer --&gt;
+&lt;script src="phong-360-viewer.js"&gt;&lt;/script&gt;
+
+&lt;!-- Container div --&gt;
+&lt;div id="viewer-1" style="width: 100%; height: 500px;"&gt;&lt;/div&gt;
+
+&lt;script&gt;
+// Initialize viewer with library URL
+const viewer = new Phong360Viewer({
+  containerId: 'viewer-1',
+  libraryUrl: 'library/library.json',
+  baseUrl: 'library/',
+  callbacks: {
+    onReady: () =&gt; console.log('Viewer ready!'),
+    onImageLoad: (title) =&gt; console.log('Loaded:', title)
+  }
+});
+&lt;/script&gt;</pre>
+            </div>
+        </div>
+
+        <!-- Example 2: Manual Data -->
+        <div class="example">
+            <div class="example-header">
+                <div class="example-title">Example 2: Embed with Manual Data</div>
+                <div class="example-description">Create a viewer with manually specified images (no library.json required)</div>
+            </div>
+            <div id="viewer-2" class="viewer-container"></div>
+            <div class="controls">
+                <button onclick="loadExampleImage(example2Viewer, 'img1')">Load Image 1</button>
+                <button onclick="loadExampleImage(example2Viewer, 'img2')">Load Image 2</button>
+            </div>
+            <div class="code-block">
+                <pre>&lt;script&gt;
+// Define library data inline
+const libraryData = {
+  "_metadata": {
+    "version": "2.0.0",
+    "total_images": 2
+  },
+  "_categories": {
+    "Examples": {
+      "name": "Example Images",
+      "images": [
+        {
+          "id": "img1",
+          "name": "Example 360 Image 1",
+          "path": "images/360-image-1.jpg",
+          "thumbnail": "images/360-image-1-thumb.jpg",
+          "Q100": "images/360-image-1.jpg",
+          "Q75": "images/360-image-1.jpg",
+          "Q50": "images/360-image-1.jpg"
+        },
+        {
+          "id": "img2",
+          "name": "Example 360 Image 2",
+          "path": "images/360-image-2.jpg",
+          "thumbnail": "images/360-image-2-thumb.jpg",
+          "Q100": "images/360-image-2.jpg",
+          "Q75": "images/360-image-2.jpg",
+          "Q50": "images/360-image-2.jpg"
+        }
+      ],
+      "subcategories": {}
+    }
+  }
+};
+
+// Initialize with inline data
+const viewer = new Phong360Viewer({
+  containerId: 'viewer-2',
+  libraryData: libraryData,
+  baseUrl: 'https://example.com/360/'
+});
+&lt;/script&gt;</pre>
+            </div>
+        </div>
+
+        <!-- Example 3: Custom Configuration -->
+        <div class="example">
+            <div class="example-header">
+                <div class="example-title">Example 3: Custom Configuration</div>
+                <div class="example-description">Customize viewer behavior with advanced options</div>
+            </div>
+            <div id="viewer-3" class="viewer-container"></div>
+            <div class="controls">
+                <button onclick="example3Viewer.config.viewRotation.autoRotate = !example3Viewer.config.viewRotation.autoRotate">
+                    Toggle Auto-Rotate
+                </button>
+                <button onclick="adjustRotationSpeed(example3Viewer)">Faster Rotation</button>
+            </div>
+            <div class="code-block">
+                <pre>&lt;script&gt;
+const viewer = new Phong360Viewer({
+  containerId: 'viewer-3',
+  libraryUrl: 'library/library.json',
+  config: {
+    viewRotation: {
+      initAltitude: 0,      // Starting vertical angle
+      initAzimuth: 90,      // Starting horizontal angle
+      autoRotate: true,     // Enable auto-rotation
+      autoRotationRate: 2,  // Rotation speed (default: 1)
+      smoothness: 8000      // Movement smoothness (higher = smoother)
+    },
+    zoom: {
+      smoothing: 6000       // Zoom smoothness
+    },
+    fov_stereographic: {
+      max: 330,
+      min: 45,
+      init: 100
+    }
+  },
+  ui: {
+    showLibraryPanel: false,  // Hide library panel
+    showDragDrop: true        // Enable drag & drop
+  }
+});
+&lt;/script&gt;</pre>
+            </div>
+        </div>
+
+        <!-- Example 4: Single Image (No Library) -->
+        <div class="example">
+            <div class="example-header">
+                <div class="example-title">Example 4: Single Image Viewer</div>
+                <div class="example-description">Simple viewer for a single 360° image with no library</div>
+            </div>
+            <div id="viewer-4" class="viewer-container"></div>
+            <div class="controls">
+                <button onclick="dragDropInstructions()">Drop Image Here</button>
+            </div>
+            <div class="code-block">
+                <pre>&lt;script&gt;
+// Create viewer without library
+const viewer = new Phong360Viewer({
+  containerId: 'viewer-4',
+  ui: {
+    showLibraryPanel: false,
+    showInfoPanel: false,
+    showDragDrop: true
+  }
+});
+
+// Load image programmatically
+const texture = new THREE.TextureLoader().load('path/to/360-image.jpg');
+viewer.loadTexture(texture, 'My 360 Image');
+&lt;/script&gt;</pre>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Load Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="phong-360-viewer.js"></script>
+
+    <!-- Initialize Examples -->
+    <script>
+        let example1Viewer, example2Viewer, example3Viewer, example4Viewer;
+
+        // Example 1: Basic with library URL
+        window.addEventListener('DOMContentLoaded', function() {
+            // Create example library data for demo
+            const demoLibrary = {
+                "_metadata": {
+                    "version": "2.0.0",
+                    "total_images": 1
+                },
+                "_categories": {
+                    "Demo": {
+                        "name": "Demo Images",
+                        "images": [],
+                        "subcategories": {}
+                    }
+                }
+            };
+
+            try {
+                example1Viewer = new Phong360Viewer({
+                    containerId: 'viewer-1',
+                    libraryData: demoLibrary,
+                    config: {
+                        viewRotation: {
+                            autoRotate: true,
+                            autoRotationRate: 1
+                        }
+                    },
+                    callbacks: {
+                        onReady: () => console.log('Example 1 ready'),
+                        onImageLoad: (title) => console.log('Image loaded:', title)
+                    }
+                });
+                console.log('Example 1 initialized');
+            } catch (error) {
+                console.error('Error initializing Example 1:', error);
+            }
+
+            // Example 2: Manual data
+            try {
+                example2Viewer = new Phong360Viewer({
+                    containerId: 'viewer-2',
+                    libraryData: demoLibrary
+                });
+                console.log('Example 2 initialized');
+            } catch (error) {
+                console.error('Error initializing Example 2:', error);
+            }
+
+            // Example 3: Custom config
+            try {
+                example3Viewer = new Phong360Viewer({
+                    containerId: 'viewer-3',
+                    libraryData: demoLibrary,
+                    config: {
+                        viewRotation: {
+                            autoRotate: true,
+                            autoRotationRate: 2
+                        }
+                    }
+                });
+                console.log('Example 3 initialized');
+            } catch (error) {
+                console.error('Error initializing Example 3:', error);
+            }
+
+            // Example 4: Single image
+            try {
+                example4Viewer = new Phong360Viewer({
+                    containerId: 'viewer-4',
+                    ui: {
+                        showLibraryPanel: false,
+                        showInfoPanel: false,
+                        showDragDrop: true
+                    }
+                });
+                console.log('Example 4 initialized');
+            } catch (error) {
+                console.error('Error initializing Example 4:', error);
+            }
+        });
+
+        // Helper functions for demos
+        function loadExampleImage(viewer, imageId) {
+            if (viewer && viewer.loadImageById) {
+                viewer.loadImageById(imageId);
+            }
+        }
+
+        function adjustRotationSpeed(viewer) {
+            if (viewer && viewer.config) {
+                viewer.config.viewRotation.autoRotationRate += 1;
+                alert('Rotation speed increased to ' + viewer.config.viewRotation.autoRotationRate);
+            }
+        }
+
+        function dragDropInstructions() {
+            alert('Drag and drop a 360° equirectangular image (JPG or PNG) onto the viewer to load it!');
+        }
+    </script>
+
+</body>
+</html>
+

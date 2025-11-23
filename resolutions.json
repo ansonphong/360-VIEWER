@@ -1,0 +1,52 @@
+{
+  "presets": {
+    "8K": {
+      "width": 8192,
+      "height": 4096,
+      "quality": 95,
+      "label": "8K Ultra HD",
+      "description": "Maximum quality for VR headsets and 4K+ displays",
+      "recommended": ["vr-headset", "desktop-4k", "desktop-ultra"],
+      "bandwidth": "high",
+      "minViewportWidth": 2560
+    },
+    "4K": {
+      "width": 4096,
+      "height": 2048,
+      "quality": 90,
+      "label": "4K High Quality",
+      "description": "High quality for desktop and tablet viewing",
+      "recommended": ["desktop", "tablet", "laptop"],
+      "bandwidth": "medium",
+      "default": true,
+      "minViewportWidth": 1920
+    },
+    "2K": {
+      "width": 2048,
+      "height": 1024,
+      "quality": 85,
+      "label": "2K Standard",
+      "description": "Standard quality for mobile and web",
+      "recommended": ["mobile", "tablet", "slow-connection"],
+      "bandwidth": "low",
+      "minViewportWidth": 0
+    }
+  },
+  "thumbnail": {
+    "width": 512,
+    "height": 256,
+    "quality": 80
+  },
+  "adaptive_loading": {
+    "enabled": true,
+    "prefer_quality_over_speed": false,
+    "progressive_loading": true,
+    "preload_higher_quality": true
+  },
+  "output": {
+    "version": "3.0.0",
+    "format": "json",
+    "pretty_print": true
+  }
+}
+
