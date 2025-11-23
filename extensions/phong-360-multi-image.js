@@ -209,7 +209,7 @@
                 return null;
             }
 
-            // User has manual selection?
+            // User has manual selection? (saved in localStorage)
             if (this.userPreferredResolution) {
                 const preferred = resolutions.find(r => r.id === this.userPreferredResolution);
                 if (preferred) return preferred;
@@ -218,25 +218,15 @@
             // Find default resolution first (4K should be default)
             const defaultRes = resolutions.find(r => r.default);
 
-            // Auto-adaptive logic (but can be overridden by returning to default)
+            // Auto-adaptive logic (but strongly prefers default 4K on first load)
             if (this.adaptiveLoading) {
                 // Check network connection if available
                 const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
                 if (connection) {
-                    // Slow connection - use low bandwidth
+                    // Only downgrade from default if connection is really slow
                     if (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
                         const lowRes = resolutions.find(r => r.bandwidth === 'low');
                         if (lowRes) return lowRes;
-                    }
-                    // 3G - medium bandwidth (use default if available)
-                    else if (connection.effectiveType === '3g') {
-                        const medRes = resolutions.find(r => r.bandwidth === 'medium');
-                        if (medRes) return medRes;
-                    }
-                    // 4G+ and high downlink - high bandwidth
-                    else if (connection.effectiveType === '4g' && connection.downlink > 5) {
-                        const highRes = resolutions.find(r => r.bandwidth === 'high');
-                        if (highRes) return highRes;
                     }
                 }
 
@@ -250,14 +240,9 @@
                     if (highRes) return highRes;
                 }
                 
-                // For standard desktops and most cases - use default (4K)
+                // For all other cases - use default (4K) on first load
+                // This ensures 4K is the default for desktop, tablet, and most mobile devices
                 if (defaultRes) return defaultRes;
-                
-                // Mobile or small viewport - prefer 2K
-                if (viewportWidth < 1280) {
-                    const lowRes = resolutions.find(r => r.id === '2k' || r.width <= 2048);
-                    if (lowRes) return lowRes;
-                }
             }
 
             // Return default resolution (4K)
