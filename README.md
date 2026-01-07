@@ -52,7 +52,7 @@ Perfect for embedding a single 360° image anywhere:
 
     <!-- Dependencies -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
+
     <!-- Layer 1: Core -->
     <script src="core/phong-360-viewer-core.js"></script>
     <link rel="stylesheet" href="styles/phong-360-core.css">
@@ -214,7 +214,7 @@ $images = postworld_prepare_360_images($attachment_ids);
 
 <script>
 const core = new Phong360ViewerCore({ containerId: 'viewer-360' });
-const multi = new Phong360MultiImage({ 
+const multi = new Phong360MultiImage({
     core: core,
     images: <?= json_encode($images) ?>
 });
@@ -422,7 +422,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-**Version**: 3.0.0  
-**Last Updated**: November 2025  
-**Author**: Phong  
+**Version**: 3.0.0
+**Last Updated**: November 2025
+**Author**: Phong
 **License**: MIT

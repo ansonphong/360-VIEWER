@@ -91,7 +91,7 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
    # Clone the repo
    git clone https://github.com/ansonphong/360-VIEWER.git my-360-site
    cd my-360-site
-   
+
    # Add your images to library/ folder
    # Build library
    cd library
@@ -117,17 +117,17 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
        X-Frame-Options = "SAMEORIGIN"
        X-XSS-Protection = "1; mode=block"
        X-Content-Type-Options = "nosniff"
-   
+
    [[headers]]
      for = "/*.jpg"
      [headers.values]
        Cache-Control = "public, max-age=31536000, immutable"
-   
+
    [[headers]]
      for = "/*.js"
      [headers.values]
        Cache-Control = "public, max-age=31536000, immutable"
-   
+
    [[headers]]
      for = "/library.json"
      [headers.values]
@@ -235,41 +235,41 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
    server {
        listen 80;
        server_name 360.yourdomain.com;
-       
+
        root /var/www/360-viewer;
        index index.html;
-       
+
        # Gzip compression
        gzip on;
        gzip_vary on;
        gzip_min_length 1024;
-       gzip_types text/plain text/css text/xml text/javascript 
+       gzip_types text/plain text/css text/xml text/javascript
                   application/javascript application/json image/svg+xml;
-       
+
        # Cache static assets
        location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
            expires 1y;
            add_header Cache-Control "public, immutable";
        }
-       
+
        # Cache library.json for 1 hour
        location = /library/library.json {
            expires 1h;
            add_header Cache-Control "public";
        }
-       
+
        # CORS headers (if needed)
        location ~* \.(jpg|jpeg|png)$ {
            add_header Access-Control-Allow-Origin "*";
            add_header Access-Control-Allow-Methods "GET, OPTIONS";
            add_header Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept";
        }
-       
+
        # Security headers
        add_header X-Frame-Options "SAMEORIGIN" always;
        add_header X-Content-Type-Options "nosniff" always;
        add_header X-XSS-Protection "1; mode=block" always;
-       
+
        # SPA fallback (if needed)
        location / {
            try_files $uri $uri/ /index.html;
@@ -299,18 +299,18 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
    <VirtualHost *:80>
        ServerName 360.yourdomain.com
        DocumentRoot /var/www/360-viewer
-       
+
        <Directory /var/www/360-viewer>
            Options -Indexes +FollowSymLinks
            AllowOverride All
            Require all granted
        </Directory>
-       
+
        # Enable compression
        <IfModule mod_deflate.c>
            AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
        </IfModule>
-       
+
        # Cache control
        <IfModule mod_expires.c>
            ExpiresActive On
@@ -321,7 +321,7 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
            ExpiresByType application/javascript "access plus 1 year"
            ExpiresByType application/json "access plus 1 hour"
        </IfModule>
-       
+
        ErrorLog ${APACHE_LOG_DIR}/360-viewer-error.log
        CustomLog ${APACHE_LOG_DIR}/360-viewer-access.log combined
    </VirtualHost>
@@ -333,7 +333,7 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
    <IfModule mod_deflate.c>
        AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
    </IfModule>
-   
+
    # Browser caching
    <IfModule mod_expires.c>
        ExpiresActive On
@@ -344,14 +344,14 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
        ExpiresByType text/javascript "access plus 1 year"
        ExpiresByType application/javascript "access plus 1 year"
    </IfModule>
-   
+
    # CORS (if needed)
    <IfModule mod_headers.c>
        <FilesMatch "\.(jpg|jpeg|png)$">
            Header set Access-Control-Allow-Origin "*"
        </FilesMatch>
    </IfModule>
-   
+
    # Security headers
    <IfModule mod_headers.c>
        Header set X-Frame-Options "SAMEORIGIN"
@@ -388,16 +388,16 @@ See [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md) for complete 
 2. **Enqueue Scripts** (`functions.php`):
    ```php
    function enqueue_360_viewer() {
-       wp_enqueue_script('threejs', 
-           'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 
+       wp_enqueue_script('threejs',
+           'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
            array(), 'r128', true);
-       
-       wp_enqueue_script('phong-360-core', 
-           get_template_directory_uri() . '/assets/360-viewer/core/phong-360-viewer-core.js', 
+
+       wp_enqueue_script('phong-360-core',
+           get_template_directory_uri() . '/assets/360-viewer/core/phong-360-viewer-core.js',
            array('threejs'), '3.0.0', true);
-       
-       wp_enqueue_style('phong-360-css', 
-           get_template_directory_uri() . '/assets/360-viewer/css/styles.css', 
+
+       wp_enqueue_style('phong-360-css',
+           get_template_directory_uri() . '/assets/360-viewer/css/styles.css',
            array(), '3.0.0');
    }
    add_action('wp_enqueue_scripts', 'enqueue_360_viewer');
@@ -406,7 +406,7 @@ See [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md) for complete 
 3. **Use in Templates**:
    ```php
    <div id="viewer-360" style="width: 100%; height: 70vh;"></div>
-   
+
    <script>
    new Phong360ViewerCore({
        containerId: 'viewer-360',
@@ -433,7 +433,7 @@ See [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md) for complete 
    ```javascript
    // In your library.json or code
    const CDN_URL = 'https://cdn.yourdomain.com/360-images/';
-   
+
    const multi = new Phong360MultiImage({
        core: core,
        baseUrl: CDN_URL,
@@ -455,7 +455,7 @@ See [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md) for complete 
    *360.yourdomain.com/*.jpg
    - Cache Level: Cache Everything
    - Edge Cache TTL: 1 year
-   
+
    *360.yourdomain.com/library.json
    - Cache Level: Cache Everything
    - Edge Cache TTL: 1 hour
@@ -554,10 +554,10 @@ self.addEventListener('fetch', (event) => {
 
 Add to your HTML `<head>`:
 ```html
-<meta http-equiv="Content-Security-Policy" 
-      content="default-src 'self'; 
-               script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; 
-               img-src 'self' data: https:; 
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline';
+               img-src 'self' data: https:;
                style-src 'self' 'unsafe-inline';">
 ```
 
@@ -723,7 +723,7 @@ If you encounter deployment issues:
 
 ---
 
-**Version**: 3.0.0  
-**Last Updated**: January 2026  
+**Version**: 3.0.0
+**Last Updated**: January 2026
 **See Also**: [QUICKSTART.md](QUICKSTART.md), [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md)
 

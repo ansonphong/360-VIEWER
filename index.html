@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-		
+
 		<!-- Inline styles to prevent white flash on load -->
 		<style>
 			html, body {
@@ -39,7 +39,7 @@
         <meta name="author" content="Phong" />
         <meta name="robots" content="index, follow" />
         <meta name="googlebot" content="index, follow" />
-        
+
         <!-- Open Graph (Facebook) -->
         <meta property="og:title" content="Phong | 🌐 360 Gallery" />
         <meta property="og:description" content="Immerse yourself in the 360 Gallery by Phong, showcasing equirectangular images generated ith 360 Hextile." />
@@ -54,7 +54,7 @@
         <meta name="twitter:description" content="Explore the 360 Gallery by Phong for a visually stunning, immersive experience." />
         <meta name="twitter:image" content="https://example.com/images/phong-logo.png" /> <!-- Use actual thumbnail URL -->
         <meta name="twitter:site" content="@ansonphong" />
-        
+
         <!-- Structured Data for SEO (JSON-LD) -->
         <script type="application/ld+json">
         {
@@ -121,13 +121,13 @@
 
 		<!-- Three.js -->
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-		
+
 		<!-- Phong 360 Viewer - Modular Architecture (Layer 1) -->
 		<script src="core/phong-360-viewer-core.js?ver=2024-11-23"></script>
-		
+
 		<!-- Multi-Image Manager (Layer 2) -->
 		<script src="extensions/phong-360-multi-image.js?ver=2024-11-23"></script>
-		
+
 		<!-- Library UI (Layer 3) -->
 		<script src="extensions/phong-360-library-ui.js?ver=2024-11-23"></script>
 
@@ -190,11 +190,11 @@
 								// Update info panel with image details
 								const titleEl = document.getElementById('imageTitle');
 								const formatEl = document.getElementById('imageFormat');
-								
+
 								if (titleEl) {
 									titleEl.textContent = info.name;
 								}
-								
+
 								if (formatEl) {
 									if (info.dimensions && info.resolution) {
 										formatEl.textContent = `${info.resolution} (${info.dimensions}) / ${info.format}`;
@@ -211,11 +211,11 @@
 					if (switchButton) {
 						// Get current projection from core (which loaded from localStorage)
 						let currentProjection = core.projectionType;
-						
+
 						// Set initial button state
 						switchButton.title = currentProjection === 0 ? 'Gnomonic Projection' : 'Stereographic Projection';
 						switchButton.textContent = currentProjection === 0 ? 'Gnomonic' : 'Stereographic';
-						
+
 						// Handle clicks
 						switchButton.addEventListener('click', function() {
 							currentProjection = currentProjection === 0 ? 1 : 0;
@@ -227,9 +227,9 @@
 
 					// Expose globally for debugging
 					window.phong360 = { core, multiViewer, libraryUI };
-					
+
 					console.log('Phong 360 Viewer initialized with smooth transitions built-in!');
-					
+
 				} catch (error) {
 					console.error('Error initializing Phong 360 Viewer:', error);
 					document.getElementById('imageTitle').textContent = 'Error Initializing Viewer';
@@ -254,7 +254,7 @@
 					event.preventDefault();
 				}
 			}, { passive: false });
-	
+
 			// Disable gesture events for touchpad pinch zoom
 			document.addEventListener('gesturestart', function(e) {
 				e.preventDefault();
@@ -278,11 +278,11 @@
 				border-radius: 50% !important;
 				padding: 0 !important;
 			}
-			
+
 			#info-button i {
 				font-size: 16px;
 			}
-			
+
 			#instructions {
 				position: fixed;
 				top: 0;
@@ -298,11 +298,11 @@
 				padding: 20px;
 				backdrop-filter: blur(10px);
 			}
-			
+
 			#instructions.show {
 				display: flex;
 			}
-			
+
 			#instructions-content {
 				background: rgba(20, 20, 20, 0.95);
 				border-radius: 16px;
@@ -312,12 +312,12 @@
 				border: 1px solid rgba(255, 255, 255, 0.2);
 				position: relative;
 			}
-			
+
 			#instructions h3 {
 				margin: 0 0 20px 0;
 				font-size: 24px;
 			}
-			
+
 			#instructions ul {
 				text-align: left;
 				margin: 20px 0;
@@ -325,12 +325,12 @@
 				padding-left: 0;
 				list-style: none;
 			}
-			
+
 			#instructions li {
 				margin-bottom: 12px;
 				padding-left: 8px;
 			}
-			
+
 			#instructions button {
 				background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
 				color: white;
@@ -344,16 +344,16 @@
 				width: 100%;
 				transition: all 0.2s ease;
 			}
-			
+
 			#instructions button:hover {
 				transform: translateY(-2px);
 				box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
 			}
-			
+
 			#instructions button:active {
 				transform: translateY(0);
 			}
-			
+
 			/* Mobile optimization */
 			@media (max-width: 768px) {
 				#instructions-content {
@@ -361,15 +361,15 @@
 					max-height: 85vh;
 					overflow-y: auto;
 				}
-				
+
 				#instructions h3 {
 					font-size: 20px;
 				}
-				
+
 				#instructions ul {
 					line-height: 1.8;
 				}
-				
+
 				#instructions li {
 					margin-bottom: 10px;
 					font-size: 15px;

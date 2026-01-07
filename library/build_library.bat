@@ -23,10 +23,10 @@ REM Check if required packages are installed
 echo Checking dependencies...
 python -c "import PIL; import tqdm" >nul 2>&1
 if errorlevel 1 (
-    echo Installing required packages (Pillow and tqdm)...
+    echo Installing required packages ^(Pillow and tqdm^)...
     pip install Pillow tqdm
     echo.
-    
+
     REM Verify installation
     python -c "import PIL; import tqdm" >nul 2>&1
     if errorlevel 1 (
@@ -51,6 +51,9 @@ if errorlevel 1 (
     echo Error building library
     echo ========================================
     echo.
+    echo Press any key to close...
+    pause >nul
+    exit /b 1
 ) else (
     echo.
     echo ========================================
@@ -58,10 +61,11 @@ if errorlevel 1 (
     echo ========================================
     echo.
     echo Generated files:
-    echo   - library.json (v2.0 format)
+    echo   - library.json ^(v2.0 format^)
     echo   - _BUILD/ folder with thumbnails and quality versions
     echo.
 )
 
-pause
-
+echo.
+echo Press any key to close...
+pause >nul

@@ -10,9 +10,9 @@ echo ===================================
 echo  Phong 360 Viewer Dev Server
 echo ===================================
 echo.
-echo Starting server at http://localhost:8000
+echo Starting server at http://localhost:8080
 echo Press Ctrl+C to stop
 echo.
 
 REM Start Python HTTP server
-python -m http.server 8000
+python -m http.server 8080

@@ -318,7 +318,7 @@ MIT License - Use freely in any project!
 
 ---
 
-**Version**: 3.0.0  
+**Version**: 3.0.0
 **Last Updated**: November 2025
 
 **Happy 360° viewing!** 🌐✨
