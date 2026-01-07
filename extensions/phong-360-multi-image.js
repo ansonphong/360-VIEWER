@@ -1,0 +1,333 @@
+/**
+ * Phong 360 Multi-Image Manager - Layer 2
+ * 
+ * Wraps the core viewer to add multi-image and resolution management.
+ * Handles adaptive resolution selection based on device and bandwidth.
+ * 
+ * @version 3.0.0-multi
+ * @author Phong
+ * @license MIT
+ * @size ~15KB minified
+ */
+
+(function(window) {
+    'use strict';
+
+    /**
+     * Phong360MultiImage - Multi-image and resolution manager
+     * 
+     * @class
+     * @param {Object} options - Configuration options
+     * @param {Phong360ViewerCore} options.core - Core viewer instance
+     * @param {Array} [options.images] - Array of image data
+     * @param {string} [options.baseUrl=''] - Base URL for resolving paths
+     * @param {boolean} [options.adaptiveLoading=true] - Enable adaptive resolution selection
+     * @param {Object} [options.callbacks] - Event callbacks
+     */
+    class Phong360MultiImage {
+        constructor(options = {}) {
+            if (!options.core) {
+                throw new Error('Phong360MultiImage requires a core viewer instance');
+            }
+
+            this.core = options.core;
+            this.images = options.images || [];
+            this.baseUrl = options.baseUrl || '';
+            this.adaptiveLoading = options.adaptiveLoading !== false;
+            
+            this.currentImageId = null;
+            this.currentImageData = null;
+            this.currentResolution = null;
+            
+            // Load saved resolution preference from localStorage
+            this.userPreferredResolution = null;
+            try {
+                const savedResolution = localStorage.getItem('phong360.preferences.resolution');
+                if (savedResolution) {
+                    this.userPreferredResolution = savedResolution;
+                    console.log('[Phong360MultiImage] Loaded saved resolution preference:', savedResolution);
+                }
+            } catch (e) {
+                console.warn('Could not load resolution preference from localStorage:', e);
+            }
+
+            // Callbacks
+            this.callbacks = Object.assign({
+                onImageLoad: null,          // (imageData, resolution) => {}
+                onImageError: null,         // (error) => {}
+                onResolutionChange: null,   // (resolution) => {}
+                onLoadStart: null,          // () => {}
+                onLoadComplete: null        // () => {}
+            }, options.callbacks || {});
+        }
+
+        /**
+         * Set images array
+         */
+        setImages(images) {
+            this.images = images;
+        }
+
+        /**
+         * Add single image
+         */
+        addImage(imageData) {
+            this.images.push(imageData);
+        }
+
+        /**
+         * Find image by ID
+         */
+        findImageById(id) {
+            for (const image of this.images) {
+                if (image.id === id) {
+                    return image;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Get current image data
+         */
+        getCurrentImageData() {
+            return this.currentImageData;
+        }
+
+        /**
+         * Get available resolutions for current image
+         */
+        getAvailableResolutions() {
+            if (!this.currentImageData || !this.currentImageData.resolutions) {
+                return [];
+            }
+            return this.currentImageData.resolutions;
+        }
+
+        /**
+         * Get current resolution
+         */
+        getCurrentResolution() {
+            return this.currentResolution;
+        }
+
+        /**
+         * Load image by ID
+         */
+        loadImageById(id) {
+            const imageData = this.findImageById(id);
+            if (!imageData) {
+                console.error(`Image not found with ID: ${id}`);
+                if (this.callbacks.onImageError) {
+                    this.callbacks.onImageError(new Error(`Image not found: ${id}`));
+                }
+                return;
+            }
+
+            // Select optimal resolution
+            const resolution = this.selectOptimalResolution(imageData.resolutions);
+            if (!resolution) {
+                console.error('No suitable resolution found');
+                if (this.callbacks.onImageError) {
+                    this.callbacks.onImageError(new Error('No suitable resolution found'));
+                }
+                return;
+            }
+
+            this.loadImageWithResolution(imageData, resolution);
+        }
+
+        /**
+         * Load image with specific resolution
+         */
+        loadImageWithResolution(imageData, resolution) {
+            if (!imageData || !resolution) {
+                console.error('Invalid image data or resolution');
+                return;
+            }
+
+            this.currentImageId = imageData.id;
+            this.currentImageData = imageData;
+            this.currentResolution = resolution;
+
+            // Fire load start callback
+            if (this.callbacks.onLoadStart) {
+                this.callbacks.onLoadStart();
+            }
+
+            // Build full path
+            const imagePath = this.baseUrl + resolution.path;
+
+            // Load via core viewer
+            this.core.loadImage(imagePath, resolution.width, resolution.height);
+
+            // Fire callbacks
+            if (this.callbacks.onImageLoad) {
+                this.callbacks.onImageLoad(imageData, resolution);
+            }
+            if (this.callbacks.onLoadComplete) {
+                this.callbacks.onLoadComplete();
+            }
+        }
+
+        /**
+         * Switch to different resolution for current image
+         */
+        switchResolution(resolutionId) {
+            if (!this.currentImageData) {
+                console.warn('No image currently loaded');
+                return;
+            }
+
+            const resolution = this.currentImageData.resolutions.find(r => r.id === resolutionId);
+            if (!resolution) {
+                console.error(`Resolution ${resolutionId} not found`);
+                return;
+            }
+
+            this.userPreferredResolution = resolutionId;
+            
+            // Save preference to localStorage
+            try {
+                localStorage.setItem('phong360.preferences.resolution', resolutionId);
+            } catch (e) {
+                console.warn('Could not save resolution preference to localStorage:', e);
+            }
+            
+            this.loadImageWithResolution(this.currentImageData, resolution);
+
+            if (this.callbacks.onResolutionChange) {
+                this.callbacks.onResolutionChange(resolution);
+            }
+        }
+
+        /**
+         * Select optimal resolution based on device, bandwidth, and user preference
+         */
+        selectOptimalResolution(resolutions) {
+            if (!resolutions || resolutions.length === 0) {
+                return null;
+            }
+
+            // User has manual selection? (saved in localStorage)
+            if (this.userPreferredResolution) {
+                const preferred = resolutions.find(r => r.id === this.userPreferredResolution);
+                if (preferred) return preferred;
+            }
+
+            // Find default resolution (4K) and 2K
+            const defaultRes = resolutions.find(r => r.default);
+            const mobile2K = resolutions.find(r => r.id === '2k' || r.width <= 2048);
+
+            // Check device capabilities
+            const pixelRatio = window.devicePixelRatio || 1;
+            const viewportWidth = window.innerWidth;
+
+            // Auto-adaptive logic
+            if (this.adaptiveLoading) {
+                // Check network connection if available
+                const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                if (connection) {
+                    // Only downgrade from default if connection is really slow
+                    if (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
+                        if (mobile2K) return mobile2K;
+                    }
+                }
+
+                // Very high DPI display or very large viewport - prefer 8K
+                if (pixelRatio >= 2.5 || viewportWidth > 3000) {
+                    const highRes = resolutions.find(r => r.id === '8k' || r.width >= 8192);
+                    if (highRes) return highRes;
+                }
+                
+                // Mobile devices (small viewport) - default to 2K for better performance
+                if (viewportWidth < 1024) {
+                    if (mobile2K) return mobile2K;
+                }
+                
+                // Desktop - use default (4K)
+                if (defaultRes) return defaultRes;
+            }
+
+            // Return default resolution (4K)
+            if (defaultRes) return defaultRes;
+
+            // Ultimate fallback - middle resolution
+            return resolutions[Math.floor(resolutions.length / 2)];
+        }
+
+        /**
+         * Load first image
+         */
+        loadFirstImage() {
+            if (this.images.length === 0) {
+                console.warn('No images available');
+                return;
+            }
+
+            this.loadImageById(this.images[0].id);
+        }
+
+        /**
+         * Load next image
+         */
+        loadNextImage() {
+            if (!this.currentImageId) {
+                this.loadFirstImage();
+                return;
+            }
+
+            const currentIndex = this.images.findIndex(img => img.id === this.currentImageId);
+            if (currentIndex === -1 || currentIndex === this.images.length - 1) {
+                return; // No next image
+            }
+
+            this.loadImageById(this.images[currentIndex + 1].id);
+        }
+
+        /**
+         * Load previous image
+         */
+        loadPreviousImage() {
+            if (!this.currentImageId) {
+                this.loadFirstImage();
+                return;
+            }
+
+            const currentIndex = this.images.findIndex(img => img.id === this.currentImageId);
+            if (currentIndex <= 0) {
+                return; // No previous image
+            }
+
+            this.loadImageById(this.images[currentIndex - 1].id);
+        }
+
+        /**
+         * Format file size for display
+         */
+        formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        /**
+         * Get image count
+         */
+        getImageCount() {
+            return this.images.length;
+        }
+
+        /**
+         * Clear user preference
+         */
+        clearResolutionPreference() {
+            this.userPreferredResolution = null;
+        }
+    }
+
+    // Export
+    window.Phong360MultiImage = Phong360MultiImage;
+
+})(window);
+

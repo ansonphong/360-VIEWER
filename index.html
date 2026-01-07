@@ -1,8 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="background: #000;">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+		
+		<!-- Inline styles to prevent white flash on load -->
+		<style>
+			html, body {
+				background: #000;
+				margin: 0;
+				overflow: hidden;
+			}
+			#container {
+				background: #000;
+			}
+			canvas {
+				background: #000;
+				background-color: #000;
+			}
+		</style>
 
         <!-- Google tag (gtag.js) -->
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-5KQMLC5EPS"></script>
@@ -10,12 +26,11 @@
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
-
           gtag('config', 'G-5KQMLC5EPS');
         </script>
 
-		<title>Phong | 🌐 360 Gallery</title>
-		<link rel="stylesheet" href="styles.css?ver=2024-08-31" />
+	<title>🌐 Phong 360 Viewer</title>
+	<link rel="stylesheet" href="css/styles.css?ver=2024-11-23" />
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
         <!-- SEO Meta Tags -->
@@ -57,48 +72,187 @@
         </script>
 
 	</head>
-	<body>
-		<div id="container"></div>
+	<body style="background: #000;">
+		<!-- Container for 360 Viewer -->
+		<div id="container" style="background: #000;"></div>
 
+		<!-- Info Panel -->
 		<div id="info-panel">
 			<img src="images/phong-logo.png" class="phong-logo" onclick="toggleFullscreen()" />
-			<h1 id="imageTitle" class="title">Title</h1>
-			<h2 id="imageFormat" class="subtitle">Extension / Format</h2>
+			<h1 id="imageTitle" class="title">Loading...</h1>
+			<h2 id="imageFormat" class="subtitle">360° Viewer</h2>
 		</div>
 
 		<h1 id="phong.com" class="background-text">360.phong.com</h1>
 
 		<img src="images/phong-logo.png" id="phong-logo-center" />
 
+		<!-- Drag and Drop Overlay -->
 		<div id="drag-drop-overlay">
 			<div class="icon">DROP</div>
 			<div class="message">EQUIRECTANGULAR IMAGE</div>
 		</div>
 
-		<div id="loading-overlay"></div>
+		<!-- Loading Overlay with Spinner -->
+		<div id="loading-overlay">
+			<div class="spinner"></div>
+		</div>
 
+		<!-- Hamburger Menu -->
 		<div id="hamburger-menu" class="toolbar-button"><i class="fas fa-bars"></i></div>
 
+		<!-- Library Panel -->
 		<div id="library-panel">
 			<div id="toolbar-panel">
 				<button id="switchProjectionButton" class="toolbar-button switchProjection"></button>
+				<select id="resolution-selector" class="toolbar-button resolution-selector">
+					<option>Loading...</option>
+				</select>
+				<!-- Info button inside panel -->
+				<button id="info-button" class="toolbar-button" onclick="document.getElementById('instructions').classList.add('show')" title="Help & Instructions">
+					<i class="fas fa-info-circle"></i>
+				</button>
 			</div>
 
 			<div id="library-content">
-				<h2>Library</h2>
 				<div id="library-tree"></div>
 			</div>
 		</div>
 
+		<!-- Three.js -->
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-		<script src="client.js?ver=2024-09-13"></script>
-		<script src="library.js?ver=2024-09-13"></script>
+		
+		<!-- Phong 360 Viewer - Modular Architecture (Layer 1) -->
+		<script src="core/phong-360-viewer-core.js?ver=2024-11-23"></script>
+		
+		<!-- Multi-Image Manager (Layer 2) -->
+		<script src="extensions/phong-360-multi-image.js?ver=2024-11-23"></script>
+		
+		<!-- Library UI (Layer 3) -->
+		<script src="extensions/phong-360-library-ui.js?ver=2024-11-23"></script>
+
+		<!-- Initialize Viewer -->
 		<script>
+			// Configuration
+			const LIBRARY_URL = new URLSearchParams(window.location.search).get('library') || 'library/library.json';
+			const BASE_URL = 'library/';
+
+			// Initialize the modular viewer system
+			let core, multiViewer, libraryUI;
+
+			window.addEventListener('DOMContentLoaded', function() {
+				try {
+					// Layer 1: Core viewer (ultra-lightweight, single image)
+					core = new Phong360ViewerCore({
+						containerId: 'container',
+						config: {
+							viewRotation: {
+								autoRotate: true,
+								autoRotationRate: 1
+							}
+						}
+					});
+
+					// Layer 2: Multi-image manager (resolution handling)
+					multiViewer = new Phong360MultiImage({
+						core: core,
+						baseUrl: BASE_URL,
+						adaptiveLoading: true,
+						callbacks: {
+							onImageLoad: function(imageData, resolution) {
+								console.log('Image loaded:', imageData.name, 'at', resolution.label);
+							},
+							onImageError: function(error) {
+								console.error('Error loading image:', error);
+								alert('Error loading image: ' + error.message);
+							}
+						}
+					});
+
+					// Layer 3: Library UI (browsable interface)
+					libraryUI = new Phong360LibraryUI({
+						multiViewer: multiViewer,
+						libraryUrl: LIBRARY_URL,
+						ui: {
+							panelId: 'library-panel',
+							hamburgerMenuId: 'hamburger-menu',
+							treeId: 'library-tree',
+							resolutionSelectorId: 'resolution-selector'
+						},
+						callbacks: {
+							onLibraryLoad: function(data) {
+								console.log('Library loaded:', data._metadata?.total_images, 'images');
+							},
+							onImageSelect: function(imageId) {
+								console.log('Image selected:', imageId);
+							},
+							onImageInfoUpdate: function(info) {
+								// Update info panel with image details
+								const titleEl = document.getElementById('imageTitle');
+								const formatEl = document.getElementById('imageFormat');
+								
+								if (titleEl) {
+									titleEl.textContent = info.name;
+								}
+								
+								if (formatEl) {
+									if (info.dimensions && info.resolution) {
+										formatEl.textContent = `${info.resolution} (${info.dimensions}) / ${info.format}`;
+									} else {
+										formatEl.textContent = info.format;
+									}
+								}
+							}
+						}
+					});
+
+					// Setup projection switcher
+					const switchButton = document.getElementById('switchProjectionButton');
+					if (switchButton) {
+						// Get current projection from core (which loaded from localStorage)
+						let currentProjection = core.projectionType;
+						
+						// Set initial button state
+						switchButton.title = currentProjection === 0 ? 'Gnomonic Projection' : 'Stereographic Projection';
+						switchButton.textContent = currentProjection === 0 ? 'Gnomonic' : 'Stereographic';
+						
+						// Handle clicks
+						switchButton.addEventListener('click', function() {
+							currentProjection = currentProjection === 0 ? 1 : 0;
+							core.switchProjection(currentProjection);
+							switchButton.title = currentProjection === 0 ? 'Gnomonic Projection' : 'Stereographic Projection';
+							switchButton.textContent = currentProjection === 0 ? 'Gnomonic' : 'Stereographic';
+						});
+					}
+
+					// Expose globally for debugging
+					window.phong360 = { core, multiViewer, libraryUI };
+					
+					console.log('Phong 360 Viewer initialized with smooth transitions built-in!');
+					
+				} catch (error) {
+					console.error('Error initializing Phong 360 Viewer:', error);
+					document.getElementById('imageTitle').textContent = 'Error Initializing Viewer';
+					document.getElementById('imageFormat').textContent = error.message;
+				}
+			});
+
+			// Fullscreen toggle
+			function toggleFullscreen() {
+				if (!document.fullscreenElement) {
+					document.documentElement.requestFullscreen();
+				} else {
+					if (document.exitFullscreen) {
+						document.exitFullscreen();
+					}
+				}
+			}
+
 			// Prevent pinch zoom
 			document.addEventListener('wheel', function(event) {
-			  if (event.ctrlKey) {
-				event.preventDefault();
-			  }
+				if (event.ctrlKey) {
+					event.preventDefault();
+				}
 			}, { passive: false });
 	
 			// Disable gesture events for touchpad pinch zoom
@@ -112,5 +266,132 @@
 				e.preventDefault();
 			});
 		</script>
+
+		<!-- Instructions overlay (can be shown on first load) -->
+		<style>
+			#info-button {
+				font-size: 16px !important;
+				width: 50px !important;
+				min-width: 50px !important;
+				max-width: 50px !important;
+				flex: 0 0 50px !important;
+				border-radius: 50% !important;
+				padding: 0 !important;
+			}
+			
+			#info-button i {
+				font-size: 16px;
+			}
+			
+			#instructions {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(0, 0, 0, 0.9);
+				color: white;
+				z-index: 10000;
+				display: none;
+				align-items: center;
+				justify-content: center;
+				padding: 20px;
+				backdrop-filter: blur(10px);
+			}
+			
+			#instructions.show {
+				display: flex;
+			}
+			
+			#instructions-content {
+				background: rgba(20, 20, 20, 0.95);
+				border-radius: 16px;
+				padding: 30px;
+				max-width: 500px;
+				width: 100%;
+				border: 1px solid rgba(255, 255, 255, 0.2);
+				position: relative;
+			}
+			
+			#instructions h3 {
+				margin: 0 0 20px 0;
+				font-size: 24px;
+			}
+			
+			#instructions ul {
+				text-align: left;
+				margin: 20px 0;
+				line-height: 2;
+				padding-left: 0;
+				list-style: none;
+			}
+			
+			#instructions li {
+				margin-bottom: 12px;
+				padding-left: 8px;
+			}
+			
+			#instructions button {
+				background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+				color: white;
+				border: none;
+				padding: 14px 32px;
+				border-radius: 8px;
+				cursor: pointer;
+				font-size: 16px;
+				font-weight: 600;
+				margin-top: 20px;
+				width: 100%;
+				transition: all 0.2s ease;
+			}
+			
+			#instructions button:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+			}
+			
+			#instructions button:active {
+				transform: translateY(0);
+			}
+			
+			/* Mobile optimization */
+			@media (max-width: 768px) {
+				#instructions-content {
+					padding: 24px;
+					max-height: 85vh;
+					overflow-y: auto;
+				}
+				
+				#instructions h3 {
+					font-size: 20px;
+				}
+				
+				#instructions ul {
+					line-height: 1.8;
+				}
+				
+				#instructions li {
+					margin-bottom: 10px;
+					font-size: 15px;
+				}
+			}
+		</style>
+
+		<div id="instructions" onclick="event.target === this && this.classList.remove('show')">
+			<div id="instructions-content">
+				<h3>🌐 Phong 360 Viewer</h3>
+				<ul>
+					<li>🖱️ <strong>Click & Drag</strong> to look around</li>
+					<li>🔍 <strong>Scroll</strong> to zoom in/out</li>
+					<li>📁 <strong>Click menu</strong> to browse library</li>
+					<li>📂 <strong>Drag & Drop</strong> your own 360° images</li>
+					<li>⌨️ <strong>Arrow keys</strong> to pan, +/- to zoom</li>
+				</ul>
+				<button onclick="document.getElementById('instructions').classList.remove('show')">
+					Got it!
+				</button>
+			</div>
+		</div>
+
 	</body>
 </html>

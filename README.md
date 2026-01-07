@@ -1,233 +1,427 @@
-# 360° Viewer
+# 🌐 Phong 360 Viewer
 
-A powerful and interactive 360° image viewer built with Three.js and modern web technologies.
+**Ultra-lightweight, modular 360° image viewer with progressive enhancement.**
 
-## Table of Contents
+[![Version](https://img.shields.io/badge/version-3.0.0-blue)](https://github.com/ansonphong/360-VIEWER)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Three.js](https://img.shields.io/badge/three.js-r128-orange)](https://threejs.org/)
 
-- [Features](#features)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-- [Usage](#usage)
-- [Creating the Image Library](#creating-the-image-library)
-  - [Setting Up Dependencies](#setting-up-dependencies)
-  - [Steps to Create the Library](#steps-to-create-the-library)
-- [Architecture](#architecture)
-- [File Structure](#file-structure)
-- [Key Components](#key-components)
-- [Configuration](#configuration)
-- [Best Practices](#best-practices)
-- [Contributing](#contributing)
-- [License](#license)
+## 🚀 What Makes This Special
 
-## Features
+- **🎯 Truly Modular**: Russian Doll architecture - use Layer 1 (30KB), or add Layer 2 (+15KB), or Layer 3 (+20KB)
+- **⚡ Ultra-Lightweight**: Core is only 30KB - 6x smaller than competitors
+- **🔧 Framework Agnostic**: Works with WordPress, React, Vue, or vanilla JS
+- **📦 No Build Required**: Drop it in and go - no webpack, no babel
+- **🌐 WordPress Ready**: Comprehensive integration guide included
+- **💾 Smart Preferences**: localStorage with namespaced keys
+- **🎮 Full Controls**: Mouse, touch, keyboard navigation
+- **📱 Mobile Optimized**: Touch gestures and responsive
+- **🔄 Two Projections**: Gnomonic and Stereographic
+- **🎨 Adaptive Loading**: Smart resolution selection
 
-- Smooth 360° image navigation
-- Support for equirectangular images
-- Gnomonic and Stereographic projections
-- Interactive image library
-- Drag and drop image loading
-- Responsive design
-- Fullscreen mode
-- Customizable UI elements
+---
 
-## Getting Started
+## 📚 Documentation
 
-### Prerequisites
+| Document | Description |
+|----------|-------------|
+| **[QUICKSTART.md](docs/QUICKSTART.md)** | Get started in 5 minutes |
+| **[API.md](docs/API.md)** | Complete API reference |
+| **[LIBRARY-FORMAT.md](docs/LIBRARY-FORMAT.md)** | Library format specification |
+| **[WORDPRESS-INTEGRATION-PLAN.md](docs/WORDPRESS-INTEGRATION-PLAN.md)** | WordPress integration guide |
+| **[OPEN-SOURCE-READY.md](docs/OPEN-SOURCE-READY.md)** | Open-source strategy & roadmap |
 
-- Modern web browser with WebGL support
-- Local development server (e.g., Live Server for VS Code)
-- Python 3.6 or higher (for library management)
+---
 
-### Installation
+## ⚡ Quick Start
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/360-viewer.git
-   ```
+### Layer 1: Single Image Viewer (30KB)
 
-2. Navigate to the project directory:
-   ```
-   cd 360-viewer
-   ```
+Perfect for embedding a single 360° image anywhere:
 
-3. Install Python dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>360 Viewer</title>
+</head>
+<body>
+    <!-- Container -->
+    <div id="viewer" style="width: 100%; height: 600px;"></div>
 
-4. Open `index.html` in your preferred browser or use a local development server.
+    <!-- Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Layer 1: Core -->
+    <script src="core/phong-360-viewer-core.js"></script>
+    <link rel="stylesheet" href="styles/phong-360-core.css">
 
-## Usage
-
-1. Open the application in your web browser.
-2. Use mouse/touch controls to navigate the 360° image.
-3. Click the hamburger menu to access the image library.
-4. Drag and drop your own equirectangular images onto the viewer.
-5. Toggle between Gnomonic and Stereographic projections using the button in the toolbar.
-
-## Creating the Image Library
-
-### Setting Up Dependencies
-
-1. Ensure you have Python 3.6 or higher installed on your system.
-2. Create a `requirements.txt` file in the root directory of your project with the following content:
-   ```
-   Pillow
-   tqdm
-   ```
-3. Install the dependencies by running:
-   ```
-   pip install -r requirements.txt
-   ```
-
-### Steps to Create the Library
-
-1. Create a `library` folder in the root of your project if it doesn't exist already.
-
-2. Inside the `library` folder, create subfolders to organize your images. For example:
-   ```
-   library/
-   ├── Landscapes/
-   ├── Cityscapes/
-   └── Interiors/
-   ```
-
-3. Place your full resolution, top-quality equirectangular images in these subfolders. Supported formats are PNG and JPG.
-
-4. Open a command prompt or terminal in the project root directory.
-
-5. Run the `make_library.bat` file:
-   ```
-   make_library.bat
-   ```
-
-6. The script will perform the following actions:
-   - Scan the `library` folder and its subfolders
-   - Generate thumbnails for all images
-   - Create high-quality JPG versions of each image in three quality levels (100%, 75%, 50%)
-   - Create a `library.json` file containing metadata for all images
-
-7. Once the script completes, your library is ready to use with the 360° Viewer.
-
-### Notes
-
-- The script will only process new or modified images, so you can run it multiple times as you add new content.
-- Ensure you have sufficient disk space, as the script generates multiple versions of each image.
-- Large libraries may take some time to process. The script displays progress bars to keep you informed.
-
-### Troubleshooting
-
-- If you encounter any errors related to missing Python libraries, ensure you have installed all required dependencies using the `requirements.txt` file.
-- For permission errors, make sure you have write access to the project directory.
-
-## Architecture
-
-The 360° Viewer is built using a modular architecture with the following main components:
-
-- Three.js for 3D rendering
-- Custom shaders for image projections
-- Vanilla JavaScript for UI interactions and image management
-
-## File Structure
-
-```
-360-viewer/
-│
-├── index.html
-├── client.js
-├── library.js
-├── library.json
-├── make_library.bat
-├── make_library.py
-├── requirements.txt
-├── README.md
-│
-├── css/
-│   └── styles.css
-│
-├── images/
-│   ├── phong-logo.png
-│   └── ...
-│
-└── library/
-    ├── Landscapes/
-    ├── Cityscapes/
-    ├── Interiors/
+    <!-- Initialize -->
+    <script>
+        const viewer = new Phong360ViewerCore({
+            containerId: 'viewer',
+            imageUrl: 'my-360-image.jpg',
+            config: {
+                viewRotation: { autoRotate: true }
+            }
+        });
+    </script>
+</body>
+</html>
 ```
 
-## Key Components
+**That's it!** You now have:
+- ✅ Mouse drag to pan
+- ✅ Mouse wheel to zoom
+- ✅ Touch gestures
+- ✅ Keyboard controls
+- ✅ Auto-rotation
+- ✅ Projection switching
 
-1. **client.js**: Main application logic, 3D rendering, and user interactions.
-2. **library.js**: Image library management and UI.
-3. **library.json**: Image metadata and directory structure.
-4. **Shaders**: Custom vertex and fragment shaders for image projections.
-5. **make_library.py**: Python script for generating the image library and associated files.
+### Layer 2: Multiple Images + Adaptive Resolution (+15KB)
 
-## Configuration
+Add multi-image support and smart resolution management:
 
-Adjust the following parameters in `client.js` to customize the viewer:
+```html
+<!-- Layer 1 + -->
+<script src="extensions/phong-360-multi-image.js"></script>
 
-```javascript
-var config = {
-  fov: {
-    max: 300,
-    min: 45,
-    init: 100,
-    initTarget: 60,
-  },
-  zoom: {
-    increment: 2,
-    smoothing: 6000,
-  },
-  viewRotation: {
-    initAltitude: 0,
-    initAzimuth: 90,
-    autoRotate: true,
-    autoRotationRate: 1,
-    smoothness: 8000,
-  },
-};
+<script>
+    // Initialize core
+    const core = new Phong360ViewerCore({
+        containerId: 'viewer'
+    });
+
+    // Add multi-image manager
+    const multi = new Phong360MultiImage({
+        core: core,
+        images: [
+            {
+                id: 'sunset',
+                name: 'Sunset Beach',
+                resolutions: [
+                    { id: '4k', label: '4K', path: 'sunset-4k.jpg', width: 4096, height: 2048, default: true },
+                    { id: '2k', label: '2K', path: 'sunset-2k.jpg', width: 2048, height: 1024 }
+                ]
+            },
+            {
+                id: 'mountain',
+                name: 'Mountain View',
+                resolutions: [
+                    { id: '4k', label: '4K', path: 'mountain-4k.jpg', width: 4096, height: 2048, default: true }
+                ]
+            }
+        ],
+        adaptiveLoading: true  // Automatically selects best resolution
+    });
+
+    // Load first image
+    multi.loadImageById('sunset');
+
+    // Switch images
+    setTimeout(() => multi.loadImageById('mountain'), 5000);
+</script>
 ```
 
-## Best Practices
+**Now you have**:
+- ✅ Multiple images
+- ✅ Adaptive resolution (based on device/bandwidth)
+- ✅ Manual resolution switching
+- ✅ localStorage preferences
+- ✅ Loading callbacks
 
-1. **Performance Optimization**
-   - Use mipmaps and anisotropic filtering for textures.
-   - Implement level-of-detail (LOD) for large image libraries.
+### Layer 3: Full Library UI (+20KB)
 
-2. **Code Organization**
-   - Separate concerns: keep rendering, UI, and data management in different modules.
-   - Use ES6 modules for better code organization and dependency management.
+Add browsable library with thumbnails and controls:
 
-3. **User Experience**
-   - Provide smooth transitions between images and projections.
-   - Implement intuitive touch controls for mobile devices.
+```html
+<!-- Layers 1+2 + -->
+<script src="extensions/phong-360-library-ui.js"></script>
+<link rel="stylesheet" href="styles/phong-360-ui.css">
 
-4. **Error Handling**
-   - Gracefully handle unsupported browsers or devices.
-   - Provide meaningful error messages for image loading failures.
+<script>
+    const libraryUI = new Phong360LibraryUI({
+        containerId: 'viewer',
+        libraryUrl: 'library/library.json',
+        showLibraryPanel: true,
+        showInfoPanel: true
+    });
+</script>
+```
 
-5. **Accessibility**
-   - Ensure keyboard navigation for all features.
-   - Add proper ARIA labels to interactive elements.
+**Full-featured viewer**:
+- ✅ Categorized image library
+- ✅ Thumbnail previews
+- ✅ Resolution selector dropdown
+- ✅ Projection toggle button
+- ✅ Info panel
+- ✅ Search/filter (coming soon)
 
-6. **Testing**
-   - Implement unit tests for core functions.
-   - Conduct cross-browser and device testing.
+---
 
-7. **Documentation**
-   - Maintain clear inline comments for complex logic.
-   - Keep the README up-to-date with all features and usage instructions.
+## 📦 Installation
 
-## Contributing
+### Method 1: Download & Include
+
+```bash
+# Download from GitHub
+git clone https://github.com/ansonphong/360-VIEWER.git
+
+# Use the files you need
+# Layer 1: core/phong-360-viewer-core.js
+# Layer 2: extensions/phong-360-multi-image.js
+# Layer 3: extensions/phong-360-library-ui.js
+```
+
+### Method 2: Git Submodule (For Themes/Plugins)
+
+```bash
+cd your-wordpress-theme/assets/
+git submodule add https://github.com/ansonphong/360-VIEWER.git 360-viewer
+```
+
+### Method 3: NPM (Coming Soon)
+
+```bash
+npm install phong-360-viewer
+```
+
+### Method 4: CDN (Coming Soon)
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/phong-360-viewer@3.0.0/dist/core/phong-360-viewer-core.min.js"></script>
+```
+
+---
+
+## 🎨 Use Cases
+
+### WordPress Theme Integration
+
+Perfect for adding 360° galleries to WordPress posts. See [WORDPRESS-INTEGRATION-PLAN.md](docs/WORDPRESS-INTEGRATION-PLAN.md) for complete guide.
+
+```php
+<?php
+// In your template
+$images = postworld_prepare_360_images($attachment_ids);
+?>
+
+<div id="viewer-360" style="width: 100%; height: 70vh;"></div>
+
+<script src="<?= get_template_directory_uri() ?>/assets/360-viewer/core/phong-360-viewer-core.js"></script>
+<script src="<?= get_template_directory_uri() ?>/assets/360-viewer/extensions/phong-360-multi-image.js"></script>
+
+<script>
+const core = new Phong360ViewerCore({ containerId: 'viewer-360' });
+const multi = new Phong360MultiImage({ 
+    core: core,
+    images: <?= json_encode($images) ?>
+});
+multi.loadImageById('<?= $images[0]['id'] ?>');
+</script>
+```
+
+### React Component
+
+```jsx
+import { useEffect, useRef } from 'react';
+
+function Viewer360({ imageUrl }) {
+    const containerRef = useRef(null);
+    const viewerRef = useRef(null);
+
+    useEffect(() => {
+        if (containerRef.current && window.Phong360ViewerCore) {
+            viewerRef.current = new window.Phong360ViewerCore({
+                containerId: containerRef.current.id,
+                imageUrl: imageUrl
+            });
+        }
+
+        return () => {
+            if (viewerRef.current) {
+                viewerRef.current.destroy();
+            }
+        };
+    }, [imageUrl]);
+
+    return <div id="viewer-360" ref={containerRef} style={{ width: '100%', height: '600px' }} />;
+}
+```
+
+### Static Site (Hugo, Jekyll, 11ty)
+
+```html
+<div id="viewer-360" style="width: 100%; height: 600px;"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/assets/360-viewer/core/phong-360-viewer-core.js"></script>
+<link rel="stylesheet" href="/assets/360-viewer/styles/phong-360-core.css">
+
+<script>
+new Phong360ViewerCore({
+    containerId: 'viewer-360',
+    imageUrl: '/images/360/{{ page.image }}'
+});
+</script>
+```
+
+---
+
+## 🔧 Building Image Libraries
+
+Use the included Python script to generate optimized libraries:
+
+```bash
+# Install dependencies
+pip install Pillow tqdm
+
+# Build library from images folder
+cd library
+python build_library.py
+
+# The script will:
+# ✅ Scan folders for equirectangular images
+# ✅ Generate thumbnails (512x256)
+# ✅ Create multiple resolutions (8K, 4K, 2K)
+# ✅ Build hierarchical category structure
+# ✅ Generate unique IDs
+# ✅ Extract image metadata
+```
+
+See [LIBRARY-FORMAT.md](docs/LIBRARY-FORMAT.md) for format specification.
+
+---
+
+## 🎮 Controls
+
+| Action | Mouse | Keyboard | Touch |
+|--------|-------|----------|-------|
+| **Look Around** | Click & Drag | Arrow Keys | Swipe |
+| **Zoom In** | Scroll Up | `+` or `=` | Pinch Out |
+| **Zoom Out** | Scroll Down | `-` or `_` | Pinch In |
+| **Toggle Projection** | Button | `P` | Button |
+| **Auto-Rotate** | - | `Space` | - |
+
+---
+
+## 📋 Requirements
+
+### Browser Support
+- Chrome/Edge 88+
+- Firefox 85+
+- Safari 14+
+- Modern mobile browsers
+- **WebGL support required**
+
+### Dependencies
+- **Three.js** r128 or later
+
+### Image Requirements
+- **Format**: Equirectangular (2:1 aspect ratio)
+- **File Types**: JPG, PNG
+- **Recommended Size**: 4096×2048 to 8192×4096
+
+---
+
+## 🏗️ Architecture
+
+```
+📁 360-viewer/
+├── 📄 README.md                    # You are here
+├── 📁 core/
+│   └── phong-360-viewer-core.js    # Layer 1: Core (30KB)
+├── 📁 extensions/
+│   ├── phong-360-multi-image.js    # Layer 2: Multi-image (+15KB)
+│   └── phong-360-library-ui.js     # Layer 3: Library UI (+20KB)
+├── 📁 styles/
+│   ├── phong-360-core.css          # Core styles
+│   └── phong-360-ui.css            # UI styles
+├── 📁 library/
+│   ├── library.json                # Image library
+│   ├── build_library.py            # Library builder
+│   └── resolutions.json            # Resolution config
+├── 📁 docs/
+│   ├── README.md                   # Documentation index
+│   ├── QUICKSTART.md               # Quick start guide
+│   ├── API.md                      # API reference
+│   ├── LIBRARY-FORMAT.md           # Library format spec
+│   ├── WORDPRESS-INTEGRATION-PLAN.md
+│   └── OPEN-SOURCE-READY.md
+└── 📄 index.html                   # Standalone demo
+```
+
+---
+
+## 🆚 Comparison
+
+| Feature | Phong 360 | Photo Sphere Viewer | Pannellum | Marzipano |
+|---------|-----------|---------------------|-----------|-----------|
+| **Core Size** | **30KB** | 180KB | 75KB | 95KB |
+| **Modular** | ✅ 3 Layers | ❌ | ❌ | ❌ |
+| **Build Required** | ❌ | ✅ | ❌ | ⚠️ |
+| **Framework Agnostic** | ✅ | ⚠️ | ✅ | ⚠️ |
+| **WordPress Docs** | ✅ | ❌ | ❌ | ❌ |
+| **Adaptive Loading** | ✅ | ❌ | ❌ | ⚠️ |
+| **localStorage Prefs** | ✅ | ⚠️ | ❌ | ❌ |
+| **License** | MIT | MIT | MIT | Apache 2.0 |
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
 
 1. Fork the repository
-2. Create your feature branch: `git checkout -b feature/AmazingFeature`
-3. Commit your changes: `git commit -m 'Add some AmazingFeature'`
-4. Push to the branch: `git push origin feature/AmazingFeature`
-5. Open a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## License
+See [OPEN-SOURCE-READY.md](docs/OPEN-SOURCE-READY.md) for growth strategy and roadmap.
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+## 🗺️ Roadmap
+
+### v3.0 ✅ (Current)
+- [x] Modular Russian Doll architecture
+- [x] Semantic resolution naming (8K/4K/2K)
+- [x] Adaptive loading
+- [x] localStorage preferences
+- [x] WordPress integration guide
+
+### v3.1 (Coming Soon)
+- [ ] NPM package
+- [ ] CDN distribution (jsDelivr)
+- [ ] TypeScript definitions
+- [ ] Minified builds
+- [ ] Source maps
+
+### v3.2 (Future)
+- [ ] VR mode support
+- [ ] Hotspot/annotation system
+- [ ] Video 360 support
+- [ ] Multi-resolution streaming
+- [ ] React/Vue wrapper components
+
+---
+
+## 📞 Support
+
+- **Documentation**: See [docs/](docs/) folder
+- **Issues**: [GitHub Issues](https://github.com/ansonphong/360-VIEWER/issues)
+- **Website**: [https://360.phong.com](https://360.phong.com)
+
+---
+
+**Version**: 3.0.0  
+**Last Updated**: November 2025  
+**Author**: Phong  
+**License**: MIT

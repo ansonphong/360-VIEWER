@@ -13,6 +13,9 @@ canvas {
 	width: 100vw;
 	height: 100vh;
 	user-select: none;
+	background: #000;
+	background-color: #000;
+	background-color: rgb(0, 0, 0);
 }
 
 .background-text {
@@ -80,14 +83,68 @@ canvas {
 	right:0;
 	top:0;
 	bottom:0;
+	background: #000;
 }
 
 #toolbar-panel {
-	position: absolute;
-	top: 10px;
-	right: 60px;
+	position: relative;
+	padding: 12px;
+	margin-right: 60px; /* Space for hamburger menu button */
 	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+	min-height: 48px; /* Match hamburger button height */
 	z-index: 20;
+}
+
+#toolbar-panel .toolbar-button {
+	flex: 1;
+	min-width: 0;
+	height: 50px; /* Updated to 50px */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Mobile responsive toolbar */
+@media (max-width: 768px) {
+	#toolbar-panel {
+		padding: 8px;
+		margin-right: 50px; /* Less space on mobile */
+		gap: 6px;
+	}
+	
+	#toolbar-panel .toolbar-button {
+		height: 44px; /* Smaller on mobile */
+		font-size: 11px;
+	}
+	
+	#switchProjectionButton {
+		font-size: 10px !important;
+		padding: 6px 8px !important;
+	}
+	
+	.resolution-selector {
+		font-size: 11px !important;
+		height: 44px !important;
+		padding: 6px 24px 6px 10px !important;
+		min-width: 120px !important;
+	}
+}
+
+#switchProjectionButton {
+	font-size: 12px;
+	padding: 8px 10px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#resolution-selector {
+	/* Inherits from .resolution-selector class */
 }
 
 #info-panel {
@@ -147,6 +204,50 @@ canvas {
 	z-index: -1;
 }
 
+/* Loading Overlay */
+#loading-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: #000;
+	z-index: 10;
+	display: none;
+	justify-content: center;
+	align-items: center;
+	flex-direction: column;
+	transition: opacity 200ms ease-in-out;
+}
+
+#loading-overlay .spinner {
+	border: 4px solid rgba(255, 255, 255, 0.1);
+	border-top: 4px solid rgba(255, 255, 255, 0.8);
+	border-radius: 50%;
+	width: 50px;
+	height: 50px;
+	animation: spin 1s linear infinite;
+}
+
+#loading-overlay .loading-text {
+	color: rgba(255, 255, 255, 0.6);
+	font-size: 14px;
+	margin-top: 20px;
+	font-family: Arial, sans-serif;
+	letter-spacing: 1px;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+/* Disable clicks during transitions */
+.transitioning {
+	pointer-events: none;
+	opacity: 0.6;
+}
+
 #drag-drop-overlay {
 	display: none;
 	position: fixed;
@@ -183,7 +284,7 @@ body {
 #hamburger-menu {
 	position: fixed;
 	top: 10px;
-	right: 0px;
+	right: 10px;
 	font-size: 26px;
 }
 
@@ -198,9 +299,9 @@ body {
 	color: white;
 	transition: right 0.3s ease-in-out;
 	z-index: 100;
-	overflow-y: auto;
-	scrollbar-width: none; /* Firefox */
-	-ms-overflow-style: none; /* Internet Explorer 10+ */
+	display: flex;
+	flex-direction: column;
+	overflow: hidden; /* Panel itself doesn't scroll, only content inside */
 }
 
 #library-panel::-webkit-scrollbar {
@@ -222,13 +323,32 @@ body {
 }
 
 #library-content {
-	padding: 10px 10px 10px 10px;
+	padding: 0;
+	flex: 1;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
 
-#library-content h2 {
-	margin-top: 10px;
-	padding-left: 10px;
-	height: 32px;
+#library-content::-webkit-scrollbar {
+	width: 8px;
+}
+
+#library-content::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+#library-content::-webkit-scrollbar-thumb {
+	background-color: rgba(255, 255, 255, 0.3);
+	border-radius: 4px;
+}
+
+#library-content::-webkit-scrollbar-thumb:hover {
+	background-color: rgba(255, 255, 255, 0.5);
+}
+
+#library-tree {
+	padding: 12px;
 }
 
 #library-tree ul {
@@ -236,7 +356,7 @@ body {
 	padding-left: 8px;
 	margin: 0;
 	padding: 0px;
-	margin-top: 10px;
+	margin-top: 0;
 }
 
 #library-tree li {
@@ -244,16 +364,51 @@ body {
 	background-color: rgba(255, 255, 255, 0.05);
 	display: block;
 	border-radius: 6px;
-	padding: 5px;
 }
 
-#library-tree .folder {
-	cursor: pointer;
-	padding: 10px;
-}
 
 #library-tree .folder > span {
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 14px 16px;
+	border-radius: 8px;
+	margin-bottom: 10px;
+	font-weight: 600;
+	font-size: 0.95em;
+	background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	cursor: pointer;
+	user-select: none;
+	transition: all 0.2s ease;
+	position: relative;
+	min-height: 48px; /* Mobile-friendly touch target */
+}
+
+/* Add chevron indicator */
+#library-tree .folder > span::before {
+	content: '▶';
+	font-size: 0.7em;
+	color: rgba(255, 255, 255, 0.6);
+	transition: transform 0.3s ease;
+}
+
+/* Rotate chevron when expanded */
+#library-tree .folder.expanded > span::before {
+	transform: rotate(90deg);
+}
+
+/* Hover effect */
+#library-tree .folder > span:hover {
+	background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%);
+	border-color: rgba(255, 255, 255, 0.2);
+	transform: translateX(2px);
+}
+
+/* Active/pressed effect */
+#library-tree .folder > span:active {
+	transform: scale(0.98);
+	background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
 }
 
 #library-tree .file {
@@ -294,7 +449,7 @@ body {
 	min-height: 128px;
 	object-fit: cover;
 	object-position: center;
-	border-radius: 16px;
+	border-radius: 6px;
 	transition: 0.2s all ease;
 }
 
@@ -322,7 +477,6 @@ body {
 	justify-content: center;
 	transition: all 0.3s ease-out;
 	cursor: pointer;
-	margin-right: 10px;
 	font-family: Arial, sans-serif;
 	font-size: 18px;
 	z-index: 1000;
@@ -348,4 +502,47 @@ body {
 
 .toolbar-button.active:hover {
 	color: #000;
+}
+
+/* Resolution Selector */
+.resolution-selector {
+	min-width: 180px;
+	height: 50px;
+	font-size: 13px;
+	font-weight: 500;
+	cursor: pointer;
+	margin-left: 8px;
+	font-family: "Karla", sans-serif;
+	padding: 8px 32px 8px 12px;
+	background-color: rgba(0, 0, 0, 0.5);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23ffffff' opacity='0.8' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 10px center;
+	background-size: 10px;
+	color: rgba(255, 255, 255, 0.9);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 6px;
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	transition: all 0.2s ease;
+	outline: none;
+}
+
+.resolution-selector:hover {
+	background-color: rgba(0, 0, 0, 0.7);
+	border-color: rgba(255, 255, 255, 0.4);
+	color: #fff;
+}
+
+.resolution-selector:focus {
+	border-color: rgba(255, 255, 255, 0.6);
+	box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+.resolution-selector option {
+	background-color: rgba(0, 0, 0, 0.95);
+	color: #fff;
+	padding: 10px;
+	font-weight: 500;
 }
