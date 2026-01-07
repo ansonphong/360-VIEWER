@@ -1,9 +1,9 @@
 /**
  * Phong 360 Viewer Core - Ultra-Lightweight Layer 1
- * 
+ *
  * Pure 360° image rendering with controls. No library management, no multi-image support.
  * Just load ONE image and view it. Perfect for embedding anywhere.
- * 
+ *
  * @version 3.0.0-core
  * @author Phong
  * @license MIT
@@ -15,7 +15,7 @@
 
     /**
      * Phong360ViewerCore - Ultra-lightweight single image viewer
-     * 
+     *
      * @class
      * @param {Object} options - Configuration options
      * @param {string} options.containerId - ID of the container element
@@ -69,7 +69,7 @@
 
             // Container reference
             this.container = null;
-            
+
             // Loading state
             this.isLoading = false;
             this.isFirstLoad = true;
@@ -84,18 +84,11 @@
             this.lastPointerY = 0;
             this.onPointerDownLon = 0;
             this.onPointerDownLat = 0;
-            
-            // Detect mobile/touch device for sensitivity adjustment
-            this.isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-            // Drag sensitivity: Higher = more sensitive
-            // Mobile: 0.5 for highly responsive 1:1 tracking
-            // Desktop: 0.1 for smooth inertia feel (PERFECT - don't change)
-            this.dragSensitivity = this.isMobileDevice ? 0.5 : 0.1;
 
             // Touch interaction
             this.lastTouchDistance = 0;
             this.isTouching = false;
-            
+
             // Mobile-specific direct touch tracking (best practice for responsive feel)
             this.touchStartX = 0;
             this.touchStartY = 0;
@@ -104,7 +97,7 @@
             this.touchStartLon = 0;
             this.touchStartLat = 0;
             this.isTouchDragging = false;
-            
+
             // Pinch zoom state (Google Maps style)
             this.isPinching = false;
             this.pinchStartFov = 0;
@@ -123,14 +116,14 @@
 
             // Aspect ratio and projection
             this.aspect = 1.0;
-            
+
             // Load saved projection preference from localStorage (default: stereographic = 1)
             this.projectionType = 1; // 0 = gnomonic, 1 = stereographic
             try {
                 const savedProjection = localStorage.getItem('phong360.preferences.projection');
                 if (savedProjection !== null) {
                     this.projectionType = parseInt(savedProjection, 10);
-                    console.log('[Phong360ViewerCore] Loaded saved projection preference:', 
+                    console.log('[Phong360ViewerCore] Loaded saved projection preference:',
                         this.projectionType === 0 ? 'gnomonic' : 'stereographic');
                 }
             } catch (e) {
@@ -267,19 +260,19 @@
 
             // Calculate aspect ratio
             this.aspect = this.container.clientWidth / this.container.clientHeight;
-            
+
             // Create loading overlay (starts visible)
             this.createLoadingOverlay();
             this.showLoading(); // Show it initially
         }
-        
+
         /**
          * Create loading overlay with spinner
          */
         createLoadingOverlay() {
             // Get or create loading overlay
             this.loadingOverlay = document.getElementById('loading-overlay');
-            
+
             if (!this.loadingOverlay) {
                 // Create it if it doesn't exist
                 this.loadingOverlay = document.createElement('div');
@@ -298,7 +291,7 @@
                     flex-direction: column;
                     transition: opacity 200ms ease-in-out;
                 `;
-                
+
                 // Create spinner
                 const spinner = document.createElement('div');
                 spinner.className = 'spinner';
@@ -310,12 +303,12 @@
                     height: 50px;
                     animation: spin 1s linear infinite;
                 `;
-                
+
                 this.loadingOverlay.appendChild(spinner);
                 document.body.appendChild(this.loadingOverlay);
             }
         }
-        
+
         /**
          * Show loading spinner
          */
@@ -325,7 +318,7 @@
                 this.loadingOverlay.style.opacity = '1';
             }
         }
-        
+
         /**
          * Hide loading spinner
          */
@@ -383,37 +376,37 @@
                 console.log('[Phong360ViewerCore] Already loading, ignoring request');
                 return;
             }
-            
+
             this.isLoading = true;
             console.log('[Phong360ViewerCore] Loading image:', url);
-            
+
             // Show loading overlay (always - whether first load or switching)
             this.showLoading();
-            
+
             // If not first load, dispose old texture
             if (!this.isFirstLoad) {
                 this.disposeCurrentTexture();
             }
-            
+
             const loader = new THREE.TextureLoader();
-            
+
             return new Promise((resolve, reject) => {
                 loader.load(
                     url,
                     (texture) => {
                         console.log('[Phong360ViewerCore] Texture loaded successfully:', url);
                         console.log('[Phong360ViewerCore] Texture dimensions:', texture.image.width, 'x', texture.image.height);
-                        
+
                         this.applyTexture(texture);
                         console.log('[Phong360ViewerCore] Material applied to mesh');
-                        
+
                         // Hide loading overlay after a brief moment to ensure render
                         setTimeout(() => {
                             this.hideLoading();
                             this.isLoading = false;
                             this.isFirstLoad = false;
                         }, 200);
-                        
+
                         resolve(texture);
                     },
                     (progress) => {
@@ -434,7 +427,7 @@
          */
         applyTexture(texture) {
             console.log('[Phong360ViewerCore] Applying texture to mesh...');
-            
+
             // Configure texture
             texture.generateMipmaps = true;
             texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -504,7 +497,7 @@
             // Clamp FOV to new projection limits
             this.targetState.fov = this.clampFOV(this.targetState.fov);
             this.state.fov = this.clampFOV(this.state.fov);
-            
+
             // Save preference to localStorage
             try {
                 localStorage.setItem('phong360.preferences.projection', type.toString());
@@ -574,9 +567,6 @@
         // ============================================================================
 
         onPointerDown(event) {
-            // Skip pointer events on touch devices (they use touch handlers instead)
-            if (this.isMobileDevice) return;
-            
             this.isPointerDown = true;
             this.isUserInteracting = true;
             this.pointerStartX = event.clientX;
@@ -588,8 +578,6 @@
         }
 
         onPointerMove(event) {
-            // Skip pointer events on touch devices (they use touch handlers instead)
-            if (this.isMobileDevice) return;
             if (!this.isPointerDown) return;
 
             const deltaX = event.clientX - this.lastPointerX;
@@ -608,9 +596,6 @@
         }
 
         onPointerUp(event) {
-            // Skip pointer events on touch devices (they use touch handlers instead)
-            if (this.isMobileDevice) return;
-            
             this.isPointerDown = false;
             this.isUserInteracting = false;
         }
@@ -619,7 +604,7 @@
             // Check if mouse is over the canvas first
             const elementUnderMouse = document.elementFromPoint(event.clientX, event.clientY);
             const canvas = this.container.querySelector('canvas');
-            
+
             // Only handle zoom if mouse is over canvas
             if (elementUnderMouse === canvas) {
                 event.preventDefault(); // Only prevent default when over canvas
@@ -697,7 +682,7 @@
 
         startContinuousZoom(direction) {
             if (this.zoomInterval) return;
-            
+
             this.zoomInterval = setInterval(() => {
                 const delta = direction === 'in' ? -this.config.zoom.increment : this.config.zoom.increment;
                 this.targetState.fov = this.clampFOV(this.targetState.fov + delta);
@@ -713,7 +698,7 @@
 
         startContinuousPan() {
             if (this.panInterval) return;
-            
+
             this.panInterval = setInterval(() => {
                 const panSpeed = 2;
                 if (this.activeKeys.panLeft) this.targetState.lon -= panSpeed;
@@ -724,7 +709,7 @@
         }
 
         stopContinuousPan() {
-            if (!this.activeKeys.panLeft && !this.activeKeys.panRight && 
+            if (!this.activeKeys.panLeft && !this.activeKeys.panRight &&
                 !this.activeKeys.panUp && !this.activeKeys.panDown) {
                 clearInterval(this.panInterval);
                 this.panInterval = null;
@@ -743,7 +728,7 @@
                 this.pinchStartFov = this.state.fov; // Use current state for direct manipulation
                 return;
             }
-            
+
             // Handle single-finger drag (mobile-specific direct manipulation)
             if (event.touches.length === 1) {
                 const touch = event.touches[0];
@@ -764,48 +749,48 @@
                 event.preventDefault();
                 const currentDistance = this.getPinchDistance(event);
                 const initialDistance = this.lastTouchDistance;
-                
+
                 // Calculate zoom ratio (pinch in = zoom out, spread = zoom in)
                 const ratio = initialDistance / currentDistance;
-                
+
                 // DIRECT state manipulation for instant 1:1 feedback
                 // More sensitivity than desktop for responsive feel
                 const sensitivity = 1.5; // Higher = more responsive to pinch
                 const fovChange = (ratio - 1) * this.pinchStartFov * sensitivity;
-                
+
                 // Update state directly (no interpolation during pinch)
                 this.state.fov = this.clampFOV(this.pinchStartFov + fovChange);
-                
+
                 // Keep target in sync (prevents snap-back)
                 this.targetState.fov = this.state.fov;
-                
+
                 // Update last distance for next frame (allows continuous pinching)
                 this.lastTouchDistance = currentDistance;
                 this.pinchStartFov = this.state.fov; // Update baseline for smooth continuous zoom
                 return;
             }
-            
+
             // Handle single-finger drag (mobile-specific DIRECT manipulation)
             if (event.touches.length === 1 && this.isTouchDragging) {
                 event.preventDefault();
                 const touch = event.touches[0];
                 this.touchCurrentX = touch.clientX;
                 this.touchCurrentY = touch.clientY;
-                
+
                 // Calculate delta from start position
                 const deltaX = this.touchStartX - touch.clientX;
                 const deltaY = touch.clientY - this.touchStartY;
-                
+
                 // DIRECT state manipulation for 1:1 feel (no interpolation during drag)
                 // This is best practice for mobile: update state directly, not target
                 const sensitivity = 0.3; // Higher sensitivity for responsive feel
                 this.state.lon = this.touchStartLon + (deltaX * sensitivity);
                 this.state.lat = Math.max(-85, Math.min(85, this.touchStartLat + (deltaY * sensitivity)));
-                
+
                 // Also update target to match (prevents snap-back after release)
                 this.targetState.lon = this.state.lon;
                 this.targetState.lat = this.state.lat;
-                
+
                 // Update angles for shader
                 this.state.theta = THREE.MathUtils.degToRad(this.state.lon);
                 this.state.phi = THREE.MathUtils.degToRad(90 - this.state.lat);
@@ -820,7 +805,7 @@
                 this.isPinching = false;
                 this.lastTouchDistance = 0;
             }
-            
+
             if (event.touches.length === 0) {
                 this.isTouchDragging = false;
                 this.isPinching = false;
@@ -849,10 +834,10 @@
         onWindowResize() {
             const width = this.container.clientWidth;
             const height = this.container.clientHeight;
-            
+
             this.aspect = width / height;
             this.renderer.setSize(width, height);
-            
+
             if (this.mesh && this.mesh.material && this.mesh.material.uniforms) {
                 this.mesh.material.uniforms.aspect.value = this.aspect;
             }
@@ -864,11 +849,11 @@
 
         animate() {
             this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
-            
+
             if (!this.isTabVisible) return;
-            
+
             this.update();
-            
+
             // Only render if mesh has material
             if (this.mesh && this.mesh.material) {
                 this.renderer.render(this.scene, this.camera);
@@ -898,7 +883,7 @@
             if (!this.isTouchDragging && !this.isPinching) {
                 // Desktop: Use smooth inertia (PERFECT - unchanged)
                 const rotationSmoothing = this.config.viewRotation.smoothness;
-                
+
                 // Smooth interpolation
                 this.state.theta += (this.targetState.theta - this.state.theta) / (rotationSmoothing * delta);
                 this.state.phi += (this.targetState.phi - this.state.phi) / (rotationSmoothing * delta);
@@ -952,22 +937,22 @@
                 // Sampling function with bilinear interpolation
                 vec4 sampleEquirectangular(sampler2D tex, vec2 uv) {
                     vec2 texSize = vec2(textureSize(tex, 0));
-                    
+
                     uv.x = mod(uv.x, 1.0);
                     uv.y = clamp(uv.y, 0.0, 1.0);
-                    
+
                     vec2 texel = uv * texSize - 0.5;
                     ivec2 st = ivec2(floor(texel));
                     vec2 t = fract(texel);
-                    
+
                     st.x = (st.x + int(texSize.x)) % int(texSize.x);
                     st.y = clamp(st.y, 0, int(texSize.y) - 1);
-                    
+
                     vec4 tx0y0 = texelFetch(tex, st, 0);
                     vec4 tx1y0 = texelFetch(tex, ivec2((st.x + 1) % int(texSize.x), st.y), 0);
                     vec4 tx0y1 = texelFetch(tex, ivec2(st.x, min(st.y + 1, int(texSize.y) - 1)), 0);
                     vec4 tx1y1 = texelFetch(tex, ivec2((st.x + 1) % int(texSize.x), min(st.y + 1, int(texSize.y) - 1)), 0);
-                    
+
                     vec4 tx_y0 = mix(tx0y0, tx1y0, t.x);
                     vec4 tx_y1 = mix(tx0y1, tx1y1, t.x);
                     return mix(tx_y0, tx_y1, t.y);
@@ -976,13 +961,13 @@
                 // Gnomonic projection function
                 vec2 gnomonicProjection(in vec2 screenCoord, in vec2 centralPoint, in float fovRadians) {
                     vec2 cp = (centralPoint * 2.0 - 1.0) * vec2(PI, PI_2);
-                    
+
                     // Calculate the tangent of half the FOV
                     float tanHalfFov = tan(fovRadians * 0.5);
-                    
+
                     // Scale the screen coordinates based on FOV
                     vec2 scaledCoord = (screenCoord * 2.0 - 1.0) * vec2(aspect * tanHalfFov, tanHalfFov);
-                    
+
                     float x = scaledCoord.x;
                     float y = scaledCoord.y;
 
@@ -1006,12 +991,12 @@
 
                 vec2 stereographicProjection(in vec2 screenCoord, in vec2 centralPoint, in float fovRadians) {
                     vec2 cp = centralPoint * vec2(PI2, PI) - vec2(PI, PI_2);
-                    
+
                     // Calculate the scale based on FOV
                     // We use tan(fovRadians * 0.25) instead of 1.0 / tan(fovRadians * 0.25)
                     // This inverts the behavior: higher FOV = zoomed out, lower FOV = zoomed in
                     float scale = tan(fovRadians * 0.25);  // Use quarter of FOV for stereographic
-                    
+
                     vec2 sp = (screenCoord - 0.5) * 2.0 * vec2(aspect, 1.0) * scale;
 
                     float rho = length(sp);
@@ -1032,7 +1017,7 @@
                 vec4 sampleWithAA(vec2 uv, vec2 centralPoint, float fovRadians) {
                     const float AA_SCALE = 0.5 / 2048.0;
                     vec4 color = vec4(0.0);
-                    
+
                     for (int i = 0; i < 4; i++) {
                         for (int j = 0; j < 4; j++) {
                             vec2 offset = vec2(float(i), float(j)) * AA_SCALE;
@@ -1045,7 +1030,7 @@
                             color += sampleEquirectangular(equirectangularMap, coord);
                         }
                     }
-                    
+
                     return color * 0.0625; // 1/16
                 }
 
@@ -1064,7 +1049,7 @@
 
                     // Pole handling
                     float poleTransition = smoothstep(0.99, 1.0, abs(2.0 * coord.y - 1.0));
-                    
+
                     if (poleTransition > 0.0) {
                         vec4 poleColor;
                         if (coord.y > 0.5) {
@@ -1072,7 +1057,7 @@
                         } else {
                             poleColor = sampleEquirectangular(equirectangularMap, vec2(coord.x, 0.0001));
                         }
-                        
+
                         color = mix(color, poleColor, poleTransition);
                     }
 
