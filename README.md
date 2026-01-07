@@ -26,6 +26,7 @@
 | Document | Description |
 |----------|-------------|
 | **[QUICKSTART.md](docs/QUICKSTART.md)** | Get started in 5 minutes |
+| **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Production deployment guide |
 | **[API.md](docs/API.md)** | Complete API reference |
 | **[LIBRARY-FORMAT.md](docs/LIBRARY-FORMAT.md)** | Library format specification |
 | **[WORDPRESS-INTEGRATION-PLAN.md](docs/WORDPRESS-INTEGRATION-PLAN.md)** | WordPress integration guide |

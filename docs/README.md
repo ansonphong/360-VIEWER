@@ -34,6 +34,16 @@ Complete API documentation for all three layers:
 - Error handling
 - Performance tips
 
+### [Deployment Guide](DEPLOYMENT.md)
+Complete production deployment documentation:
+- Static hosting (Netlify, Vercel, GitHub Pages, Cloudflare)
+- Traditional servers (Nginx, Apache)
+- CDN configuration
+- Performance optimization
+- Security best practices
+- WordPress deployment
+- Troubleshooting
+
 ### [Library Format Specification](LIBRARY-FORMAT.md)
 JSON format for image libraries:
 - v3.0 format with semantic resolutions (8K/4K/2K)
@@ -80,6 +90,7 @@ Roadmap for open-source adoption and growth:
 | Document | Purpose | Best For |
 |----------|---------|----------|
 | **[QUICKSTART.md](QUICKSTART.md)** | Step-by-step tutorials | Beginners, quick implementations |
+| **[DEPLOYMENT.md](DEPLOYMENT.md)** | Production deployment | Going live, hosting setup |
 | **[API.md](API.md)** | Complete API reference | Developers, advanced usage |
 | **[LIBRARY-FORMAT.md](LIBRARY-FORMAT.md)** | Library JSON format | Building libraries, WordPress integration |
 | **[WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md)** | WordPress integration | Theme developers, WordPress users |
@@ -91,6 +102,15 @@ Roadmap for open-source adoption and growth:
 
 ### "I want to embed a single 360° image on my website"
 → Go to [QUICKSTART.md](QUICKSTART.md) → Section 1
+
+### "I want to deploy to production"
+→ Go to [DEPLOYMENT.md](DEPLOYMENT.md)
+
+### "I need to set up Nginx or Apache"
+→ Go to [DEPLOYMENT.md](DEPLOYMENT.md) → Traditional Web Servers
+
+### "How do I deploy to Netlify/Vercel/GitHub Pages?"
+→ Go to [DEPLOYMENT.md](DEPLOYMENT.md) → Static Hosting
 
 ### "I need multiple images with quality options"
 → Go to [QUICKSTART.md](QUICKSTART.md) → Section 2
