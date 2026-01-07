@@ -142,12 +142,23 @@
 
 			window.addEventListener('DOMContentLoaded', function() {
 				try {
+					// Load auto-rotate preference from localStorage (default: false/OFF)
+					let autoRotateEnabled = false;
+					try {
+						const savedPref = localStorage.getItem('phong360.preferences.autoRotate');
+						if (savedPref !== null) {
+							autoRotateEnabled = savedPref === 'true';
+						}
+					} catch (e) {
+						console.warn('Could not load auto-rotate preference:', e);
+					}
+
 					// Layer 1: Core viewer (ultra-lightweight, single image)
 					core = new Phong360ViewerCore({
 						containerId: 'container',
 						config: {
 							viewRotation: {
-								autoRotate: true,
+								autoRotate: autoRotateEnabled,
 								autoRotationRate: 1
 							}
 						}
@@ -222,6 +233,31 @@
 							core.switchProjection(currentProjection);
 							switchButton.title = currentProjection === 0 ? 'Gnomonic Projection' : 'Stereographic Projection';
 							switchButton.textContent = currentProjection === 0 ? 'Gnomonic' : 'Stereographic';
+						});
+					}
+
+					// Setup auto-rotate toggle
+					const autoRotateToggle = document.getElementById('autoRotateToggle');
+					if (autoRotateToggle) {
+						// Set initial toggle state
+						autoRotateToggle.checked = autoRotateEnabled;
+
+						// Handle toggle changes
+						autoRotateToggle.addEventListener('change', function() {
+							const enabled = autoRotateToggle.checked;
+
+							// Update core config
+							core.config.viewRotation.autoRotate = enabled;
+
+							// Save preference to localStorage
+							try {
+								localStorage.setItem('phong360.preferences.autoRotate', enabled.toString());
+								console.log('Auto-rotate preference saved:', enabled);
+							} catch (e) {
+								console.warn('Could not save auto-rotate preference:', e);
+							}
+
+							console.log('Auto-rotate', enabled ? 'enabled' : 'disabled');
 						});
 					}
 
@@ -354,6 +390,85 @@
 				transform: translateY(0);
 			}
 
+			/* Auto-rotate toggle styling */
+			.auto-rotate-toggle {
+				margin: 20px 0;
+				padding: 16px;
+				background: rgba(255, 255, 255, 0.05);
+				border-radius: 8px;
+				border: 1px solid rgba(255, 255, 255, 0.1);
+			}
+
+			.toggle-container {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				cursor: pointer;
+				user-select: none;
+			}
+
+			.toggle-label-text {
+				font-size: 16px;
+				font-weight: 600;
+				color: rgba(255, 255, 255, 0.9);
+			}
+
+			.toggle-switch-wrapper {
+				position: relative;
+				width: 50px;
+				height: 26px;
+			}
+
+			.toggle-switch-wrapper input[type="checkbox"] {
+				opacity: 0;
+				width: 0;
+				height: 0;
+				position: absolute;
+			}
+
+			.toggle-slider {
+				position: absolute;
+				cursor: pointer;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background-color: rgba(255, 255, 255, 0.2);
+				transition: 0.3s;
+				border-radius: 26px;
+			}
+
+			.toggle-slider:before {
+				position: absolute;
+				content: "";
+				height: 20px;
+				width: 20px;
+				left: 3px;
+				bottom: 3px;
+				background-color: white;
+				transition: 0.3s;
+				border-radius: 50%;
+			}
+
+			.toggle-switch-wrapper input:checked + .toggle-slider {
+				background-color: #4CAF50;
+			}
+
+			.toggle-switch-wrapper input:checked + .toggle-slider:before {
+				transform: translateX(24px);
+			}
+
+			.toggle-switch-wrapper input:focus + .toggle-slider {
+				box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
+			}
+
+			.toggle-description {
+				margin: 8px 0 0 0;
+				font-size: 13px;
+				color: rgba(255, 255, 255, 0.6);
+				line-height: 1.4;
+			}
+
 			/* Mobile optimization */
 			@media (max-width: 768px) {
 				#instructions-content {
@@ -374,6 +489,14 @@
 					margin-bottom: 10px;
 					font-size: 15px;
 				}
+
+				.toggle-label-text {
+					font-size: 15px;
+				}
+
+				.toggle-description {
+					font-size: 12px;
+				}
 			}
 		</style>
 
@@ -387,6 +510,19 @@
 					<li>📂 <strong>Drag & Drop</strong> your own 360° images</li>
 					<li>⌨️ <strong>Arrow keys</strong> to pan, +/- to zoom</li>
 				</ul>
+
+				<!-- Auto-rotate toggle -->
+				<div class="auto-rotate-toggle">
+					<label class="toggle-container">
+						<span class="toggle-label-text">🔄 Auto-rotate</span>
+						<div class="toggle-switch-wrapper">
+							<input type="checkbox" id="autoRotateToggle">
+							<span class="toggle-slider"></span>
+						</div>
+					</label>
+					<p class="toggle-description">Gently spin in the direction you last panned</p>
+				</div>
+
 				<button onclick="document.getElementById('instructions').classList.remove('show')">
 					Got it!
 				</button>
