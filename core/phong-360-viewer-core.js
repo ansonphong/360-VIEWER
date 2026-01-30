@@ -114,6 +114,27 @@
             this.zoomInterval = null;
             this.panInterval = null;
 
+            // Store bound handlers for proper removal (FIX: .bind() creates new refs each time)
+            this.boundHandlers = {
+                onWindowResize: this.onWindowResize.bind(this),
+                onPointerDown: this.onPointerDown.bind(this),
+                onPointerMove: this.onPointerMove.bind(this),
+                onPointerUp: this.onPointerUp.bind(this),
+                onDocumentMouseWheel: this.onDocumentMouseWheel.bind(this),
+                onTouchStart: this.onTouchStart.bind(this),
+                onTouchMove: this.onTouchMove.bind(this),
+                onTouchEnd: this.onTouchEnd.bind(this),
+                onKeyDown: this.onKeyDown.bind(this),
+                onKeyUp: this.onKeyUp.bind(this),
+                handleVisibilityChange: this.handleVisibilityChange.bind(this),
+                handleFocus: this.handleFocus.bind(this),
+                handleBlur: this.handleBlur.bind(this),
+                animate: this.animate.bind(this)
+            };
+
+            // Destroyed flag to prevent operations after cleanup
+            this.isDestroyed = false;
+
             // Aspect ratio and projection
             this.aspect = 1.0;
 
@@ -335,33 +356,34 @@
 
         /**
          * Setup event listeners
+         * Uses stored bound handlers for proper removal in destroy()
          */
         setupEventListeners() {
             // Window resize
-            window.addEventListener('resize', this.onWindowResize.bind(this));
+            window.addEventListener('resize', this.boundHandlers.onWindowResize);
 
             // Mouse/pointer events
-            document.addEventListener('pointerdown', this.onPointerDown.bind(this));
-            document.addEventListener('pointermove', this.onPointerMove.bind(this));
-            document.addEventListener('pointerup', this.onPointerUp.bind(this));
-            document.addEventListener('pointercancel', this.onPointerUp.bind(this));
+            document.addEventListener('pointerdown', this.boundHandlers.onPointerDown);
+            document.addEventListener('pointermove', this.boundHandlers.onPointerMove);
+            document.addEventListener('pointerup', this.boundHandlers.onPointerUp);
+            document.addEventListener('pointercancel', this.boundHandlers.onPointerUp);
 
             // Mouse wheel (non-passive to allow preventDefault)
-            document.addEventListener('wheel', this.onDocumentMouseWheel.bind(this), { passive: false });
+            document.addEventListener('wheel', this.boundHandlers.onDocumentMouseWheel, { passive: false });
 
             // Touch events (non-passive to allow preventDefault)
-            this.container.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: false });
-            this.container.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
-            this.container.addEventListener('touchend', this.onTouchEnd.bind(this), { passive: false });
+            this.container.addEventListener('touchstart', this.boundHandlers.onTouchStart, { passive: false });
+            this.container.addEventListener('touchmove', this.boundHandlers.onTouchMove, { passive: false });
+            this.container.addEventListener('touchend', this.boundHandlers.onTouchEnd, { passive: false });
 
             // Keyboard
-            document.addEventListener('keydown', this.onKeyDown.bind(this));
-            document.addEventListener('keyup', this.onKeyUp.bind(this));
+            document.addEventListener('keydown', this.boundHandlers.onKeyDown);
+            document.addEventListener('keyup', this.boundHandlers.onKeyUp);
 
             // Tab visibility
-            document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
-            window.addEventListener('focus', this.handleFocus.bind(this));
-            window.addEventListener('blur', this.handleBlur.bind(this));
+            document.addEventListener('visibilitychange', this.boundHandlers.handleVisibilityChange);
+            window.addEventListener('focus', this.boundHandlers.handleFocus);
+            window.addEventListener('blur', this.boundHandlers.handleBlur);
         }
 
         /**
@@ -820,11 +842,31 @@
         }
 
         handleVisibilityChange() {
+            const wasVisible = this.isTabVisible;
             this.isTabVisible = !document.hidden;
+
+            // Actually stop/start animation loop on visibility change
+            if (document.hidden) {
+                if (this.animationFrameId) {
+                    cancelAnimationFrame(this.animationFrameId);
+                    this.animationFrameId = null;
+                }
+            } else if (!wasVisible && !this.isDestroyed) {
+                this.lastUpdate = Date.now();  // Reset to prevent huge delta
+                if (!this.animationFrameId) {
+                    this.animate();
+                }
+            }
         }
 
         handleFocus() {
-            this.isTabVisible = true;
+            if (!this.isTabVisible && !this.isDestroyed) {
+                this.isTabVisible = true;
+                this.lastUpdate = Date.now();
+                if (!this.animationFrameId) {
+                    this.animate();
+                }
+            }
         }
 
         handleBlur() {
@@ -848,9 +890,11 @@
         // ============================================================================
 
         animate() {
-            this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
+            // Use stored bound handler to avoid creating new function refs
+            this.animationFrameId = requestAnimationFrame(this.boundHandlers.animate);
 
-            if (!this.isTabVisible) return;
+            // Skip if destroyed, tab hidden
+            if (this.isDestroyed || !this.isTabVisible) return;
 
             this.update();
 
@@ -865,9 +909,12 @@
             const delta = (now - this.lastUpdate) / 1000; // Delta in seconds
             this.lastUpdate = now;
 
+            // Guard against zero/tiny delta causing division by zero → NaN
+            const safeDelta = Math.max(delta, 0.001);  // Minimum 1ms
+
             // Auto-rotation (only when not interacting)
             if (this.config.viewRotation.autoRotate && !this.isUserInteracting) {
-                this.targetState.lon = this.targetState.lon - (this.config.viewRotation.autoRotationRate * this.state.azimuthSign * delta);
+                this.targetState.lon = this.targetState.lon - (this.config.viewRotation.autoRotationRate * this.state.azimuthSign * safeDelta);
             }
 
             // Clamp latitude
@@ -881,16 +928,32 @@
             // SKIP smooth interpolation during mobile touch drag or pinch (direct manipulation)
             // Only apply smoothing for desktop pointer interaction
             if (!this.isTouchDragging && !this.isPinching) {
-                // Desktop: Use smooth inertia (PERFECT - unchanged)
+                // Desktop: Use smooth inertia
                 const rotationSmoothing = this.config.viewRotation.smoothness;
 
-                // Smooth interpolation
-                this.state.theta += (this.targetState.theta - this.state.theta) / (rotationSmoothing * delta);
-                this.state.phi += (this.targetState.phi - this.state.phi) / (rotationSmoothing * delta);
-                this.state.fov += (this.targetState.fov - this.state.fov) / (this.config.zoom.smoothing * delta);
+                // Clamp divisors to prevent extreme values
+                const rotationDivisor = Math.max(rotationSmoothing * safeDelta, 1);
+                const zoomDivisor = Math.max(this.config.zoom.smoothing * safeDelta, 1);
 
-                this.state.lon += (this.targetState.lon - this.state.lon) / (rotationSmoothing * delta);
-                this.state.lat += (this.targetState.lat - this.state.lat) / (rotationSmoothing * delta);
+                // Smooth interpolation
+                this.state.theta += (this.targetState.theta - this.state.theta) / rotationDivisor;
+                this.state.phi += (this.targetState.phi - this.state.phi) / rotationDivisor;
+                this.state.fov += (this.targetState.fov - this.state.fov) / zoomDivisor;
+
+                this.state.lon += (this.targetState.lon - this.state.lon) / rotationDivisor;
+                this.state.lat += (this.targetState.lat - this.state.lat) / rotationDivisor;
+
+                // NaN guard - reset view if corruption detected
+                if (isNaN(this.state.theta) || isNaN(this.state.phi) || isNaN(this.state.fov) ||
+                    isNaN(this.state.lon) || isNaN(this.state.lat)) {
+                    console.warn('[Phong360ViewerCore] NaN detected in view state, resetting');
+                    this.resetView();
+                    this.state.theta = this.targetState.theta;
+                    this.state.phi = this.targetState.phi;
+                    this.state.fov = this.targetState.fov;
+                    this.state.lon = this.targetState.lon;
+                    this.state.lat = this.targetState.lat;
+                }
             }
             // Mobile touch/pinch: State is already updated directly in touch handlers (1:1 tracking)
 
@@ -1071,22 +1134,53 @@
         // ============================================================================
 
         destroy() {
+            // Mark as destroyed FIRST to stop any pending operations
+            this.isDestroyed = true;
+
             // Cancel animation
             if (this.animationFrameId) {
                 cancelAnimationFrame(this.animationFrameId);
+                this.animationFrameId = null;
             }
 
-            // Clear intervals
-            this.stopContinuousZoom();
-            this.stopContinuousPan();
+            // Force-clear ALL intervals unconditionally (don't check key state)
+            if (this.zoomInterval) {
+                clearInterval(this.zoomInterval);
+                this.zoomInterval = null;
+            }
+            if (this.panInterval) {
+                clearInterval(this.panInterval);
+                this.panInterval = null;
+            }
 
-            // Remove event listeners
-            window.removeEventListener('resize', this.onWindowResize.bind(this));
-            document.removeEventListener('keydown', this.onKeyDown.bind(this));
-            document.removeEventListener('keyup', this.onKeyUp.bind(this));
-            document.removeEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
-            window.removeEventListener('focus', this.handleFocus.bind(this));
-            window.removeEventListener('blur', this.handleBlur.bind(this));
+            // Remove event listeners using stored bound handlers (not .bind() which creates new refs!)
+            window.removeEventListener('resize', this.boundHandlers.onWindowResize);
+
+            document.removeEventListener('pointerdown', this.boundHandlers.onPointerDown);
+            document.removeEventListener('pointermove', this.boundHandlers.onPointerMove);
+            document.removeEventListener('pointerup', this.boundHandlers.onPointerUp);
+            document.removeEventListener('pointercancel', this.boundHandlers.onPointerUp);
+
+            document.removeEventListener('wheel', this.boundHandlers.onDocumentMouseWheel);
+
+            if (this.container) {
+                this.container.removeEventListener('touchstart', this.boundHandlers.onTouchStart);
+                this.container.removeEventListener('touchmove', this.boundHandlers.onTouchMove);
+                this.container.removeEventListener('touchend', this.boundHandlers.onTouchEnd);
+            }
+
+            document.removeEventListener('keydown', this.boundHandlers.onKeyDown);
+            document.removeEventListener('keyup', this.boundHandlers.onKeyUp);
+
+            document.removeEventListener('visibilitychange', this.boundHandlers.handleVisibilityChange);
+            window.removeEventListener('focus', this.boundHandlers.handleFocus);
+            window.removeEventListener('blur', this.boundHandlers.handleBlur);
+
+            // Remove loading overlay
+            if (this.loadingOverlay && this.loadingOverlay.parentNode) {
+                this.loadingOverlay.parentNode.removeChild(this.loadingOverlay);
+                this.loadingOverlay = null;
+            }
 
             // Dispose Three.js resources
             if (this.mesh) {
@@ -1099,14 +1193,36 @@
                 if (this.mesh.geometry) {
                     this.mesh.geometry.dispose();
                 }
+                this.mesh = null;
             }
 
+            // Force release GPU memory using WEBGL_lose_context (Pannellum best practice)
             if (this.renderer) {
+                // Dispose render lists to free cached objects
+                this.renderer.renderLists.dispose();
+
+                // Get GL context and force context loss to free GPU memory
+                const gl = this.renderer.getContext();
+                if (gl) {
+                    const ext = gl.getExtension('WEBGL_lose_context');
+                    if (ext) {
+                        console.log('[Phong360ViewerCore] Forcing WebGL context loss to free GPU memory');
+                        ext.loseContext();
+                    }
+                }
+
                 this.renderer.dispose();
+
                 if (this.renderer.domElement && this.renderer.domElement.parentNode) {
                     this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
                 }
+                this.renderer = null;
             }
+
+            this.scene = null;
+            this.camera = null;
+            this.container = null;
+            console.log('[Phong360ViewerCore] Viewer destroyed');
         }
     }
 
