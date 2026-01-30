@@ -30,7 +30,7 @@
         </script>
 
 	<title>🌐 Phong 360 Viewer</title>
-	<link rel="stylesheet" href="css/styles.css?ver=2024-11-23" />
+	<link rel="stylesheet" href="css/styles.css?ver=2026-01-29" />
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
         <!-- SEO Meta Tags -->
@@ -123,13 +123,13 @@
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 		<!-- Phong 360 Viewer - Modular Architecture (Layer 1) -->
-		<script src="core/phong-360-viewer-core.js?ver=2024-11-23"></script>
+		<script src="core/phong-360-viewer-core.js?ver=2026-01-29"></script>
 
 		<!-- Multi-Image Manager (Layer 2) -->
-		<script src="extensions/phong-360-multi-image.js?ver=2024-11-23"></script>
+		<script src="extensions/phong-360-multi-image.js?ver=2026-01-29"></script>
 
 		<!-- Library UI (Layer 3) -->
-		<script src="extensions/phong-360-library-ui.js?ver=2024-11-23"></script>
+		<script src="extensions/phong-360-library-ui.js?ver=2026-01-29"></script>
 
 		<!-- Initialize Viewer -->
 		<script>
@@ -264,6 +264,9 @@
 					// Expose globally for debugging
 					window.phong360 = { core, multiViewer, libraryUI };
 
+					// Setup drag and drop functionality
+					setupDragAndDrop();
+
 					console.log('Phong 360 Viewer initialized with smooth transitions built-in!');
 
 				} catch (error) {
@@ -301,6 +304,82 @@
 			document.addEventListener('gestureend', function(e) {
 				e.preventDefault();
 			});
+
+			// Drag and Drop functionality
+			function setupDragAndDrop() {
+				const overlay = document.getElementById('drag-drop-overlay');
+
+				document.addEventListener('dragenter', function(event) {
+					event.preventDefault();
+					showDropOverlay();
+				});
+
+				document.addEventListener('dragover', function(event) {
+					event.preventDefault();
+					event.dataTransfer.dropEffect = 'copy';
+				});
+
+				document.addEventListener('dragleave', function(event) {
+					event.preventDefault();
+					if (!event.relatedTarget || event.relatedTarget.nodeName === 'HTML') {
+						hideDropOverlay();
+					}
+				});
+
+				document.addEventListener('drop', function(event) {
+					event.preventDefault();
+					hideDropOverlay();
+
+					const file = event.dataTransfer.files[0];
+					if (file && (file.type === 'image/jpeg' || file.type === 'image/png')) {
+						console.log('Valid image file dropped:', file.name);
+
+						// Create object URL for the dropped file
+						const objectUrl = URL.createObjectURL(file);
+
+						// Get image dimensions first
+						const img = new Image();
+						img.onload = function() {
+							const width = img.naturalWidth;
+							const height = img.naturalHeight;
+
+							// Update info panel
+							const titleEl = document.getElementById('imageTitle');
+							const formatEl = document.getElementById('imageFormat');
+							if (titleEl) titleEl.textContent = file.name.split('.').slice(0, -1).join('.');
+							if (formatEl) formatEl.textContent = `${width}x${height} / ${file.type.split('/')[1].toUpperCase()}`;
+
+							// Load image into viewer using core's loadImage method
+							core.loadImage(objectUrl, width, height).then(function() {
+								console.log('Dropped image loaded successfully');
+								if (!core.animationFrameId) core.animate();
+							}).catch(function(error) {
+								console.error('Error loading dropped image:', error);
+								alert('Error loading image. Please try a different file.');
+							});
+						};
+						img.onerror = function() {
+							console.error('Error reading image file');
+							alert('Error reading image. Please try a different file.');
+							URL.revokeObjectURL(objectUrl);
+						};
+						img.src = objectUrl;
+					} else {
+						console.error('Invalid file type:', file ? file.type : 'No file');
+						alert('Please drop a JPG or PNG image file.');
+					}
+				});
+			}
+
+			function showDropOverlay() {
+				const overlay = document.getElementById('drag-drop-overlay');
+				if (overlay) overlay.style.display = 'flex';
+			}
+
+			function hideDropOverlay() {
+				const overlay = document.getElementById('drag-drop-overlay');
+				if (overlay) overlay.style.display = 'none';
+			}
 		</script>
 
 		<!-- Instructions overlay (can be shown on first load) -->
