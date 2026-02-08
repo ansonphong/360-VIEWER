@@ -1,0 +1,12 @@
+# Source images (large originals) - uncomment to exclude from git
+# library/**/*.png
+# library/**/*.jpg
+# !library/_BUILD/**
+
+# System
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.env
+node_modules/

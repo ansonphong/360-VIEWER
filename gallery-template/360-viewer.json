@@ -1,0 +1,19 @@
+{
+  "context": {
+    "type": "local",
+    "title": "My 360 Gallery",
+    "subtitle": "Explore panoramic images",
+    "theme": "auto",
+    "accent": "#6366f1"
+  },
+  "sections": {},
+  "build": {
+    "outputDir": "_BUILD",
+    "resolutions": {
+      "8K": { "width": 8192, "height": 4096, "quality": 95, "label": "8K", "bandwidth": "high" },
+      "4K": { "width": 4096, "height": 2048, "quality": 90, "label": "4K", "bandwidth": "medium", "default": true },
+      "2K": { "width": 2048, "height": 1024, "quality": 85, "label": "2K", "bandwidth": "low" }
+    },
+    "thumbnail": { "width": 512, "height": 256, "quality": 80 }
+  }
+}
