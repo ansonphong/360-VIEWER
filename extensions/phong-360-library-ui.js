@@ -689,6 +689,11 @@ class Phong360LibraryUI {
                     },
                     onImageError: (error) => {
                         console.error('Image load error:', error);
+                    },
+                    onResolutionChange: (resolution) => {
+                        if (this._resolutionSelect) {
+                            this._resolutionSelect.value = resolution.id;
+                        }
                     }
                 }
             });
@@ -722,12 +727,104 @@ class Phong360LibraryUI {
         this._sidebar.className = 'p360-sidebar';
         this._sidebar.setAttribute('data-theme', this._resolveTheme());
 
+        // Toolbar (resolution selector + projection toggle)
+        this._toolbar = document.createElement('div');
+        this._toolbar.className = 'p360-toolbar';
+        this._buildToolbar();
+        this._sidebar.appendChild(this._toolbar);
+
         // Content area
         this._contentEl = document.createElement('div');
         this._contentEl.className = 'p360-content';
         this._sidebar.appendChild(this._contentEl);
 
         document.body.appendChild(this._sidebar);
+    }
+
+    _buildToolbar() {
+        // Resolution selector
+        this._resolutionSelect = document.createElement('select');
+        this._resolutionSelect.className = 'p360-resolution-select';
+        this._resolutionSelect.title = 'Image Resolution';
+        this._resolutionSelect.style.display = 'none'; // Hidden until an image loads
+        this._resolutionSelect.addEventListener('change', () => {
+            const resId = this._resolutionSelect.value;
+            if (this.multiViewer) {
+                this.multiViewer.switchResolution(resId);
+            }
+        });
+        this._toolbar.appendChild(this._resolutionSelect);
+
+        // Spacer
+        const spacer = document.createElement('div');
+        spacer.className = 'p360-toolbar-spacer';
+        this._toolbar.appendChild(spacer);
+
+        // Projection toggle button
+        this._projectionBtn = document.createElement('button');
+        this._projectionBtn.className = 'p360-toolbar-btn';
+        this._projectionBtn.title = 'Switch Projection (P)';
+        this._projectionBtn.innerHTML = '<i class="ph ph-globe-hemisphere-east"></i>';
+        this._projectionBtn.addEventListener('click', () => {
+            if (this.core) {
+                const next = this.core.projectionType === 0 ? 1 : 0;
+                this.core.switchProjection(next);
+                this._updateProjectionButton(next);
+            }
+        });
+        this._toolbar.appendChild(this._projectionBtn);
+
+        // Theme toggle button
+        this._themeBtn = document.createElement('button');
+        this._themeBtn.className = 'p360-theme-toggle';
+        this._themeBtn.title = 'Toggle Theme';
+        this._themeBtn.innerHTML = '<i class="ph ph-moon"></i>';
+        this._themeBtn.addEventListener('click', () => {
+            const resolved = this._resolveTheme();
+            const next = resolved === 'dark' ? 'light' : 'dark';
+            this.setTheme(next);
+            this._updateThemeButton(next);
+        });
+        this._toolbar.appendChild(this._themeBtn);
+    }
+
+    _updateResolutionSelector(imageData, currentResolution) {
+        if (!this._resolutionSelect || !imageData?.resolutions) return;
+
+        this._resolutionSelect.innerHTML = '';
+        for (const res of imageData.resolutions) {
+            const option = document.createElement('option');
+            option.value = res.id;
+            const sizeStr = res.fileSize ? ` (${this.multiViewer?.formatFileSize(res.fileSize) || ''})` : '';
+            option.textContent = `${res.label} ${res.width}\u00D7${res.height}${sizeStr}`;
+            if (currentResolution && currentResolution.id === res.id) {
+                option.selected = true;
+            }
+            this._resolutionSelect.appendChild(option);
+        }
+        this._resolutionSelect.style.display = '';
+    }
+
+    _updateProjectionButton(type) {
+        if (!this._projectionBtn) return;
+        if (type === 1) {
+            this._projectionBtn.innerHTML = '<i class="ph ph-globe-hemisphere-east"></i>';
+            this._projectionBtn.title = 'Stereographic — click for Gnomonic (P)';
+            this._projectionBtn.classList.remove('active');
+        } else {
+            this._projectionBtn.innerHTML = '<i class="ph ph-cube"></i>';
+            this._projectionBtn.title = 'Gnomonic — click for Stereographic (P)';
+            this._projectionBtn.classList.add('active');
+        }
+    }
+
+    _updateThemeButton(theme) {
+        if (!this._themeBtn) return;
+        if (theme === 'dark') {
+            this._themeBtn.innerHTML = '<i class="ph ph-moon"></i>';
+        } else {
+            this._themeBtn.innerHTML = '<i class="ph ph-sun"></i>';
+        }
     }
 
     // --------------------------------------------------------
@@ -746,10 +843,117 @@ class Phong360LibraryUI {
         }
     }
 
+    // --------------------------------------------------------
+    // Version normalization (v3/v2/v1 -> v4.0)
+    // --------------------------------------------------------
+
+    _normalizeLibrary(data) {
+        // v4.0 — use as-is
+        if (data.version && data.version.startsWith('4.')) {
+            return data;
+        }
+        if (data.sections && Array.isArray(data.sections)) {
+            return data;
+        }
+
+        // v3.0 / v2.0 — convert _categories to sections
+        if (data._categories) {
+            return {
+                version: '4.0.0',
+                context: { type: 'local', title: data._metadata?.title || 'Library' },
+                sections: this._categoriesToSections(data._categories),
+                meta: data._metadata || {}
+            };
+        }
+
+        // v1.x — flat format (category keys at top level with files arrays)
+        const keys = Object.keys(data).filter(k => !k.startsWith('_'));
+        if (keys.length > 0 && (data[keys[0]]?.files || data[keys[0]]?.images)) {
+            return {
+                version: '4.0.0',
+                context: { type: 'local' },
+                sections: keys.map(key => {
+                    const cat = data[key];
+                    return {
+                        id: key.toLowerCase().replace(/\s+/g, '-'),
+                        title: cat.name || key,
+                        icon: 'folder',
+                        template: 'accordion',
+                        collapsible: true,
+                        collapsed: true,
+                        images: this._normalizeImageArray(cat.files || cat.images || [])
+                    };
+                })
+            };
+        }
+
+        // Unknown format — return as-is and let downstream handle it
+        return data;
+    }
+
+    _categoriesToSections(categories) {
+        return Object.entries(categories)
+            .filter(([key]) => !key.startsWith('_'))
+            .map(([key, value]) => ({
+                id: key.toLowerCase().replace(/\s+/g, '-'),
+                title: value.name || key,
+                icon: 'folder',
+                template: 'accordion',
+                collapsible: true,
+                collapsed: true,
+                badge: value.images?.length || 0,
+                images: this._normalizeImageArray(value.images || value.files || [])
+            }));
+    }
+
+    _normalizeImageArray(images) {
+        return images.map(img => {
+            // Already v4.0 shape (has resolutions array)
+            if (img.resolutions && Array.isArray(img.resolutions)) {
+                // Ensure slug exists
+                if (!img.slug && img.title) {
+                    img.slug = img.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                }
+                return img;
+            }
+
+            // v2.0/v3.0 shape with Q100/Q75/Q50
+            const resolutions = [];
+            if (img.Q100) {
+                resolutions.push({ id: '8k', label: '8K', path: img.Q100, width: img.metadata?.width || 8192, height: img.metadata?.height || 4096, quality: 100, bandwidth: 'high' });
+            }
+            if (img.Q75) {
+                resolutions.push({ id: '4k', label: '4K', path: img.Q75, width: 4096, height: 2048, quality: 75, bandwidth: 'medium', default: true });
+            }
+            if (img.Q50) {
+                resolutions.push({ id: '2k', label: '2K', path: img.Q50, width: 2048, height: 1024, quality: 50, bandwidth: 'low' });
+            }
+
+            // If no Q fields, use path as the only resolution
+            if (resolutions.length === 0 && img.path) {
+                resolutions.push({ id: 'default', label: 'Default', path: img.path, width: img.metadata?.width || 4096, height: img.metadata?.height || 2048, default: true });
+            }
+
+            const title = img.name || img.title || img.filename || '';
+            return {
+                id: img.id || Math.random().toString(36).slice(2, 10),
+                title: title,
+                slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+                thumbnail: typeof img.thumbnail === 'string' ? { path: img.thumbnail } : img.thumbnail,
+                resolutions: resolutions,
+                metadata: img.metadata || {},
+                badges: img.badges || []
+            };
+        });
+    }
+
     _processLibraryData(data) {
-        this.libraryData = data;
-        this._context = data.context || null;
-        this._sections = data.sections || [];
+        // Normalize legacy formats to v4.0
+        const normalized = this._normalizeLibrary(data);
+
+        this.libraryData = normalized;
+        this._context = normalized.context || null;
+        this._sections = normalized.sections || [];
         this._allImages = [];
 
         // Flatten all images from all sections
@@ -1043,6 +1247,10 @@ class Phong360LibraryUI {
         this._currentImageId = imageData.id;
         this._highlightImage(imageData.id);
 
+        // Update toolbar controls
+        this._updateResolutionSelector(imageData, resolution);
+        this._updateProjectionButton(this.core?.projectionType ?? 1);
+
         if (this.callbacks.onImageLoad) {
             this.callbacks.onImageLoad(imageData, resolution);
         }
@@ -1156,6 +1364,7 @@ class Phong360LibraryUI {
     _applyTheme(theme) {
         const resolved = this._resolveTheme(theme);
         this._sidebar?.setAttribute('data-theme', resolved);
+        this._updateThemeButton(resolved);
 
         if (this.callbacks.onThemeChange) {
             this.callbacks.onThemeChange(resolved);

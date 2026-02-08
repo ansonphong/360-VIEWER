@@ -846,6 +846,34 @@
   border-color: var(--p360-accent-border);
 }
 
+.p360-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--p360-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--p360-text-muted);
+  cursor: pointer;
+  font-size: 18px;
+  transition: all var(--p360-transition);
+  flex-shrink: 0;
+}
+
+.p360-toolbar-btn:hover {
+  color: var(--p360-text);
+  border-color: var(--p360-border-strong);
+  background: var(--p360-hover-bg);
+}
+
+.p360-toolbar-btn.active {
+  color: var(--p360-accent);
+  border-color: var(--p360-accent-border);
+  background: var(--p360-accent-bg, transparent);
+}
+
 /* ============================================================
    Responsive
    ============================================================ */
