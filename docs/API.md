@@ -1,6 +1,6 @@
-# 📘 API Reference
+# API Reference
 
-Complete API documentation for Phong 360 Viewer v3.0.
+Complete API documentation for Phong 360 Viewer v4.0.
 
 ---
 
@@ -9,18 +9,19 @@ Complete API documentation for Phong 360 Viewer v3.0.
 1. [Layer 1: Phong360ViewerCore](#layer-1-phong360viewercore)
 2. [Layer 2: Phong360MultiImage](#layer-2-phong360multiimage)
 3. [Layer 3: Phong360LibraryUI](#layer-3-phong360libraryui)
-4. [Configuration Options](#configuration-options)
-5. [Callbacks](#callbacks)
-6. [Methods](#methods)
-7. [Events](#events)
+4. [TemplateEngine](#templateengine)
+5. [BaseRenderer](#baserenderer)
+6. [Configuration Options](#configuration-options)
+7. [Callbacks](#callbacks)
+8. [localStorage Keys](#localstorage-keys)
 
 ---
 
 ## Layer 1: Phong360ViewerCore
 
-**File**: `core/phong-360-viewer-core.js`  
-**Size**: ~30KB  
-**Purpose**: Single image 360° viewer with controls
+**File**: `core/phong-360-viewer-core.js`
+**Size**: ~30KB
+**Purpose**: Single image 360 viewer with controls and projections
 
 ### Constructor
 
@@ -36,7 +37,7 @@ new Phong360ViewerCore(options)
     containerId: string,           // ID of container element
 
     // Optional - Image
-    imageUrl: string,              // URL of 360° image to load
+    imageUrl: string,              // URL of 360 image to load
     width: number,                 // Image width (default: 4096)
     height: number,                // Image height (default: 2048)
 
@@ -68,9 +69,9 @@ new Phong360ViewerCore(options)
             initTarget: number          // Target FOV after init (default: 60)
         },
         interaction: {
-            sensitivity: number,        // Mouse sensitivity (default: 0.1)
+            sensitivity: number,        // Mouse drag sensitivity (default: 0.1)
             momentum: boolean,          // Enable momentum (default: true)
-            momentumDamping: number     // Momentum damping (default: 0.95)
+            momentumDamping: number     // Momentum decay 0-1 (default: 0.95)
         }
     }
 }
@@ -79,22 +80,19 @@ new Phong360ViewerCore(options)
 ### Methods
 
 #### loadImage(imageUrl, width, height)
-Load a new 360° image.
+
+Load a new 360 image.
 
 ```javascript
 core.loadImage('path/to/image.jpg', 4096, 2048);
 ```
 
-**Parameters:**
-- `imageUrl` (string): URL to image
-- `width` (number): Image width
-- `height` (number): Image height
-
-**Returns:** `void`
+**Returns**: `Promise`
 
 ---
 
 #### switchProjection(type)
+
 Switch between projection types.
 
 ```javascript
@@ -102,65 +100,50 @@ core.switchProjection(0);  // Gnomonic
 core.switchProjection(1);  // Stereographic
 ```
 
-**Parameters:**
+**Parameters**:
 - `type` (number): 0 = Gnomonic, 1 = Stereographic
 
-**Returns:** `void`
-
-**Note:** Preference is saved to `localStorage` as `phong360.preferences.projection`
+Preference is saved to `localStorage` as `phong360.preferences.projection`.
 
 ---
 
 #### setAutoRotate(enabled)
+
 Enable or disable auto-rotation.
 
 ```javascript
 core.setAutoRotate(true);
 ```
 
-**Parameters:**
-- `enabled` (boolean): Enable/disable
-
-**Returns:** `void`
-
 ---
 
 #### destroy()
-Clean up and remove viewer.
+
+Clean up and remove viewer, dispose textures and WebGL resources.
 
 ```javascript
 core.destroy();
 ```
 
-**Returns:** `void`
-
 ---
 
 ### Properties
 
-#### projectionType
-Current projection type (0 = Gnomonic, 1 = Stereographic)
-
-```javascript
-console.log(core.projectionType);  // 0 or 1
-```
-
-#### state
-Current viewer state
-
-```javascript
-console.log(core.state.lat);  // Current latitude
-console.log(core.state.lon);  // Current longitude
-console.log(core.state.fov);  // Current field of view
-```
+| Property | Type | Description |
+|----------|------|-------------|
+| `projectionType` | number | Current projection (0=Gnomonic, 1=Stereographic) |
+| `state.lat` | number | Current latitude |
+| `state.lon` | number | Current longitude |
+| `state.fov` | number | Current field of view |
+| `animationFrameId` | number | Animation frame ID (truthy if animating) |
 
 ---
 
 ## Layer 2: Phong360MultiImage
 
-**File**: `extensions/phong-360-multi-image.js`  
-**Size**: ~15KB  
-**Purpose**: Multi-image and resolution management
+**File**: `extensions/phong-360-multi-image.js`
+**Size**: ~15KB
+**Purpose**: Multi-image management with adaptive resolution selection
 
 ### Constructor
 
@@ -176,31 +159,7 @@ new Phong360MultiImage(options)
     core: Phong360ViewerCore,      // Core viewer instance
 
     // Optional - Images
-    images: [                       // Array of image objects
-        {
-            id: string,             // Unique image ID
-            name: string,           // Display name
-            resolutions: [          // Array of resolution objects
-                {
-                    id: string,             // Resolution ID (e.g., '4k')
-                    label: string,          // Display label (e.g., '4K')
-                    path: string,           // Image path
-                    width: number,          // Image width
-                    height: number,         // Image height
-                    fileSize: number,       // File size in bytes (optional)
-                    default: boolean,       // Is default resolution? (optional)
-                    bandwidth: string       // 'high'|'medium'|'low' (optional)
-                }
-            ],
-            thumbnail: {
-                path: string,       // Thumbnail path
-                width: number,      // Thumbnail width
-                height: number      // Thumbnail height
-            }
-        }
-    ],
-
-    // Optional - Settings
+    images: Array,                  // Array of v4.0 image objects (see below)
     baseUrl: string,                // Base URL for resolving paths (default: '')
     adaptiveLoading: boolean,       // Enable adaptive resolution (default: true)
 
@@ -215,159 +174,189 @@ new Phong360MultiImage(options)
 }
 ```
 
+### Image Object Shape (v4.0)
+
+```javascript
+{
+    id: string,                     // Unique image ID
+    title: string,                  // Display title
+    slug: string,                   // URL-safe slug for deep-linking
+    thumbnail: {
+        path: string,               // Thumbnail path
+        width: number,              // Thumbnail width (default: 512)
+        height: number              // Thumbnail height (default: 256)
+    },
+    resolutions: [
+        {
+            id: string,             // Resolution ID ('8k', '4k', '2k')
+            label: string,          // Display label ('8K', '4K', '2K')
+            path: string,           // Image path
+            width: number,          // Image width
+            height: number,         // Image height
+            fileSize: number,       // File size in bytes (optional)
+            quality: number,        // JPEG quality 0-100 (optional)
+            bandwidth: string,      // 'high' | 'medium' | 'low' (optional)
+            recommended: Array,     // Device recommendations (optional)
+            default: boolean        // Is default resolution (optional)
+        }
+    ],
+    badges: Array,                  // Badge objects (optional, passed through to Layer 3)
+    metadata: Object                // Image metadata (optional, passed through)
+}
+```
+
 ### Methods
 
 #### loadImageById(id)
-Load image by ID.
+
+Load image by ID or slug.
 
 ```javascript
 multi.loadImageById('sunset-001');
+multi.loadImageById('sunset-beach');  // Also works with slug
 ```
 
-**Parameters:**
-- `id` (string): Image ID
+---
 
-**Returns:** `void`
+#### loadImageWithResolution(imageData, resolution)
+
+Load a specific image at a specific resolution.
+
+```javascript
+const image = multi.findImageById('sunset-001');
+const res = image.resolutions.find(r => r.id === '8k');
+multi.loadImageWithResolution(image, res);
+```
 
 ---
 
 #### switchResolution(resolutionId)
-Switch to different resolution of current image.
+
+Switch to a different resolution of the current image. Saves preference to localStorage.
 
 ```javascript
 multi.switchResolution('8k');
 ```
 
-**Parameters:**
-- `resolutionId` (string): Resolution ID (e.g., '8k', '4k', '2k')
-
-**Returns:** `void`
-
-**Note:** Preference is saved to `localStorage` as `phong360.preferences.resolution`
-
 ---
 
 #### setImages(images)
-Set or update images array.
+
+Set or replace the images array.
 
 ```javascript
 multi.setImages(newImagesArray);
 ```
 
-**Parameters:**
-- `images` (Array): Array of image objects
-
-**Returns:** `void`
-
 ---
 
 #### addImage(imageData)
-Add single image to collection.
+
+Add a single image to the collection.
 
 ```javascript
-multi.addImage({
-    id: 'new-image',
-    name: 'New Image',
-    resolutions: [...]
-});
+multi.addImage({ id: 'new', title: 'New Image', resolutions: [...] });
 ```
-
-**Parameters:**
-- `imageData` (Object): Image object
-
-**Returns:** `void`
 
 ---
 
 #### findImageById(id)
-Find image object by ID.
+
+Find image object by ID or slug.
 
 ```javascript
 const image = multi.findImageById('sunset-001');
+const image = multi.findImageById('sunset-beach');  // slug match
 ```
 
-**Parameters:**
-- `id` (string): Image ID
+**Returns**: `Object|null`
 
-**Returns:** `Object|null` - Image object or null if not found
+---
+
+#### loadFirstImage()
+
+Load the first image in the collection.
+
+---
+
+#### loadNextImage() / loadPreviousImage()
+
+Navigate to next or previous image.
 
 ---
 
 #### getCurrentImageData()
-Get current image data.
 
-```javascript
-const current = multi.getCurrentImageData();
-console.log(current.name);
-console.log(current.resolutions);
-```
-
-**Returns:** `Object|null` - Current image object or null
+**Returns**: `Object|null` - Current image object.
 
 ---
 
 #### getAvailableResolutions()
-Get available resolutions for current image.
 
-```javascript
-const resolutions = multi.getAvailableResolutions();
-// Returns: [{ id: '8k', label: '8K', ... }, { id: '4k', ... }]
-```
-
-**Returns:** `Array` - Array of resolution objects
+**Returns**: `Array` - Resolution objects for current image.
 
 ---
 
-#### selectOptimalResolution()
+#### getCurrentResolution()
+
+**Returns**: `Object|null` - Current resolution object.
+
+---
+
+#### selectOptimalResolution(resolutions)
+
 Automatically select best resolution based on device and bandwidth.
 
+**Selection logic** (in priority order):
+1. User preference saved in localStorage
+2. Network connection type (2G/3G/4G detection)
+3. Device pixel ratio (high-DPI displays get 8K)
+4. Viewport width (mobile gets 2K)
+5. Default resolution flag
+6. Middle resolution as fallback
+
+---
+
+#### formatFileSize(bytes)
+
+Format bytes to human-readable string.
+
 ```javascript
-const resolution = multi.selectOptimalResolution();
-console.log(resolution.id);  // e.g., '4k'
+multi.formatFileSize(3800000);  // "3.6 MB"
 ```
 
-**Returns:** `Object` - Selected resolution object
+---
 
-**Considers:**
-- Network connection type (2G/3G/4G)
-- Device pixel ratio
-- Viewport size
-- User preference (if saved)
-- Bandwidth metadata
+#### getImageCount()
+
+**Returns**: `number` - Total number of images.
+
+---
+
+#### clearResolutionPreference()
+
+Clear the saved resolution preference.
 
 ---
 
 ### Properties
 
-#### currentImageId
-Current image ID
-
-```javascript
-console.log(multi.currentImageId);  // 'sunset-001'
-```
-
-#### currentImageData
-Current image object
-
-```javascript
-console.log(multi.currentImageData.name);
-```
-
-#### currentResolution
-Current resolution object
-
-```javascript
-console.log(multi.currentResolution.label);  // '4K'
-console.log(multi.currentResolution.width);  // 4096
-```
+| Property | Type | Description |
+|----------|------|-------------|
+| `currentImageId` | string | Current image ID |
+| `currentImageData` | Object | Current image object |
+| `currentResolution` | Object | Current resolution object |
+| `userPreferredResolution` | string | Saved resolution preference |
 
 ---
 
 ## Layer 3: Phong360LibraryUI
 
-**File**: `extensions/phong-360-library-ui.js`  
-**Size**: ~20KB  
-**Purpose**: Full library UI with panels and controls
+**File**: `extensions/phong-360-library-ui.js`
+**Size**: ~25KB
+**Purpose**: Section-based library UI with template engine, badges, themes, and context-aware headers
+
+Layer 3 creates Layer 1 and Layer 2 internally. You don't need to instantiate them separately.
 
 ### Constructor
 
@@ -379,89 +368,256 @@ new Phong360LibraryUI(options)
 
 ```javascript
 {
-    // Required (one of these)
-    containerId: string,            // ID of container element
-    libraryUrl: string,             // URL to library.json
-    // OR
-    libraryData: Object,            // Inline library data
+    // Required
+    containerId: string,            // ID of container element for 360 canvas
 
-    // Optional
-    baseUrl: string,                // Base URL for resolving paths
-    
-    // UI Options
-    showLibraryPanel: boolean,      // Show library panel (default: true)
-    showInfoPanel: boolean,         // Show info panel (default: true)
-    showToolbar: boolean,           // Show toolbar (default: true)
-    
-    // Core/Multi Options (passed through)
-    config: Object,                 // Core config (see Phong360ViewerCore)
-    
-    // Callbacks
-    callbacks: {
-        onLibraryLoad: function,    // (library) => {}
-        onImageSelect: function,    // (imageId) => {}
-        onPanelToggle: function,    // (isOpen) => {}
-        onImageInfoUpdate: function // (info) => {}
-    }
+    // Library source (one of these)
+    libraryUrl: string,             // URL to library.json (fetched via fetch())
+    libraryData: Object,            // Pre-loaded library data object
+
+    // Optional - Display
+    baseUrl: string,                // Base URL for resolving image paths (default: '')
+    theme: string,                  // 'dark' | 'light' | 'auto' (default: 'auto')
+    accent: string,                 // Accent color hex (e.g. '#6366f1')
+    autoloadId: string,             // Auto-load image by ID or slug after library loads
+    filterCollection: string,       // Only render section matching this ID/slug
 }
+```
+
+### Callbacks
+
+Set callbacks after construction:
+
+```javascript
+const viewer = new Phong360LibraryUI({ containerId: 'viewer', libraryUrl: '...' });
+
+viewer.callbacks.onImageLoad = (imageData, resolution) => {
+    // Image finished loading in the 360 canvas
+};
+
+viewer.callbacks.onImageSelect = (imageData) => {
+    // User clicked an image in the sidebar
+};
+
+viewer.callbacks.onBadgeClick = (imageData, badge) => {
+    // User clicked a badge on a thumbnail
+    // badge: { emoji: '...', icon: '...', count: 42 }
+};
+
+viewer.callbacks.onLibraryLoad = (libraryData) => {
+    // Library JSON loaded and parsed
+};
+
+viewer.callbacks.onContextReady = (context) => {
+    // Context header rendered; context: { type, title, subtitle, avatar, links, ... }
+};
+
+viewer.callbacks.onSectionToggle = (section, isExpanded) => {
+    // A collapsible section was toggled
+};
+
+viewer.callbacks.onLinkClick = (url, linkData) => {
+    // A context link was clicked (can preventDefault by setting this callback)
+};
+
+viewer.callbacks.onThemeChange = (theme) => {
+    // Theme changed: 'light' or 'dark'
+};
 ```
 
 ### Methods
 
-#### loadLibrary(url)
-Load library from URL.
+#### toggleSidebar() / openSidebar() / closeSidebar()
+
+Control sidebar visibility.
 
 ```javascript
-libraryUI.loadLibrary('path/to/library.json');
+viewer.toggleSidebar();
+viewer.openSidebar();
+viewer.closeSidebar();
 ```
-
-**Parameters:**
-- `url` (string): URL to library.json
-
-**Returns:** `Promise`
 
 ---
 
-#### toggleLibraryPanel()
-Toggle library panel visibility.
+#### setTheme(theme)
+
+Switch theme programmatically.
 
 ```javascript
-libraryUI.toggleLibraryPanel();
+viewer.setTheme('dark');
+viewer.setTheme('light');
+viewer.setTheme('auto');
 ```
-
-**Returns:** `void`
 
 ---
 
-#### selectImageById(id)
-Select and load image by ID.
+#### setAccent(hex)
+
+Set custom accent color. Automatically generates hover, active, and border variants.
 
 ```javascript
-libraryUI.selectImageById('sunset-001');
+viewer.setAccent('#6366f1');
 ```
 
-**Parameters:**
-- `id` (string): Image ID
+---
 
-**Returns:** `void`
+#### updateBadges(imageId, badges)
+
+Update badges on a specific image's thumbnails in the sidebar. Designed for Layer 4 to call after API updates.
+
+```javascript
+viewer.updateBadges('abc123', [
+    { emoji: 'fire', count: 43 },
+    { emoji: 'heart', count: 19 }
+]);
+```
+
+---
+
+#### loadLibrary()
+
+Re-fetch and reload the library from `libraryUrl`.
+
+```javascript
+await viewer.loadLibrary();
+```
+
+---
+
+#### reloadLibrary()
+
+Clear current content and reload. Removes existing headers and sections.
+
+```javascript
+await viewer.reloadLibrary();
+```
+
+---
+
+#### getLibraryData()
+
+**Returns**: `Object` - The full parsed library data.
+
+---
+
+#### onImageClick(image)
+
+Programmatically trigger an image selection (same as user clicking a thumbnail).
+
+```javascript
+viewer.onImageClick(imageData);
+```
 
 ---
 
 ### Properties
 
-#### multiViewer
-Access to underlying `Phong360MultiImage` instance
+| Property | Type | Description |
+|----------|------|-------------|
+| `core` | Phong360ViewerCore | Underlying core viewer instance |
+| `multiViewer` | Phong360MultiImage | Underlying multi-image manager |
+| `templateEngine` | TemplateEngine | Template engine instance |
+| `libraryData` | Object | Parsed library data |
+| `callbacks` | Object | Callback registry |
+
+---
+
+## TemplateEngine
+
+The template engine maps template names to renderer classes.
+
+### Usage
 
 ```javascript
-libraryUI.multiViewer.switchResolution('8k');
+// Access via viewer
+viewer.templateEngine.register('custom', MyCustomRenderer);
 ```
 
-#### core
-Access to underlying `Phong360ViewerCore` instance
+### Methods
+
+#### render(section, config)
+
+Render a section using its template.
 
 ```javascript
-libraryUI.core.switchProjection(0);
+const el = viewer.templateEngine.render(section, { baseUrl: 'library/' });
 ```
+
+---
+
+#### register(name, RendererClass)
+
+Register a custom template renderer.
+
+```javascript
+class MyRenderer extends BaseRenderer {
+    render() {
+        const el = document.createElement('div');
+        // Custom rendering logic
+        return el;
+    }
+}
+
+viewer.templateEngine.register('my-template', MyRenderer);
+```
+
+### Built-in Renderers
+
+| Name | Class | Description |
+|------|-------|-------------|
+| `grid` | GridRenderer | Responsive thumbnail grid |
+| `feed` | FeedRenderer | Vertical list with large thumbnails |
+| `accordion` | AccordionRenderer | Collapsible section with inner template |
+| `hero` | HeroRenderer | Single large featured image with overlay |
+| `list` | ListRenderer | Compact rows with small thumbnails |
+| `carousel` | CarouselRenderer | Horizontal scrolling strip |
+| `avatar-row` | AvatarRowRenderer | Horizontal circular avatars |
+| `avatar-grid` | AvatarGridRenderer | Grid of avatar cards |
+| `empty` | EmptyStateRenderer | Empty/placeholder state |
+
+See [TEMPLATES.md](TEMPLATES.md) for detailed config options for each renderer.
+
+---
+
+## BaseRenderer
+
+All template renderers extend `BaseRenderer`. To create a custom renderer:
+
+```javascript
+class MyRenderer extends BaseRenderer {
+    render() {
+        const el = document.createElement('div');
+        el.className = 'my-template';
+
+        for (const image of (this.section.images || [])) {
+            // Use inherited helpers:
+            el.appendChild(this.createThumbnail(image));
+        }
+
+        return el;
+    }
+}
+```
+
+### Inherited Methods
+
+| Method | Description |
+|--------|-------------|
+| `createSectionHeading()` | Creates a section heading element with icon, title, count, chevron |
+| `createThumbnail(image)` | Creates a thumbnail element with lazy-loading, badges, and click handler |
+| `_renderBadges(el, badges)` | Renders badge overlays on an element |
+| `_formatCount(n)` | Formats number (1000 -> "1.0K", 1000000 -> "1.0M") |
+| `_resolvePath(path)` | Resolves relative paths against baseUrl |
+| `_resolveIcon(iconStr)` | Converts icon name to Phosphor CSS class |
+| `_getBadgeIcon(icon)` | Returns emoji or Phosphor icon string |
+
+### Constructor Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `this.section` | The section object being rendered |
+| `this.config` | Render config (includes `baseUrl`) |
+| `this.engine` | Reference to the parent Phong360LibraryUI instance |
 
 ---
 
@@ -471,8 +627,8 @@ libraryUI.core.switchProjection(0);
 
 ```javascript
 viewRotation: {
-    initAltitude: 0,        // Starting pitch (-90 to 90 degrees)
-    initAzimuth: 90,        // Starting yaw (0 to 360 degrees)
+    initAltitude: 0,        // Starting pitch (-90 to 90)
+    initAzimuth: 90,        // Starting yaw (0 to 360)
     autoRotate: false,      // Enable auto-rotation
     autoRotationRate: 1,    // Degrees per second
     smoothness: 8000,       // Higher = smoother (1000-10000)
@@ -484,290 +640,107 @@ viewRotation: {
 ### Field of View
 
 ```javascript
-fov_stereographic: {
-    max: 330,               // Maximum FOV (zoom out limit)
-    min: 45,                // Minimum FOV (zoom in limit)
-    init: 100,              // Initial FOV on load
-    initTarget: 60          // FOV to animate to after loading
-},
-fov_gnomonic: {
-    max: 130,
-    min: 45,
-    init: 100,
-    initTarget: 60
-}
+fov_stereographic: { max: 330, min: 45, init: 100, initTarget: 60 },
+fov_gnomonic: { max: 130, min: 45, init: 100, initTarget: 60 }
 ```
 
 ### Zoom
 
 ```javascript
-zoom: {
-    smoothing: 6000,        // Zoom smoothness
-    speed: 1.5              // Zoom speed multiplier
-}
-```
-
-### Interaction
-
-```javascript
-interaction: {
-    sensitivity: 0.1,       // Mouse drag sensitivity
-    momentum: true,         // Enable momentum after release
-    momentumDamping: 0.95   // Momentum decay (0-1)
-}
+zoom: { smoothing: 6000, speed: 1.5 }
 ```
 
 ---
 
 ## Callbacks
 
-### Core Callbacks
+### Layer 2 Callbacks
 
-```javascript
-callbacks: {
-    onReady: (core) => {
-        console.log('Viewer ready', core);
-    },
-    
-    onImageLoad: (imageUrl) => {
-        console.log('Image loaded:', imageUrl);
-    },
-    
-    onImageError: (error) => {
-        console.error('Error loading image:', error);
-    }
-}
-```
+| Callback | Signature | Description |
+|----------|-----------|-------------|
+| `onImageLoad` | `(imageData, resolution)` | Image loaded in canvas |
+| `onImageError` | `(error)` | Image failed to load |
+| `onResolutionChange` | `(resolution)` | Resolution switched |
+| `onLoadStart` | `()` | Loading started |
+| `onLoadComplete` | `()` | Loading finished |
 
-### Multi-Image Callbacks
+### Layer 3 Callbacks
 
-```javascript
-callbacks: {
-    onImageLoad: (imageData, resolution) => {
-        console.log('Loaded:', imageData.name);
-        console.log('Resolution:', resolution.label);
-    },
-    
-    onImageError: (error) => {
-        console.error('Error:', error);
-    },
-    
-    onResolutionChange: (resolution) => {
-        console.log('Switched to:', resolution.label);
-    },
-    
-    onLoadStart: () => {
-        console.log('Loading started');
-    },
-    
-    onLoadComplete: () => {
-        console.log('Loading complete');
-    }
-}
-```
-
-### Library UI Callbacks
-
-```javascript
-callbacks: {
-    onLibraryLoad: (library) => {
-        console.log('Library loaded:', library._metadata.total_images, 'images');
-    },
-    
-    onImageSelect: (imageId) => {
-        console.log('User selected:', imageId);
-    },
-    
-    onPanelToggle: (isOpen) => {
-        console.log('Panel is:', isOpen ? 'open' : 'closed');
-    },
-    
-    onImageInfoUpdate: (info) => {
-        console.log('Image:', info.name);
-        console.log('Resolution:', info.resolution);
-        console.log('Dimensions:', info.dimensions);
-        console.log('Format:', info.format);
-    }
-}
-```
+| Callback | Signature | Description |
+|----------|-----------|-------------|
+| `onImageLoad` | `(imageData, resolution)` | Image loaded (from Layer 2) |
+| `onImageSelect` | `(imageData)` | User clicked an image |
+| `onBadgeClick` | `(imageData, badge)` | User clicked a badge |
+| `onLibraryLoad` | `(libraryData)` | Library data loaded |
+| `onContextReady` | `(context)` | Context header rendered |
+| `onSectionToggle` | `(section, isExpanded)` | Section toggled |
+| `onLinkClick` | `(url, linkData)` | Context link clicked |
+| `onThemeChange` | `(theme)` | Theme changed |
 
 ---
 
 ## localStorage Keys
 
-The viewer uses namespaced `localStorage` keys to save user preferences:
-
 | Key | Type | Description |
 |-----|------|-------------|
 | `phong360.preferences.projection` | number | Last projection type (0 or 1) |
-| `phong360.preferences.resolution` | string | Last resolution ID ('8k', '4k', '2k') |
+| `phong360.preferences.resolution` | string | Preferred resolution ID ('8k', '4k', '2k') |
+| `phong360.preferences.autoRotate` | string | Auto-rotate enabled ('true' or 'false') |
 
 ### Clearing Preferences
 
 ```javascript
 localStorage.removeItem('phong360.preferences.projection');
 localStorage.removeItem('phong360.preferences.resolution');
-```
-
----
-
-## Advanced Examples
-
-### Custom Resolution Logic
-
-```javascript
-const multi = new Phong360MultiImage({
-    core: core,
-    images: images,
-    adaptiveLoading: false  // Disable automatic selection
-});
-
-// Load with custom logic
-const isMobile = window.innerWidth < 768;
-const hasSlowConnection = navigator.connection && navigator.connection.effectiveType === '2g';
-
-const resolutionId = hasSlowConnection ? '2k' : (isMobile ? '4k' : '8k');
-multi.switchResolution(resolutionId);
-```
-
-### Dynamic Image Loading
-
-```javascript
-const multi = new Phong360MultiImage({ core: core, images: [] });
-
-// Load images dynamically
-fetch('/api/360-images')
-    .then(res => res.json())
-    .then(data => {
-        multi.setImages(data.images);
-        multi.loadImageById(data.images[0].id);
-    });
-```
-
-### Custom UI Integration
-
-```javascript
-const core = new Phong360ViewerCore({ containerId: 'viewer' });
-const multi = new Phong360MultiImage({
-    core: core,
-    images: images,
-    callbacks: {
-        onImageLoad: (imageData, resolution) => {
-            // Update your custom UI
-            document.getElementById('title').textContent = imageData.name;
-            document.getElementById('res').textContent = resolution.label;
-        }
-    }
-});
-```
-
----
-
-## Error Handling
-
-```javascript
-const core = new Phong360ViewerCore({
-    containerId: 'viewer',
-    imageUrl: 'image.jpg'
-});
-
-// Core doesn't have error callbacks, but you can catch errors:
-try {
-    core.loadImage('invalid-image.jpg', 4096, 2048);
-} catch (error) {
-    console.error('Error:', error);
-}
-
-// Multi-image has error callback:
-const multi = new Phong360MultiImage({
-    core: core,
-    images: images,
-    callbacks: {
-        onImageError: (error) => {
-            alert('Failed to load image: ' + error.message);
-        }
-    }
-});
-```
-
----
-
-## TypeScript (Coming Soon)
-
-Type definitions will be available in v3.1:
-
-```typescript
-interface Phong360ViewerCoreOptions {
-    containerId: string;
-    imageUrl?: string;
-    width?: number;
-    height?: number;
-    config?: ViewerConfig;
-}
-
-interface ViewerConfig {
-    viewRotation?: ViewRotationConfig;
-    zoom?: ZoomConfig;
-    fov_stereographic?: FOVConfig;
-    fov_gnomonic?: FOVConfig;
-    interaction?: InteractionConfig;
-}
-
-// ... etc
+localStorage.removeItem('phong360.preferences.autoRotate');
 ```
 
 ---
 
 ## Browser Compatibility
 
-| Browser | Minimum Version | Notes |
-|---------|----------------|-------|
-| Chrome | 88+ | Full support |
-| Firefox | 85+ | Full support |
-| Safari | 14+ | Full support |
-| Edge | 88+ | Full support |
-| Mobile Safari | 14+ | Touch gestures supported |
-| Chrome Android | 88+ | Touch gestures supported |
+| Browser | Minimum Version |
+|---------|----------------|
+| Chrome | 88+ |
+| Firefox | 85+ |
+| Safari | 14+ |
+| Edge | 88+ |
+| Mobile Safari | 14+ |
+| Chrome Android | 88+ |
 
-**Requirements:**
-- WebGL support
-- ES6 JavaScript support
-- localStorage (for preferences)
+**Requirements**: WebGL, ES6 JavaScript, localStorage.
 
 ---
 
-## Performance Tips
+## Link Icon Detection
 
-1. **Use appropriate resolutions**: Don't load 8K images on mobile
-2. **Enable adaptive loading**: Let the viewer choose optimal resolution
-3. **Preload thumbnails**: Small thumbnails load fast
-4. **Lazy load**: Only load images when needed
-5. **Optimize images**: Use JPEG with 85-90% quality
+Layer 3 automatically detects social platform URLs and displays the appropriate Phosphor icon:
 
-```javascript
-// Good: Adaptive loading
-const multi = new Phong360MultiImage({
-    core: core,
-    images: images,
-    adaptiveLoading: true  // ✅
-});
-
-// Better: Custom logic for your use case
-const isMobile = window.innerWidth < 768;
-const defaultRes = isMobile ? '2k' : '4k';
-multi.switchResolution(defaultRes);
-```
+| Domain | Icon |
+|--------|------|
+| instagram.com | instagram-logo |
+| youtube.com | youtube-logo |
+| twitter.com / x.com | twitter-logo / x-logo |
+| github.com | github-logo |
+| tiktok.com | tiktok-logo |
+| facebook.com | facebook-logo |
+| linkedin.com | linkedin-logo |
+| discord.com / discord.gg | discord-logo |
+| twitch.tv | twitch-logo |
+| reddit.com | reddit-logo |
+| pinterest.com | pinterest-logo |
+| threads.net | threads-logo |
+| (other) | link |
 
 ---
 
-**📖 See also:**
+**See also:**
 - [QUICKSTART.md](QUICKSTART.md) - Quick start guide
 - [LIBRARY-FORMAT.md](LIBRARY-FORMAT.md) - Library format specification
-- [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md) - WordPress integration
+- [TEMPLATES.md](TEMPLATES.md) - Template system guide
+- [THEMING.md](THEMING.md) - Theming and customization
 
 ---
 
-**Last Updated**: November 2025  
-**Version**: 3.0.0
-
-
+**Last Updated**: February 2026
+**Version**: 4.0.0
