@@ -1,0 +1,901 @@
+/* Phong 360 Library UI — v4.0 Styles */
+
+/* ============================================================
+   CSS Custom Properties — Dark mode default
+   ============================================================ */
+
+:root {
+  --p360-bg: #1a1a2e;
+  --p360-bg-elevated: #1e1e36;
+  --p360-text: #e2e8f0;
+  --p360-text-muted: #94a3b8;
+  --p360-text-dim: #64748b;
+  --p360-border: rgba(255, 255, 255, 0.08);
+  --p360-border-strong: rgba(255, 255, 255, 0.15);
+  --p360-accent: #e13e13;
+  --p360-accent-hover: #f06040;
+  --p360-accent-active: rgba(225, 62, 19, 0.25);
+  --p360-accent-border: rgba(225, 62, 19, 0.6);
+  --p360-hover-bg: rgba(255, 255, 255, 0.05);
+  --p360-thumbnail-radius: 4px;
+  --p360-sidebar-width: 320px;
+  --p360-badge-bg: rgba(0, 0, 0, 0.6);
+  --p360-badge-text: #ffffff;
+  --p360-overlay-bg: rgba(0, 0, 0, 0.5);
+  --p360-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --p360-transition: 0.2s ease;
+}
+
+/* ============================================================
+   Light Theme
+   ============================================================ */
+
+[data-theme="light"] {
+  --p360-bg: #ffffff;
+  --p360-bg-elevated: #fafafa;
+  --p360-text: #1e293b;
+  --p360-text-muted: #64748b;
+  --p360-text-dim: #94a3b8;
+  --p360-border: rgba(0, 0, 0, 0.08);
+  --p360-border-strong: rgba(0, 0, 0, 0.15);
+  --p360-hover-bg: rgba(0, 0, 0, 0.05);
+  --p360-badge-bg: rgba(255, 255, 255, 0.85);
+  --p360-badge-text: #1e293b;
+  --p360-overlay-bg: rgba(0, 0, 0, 0.3);
+  --p360-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================================
+   Sidebar Container
+   ============================================================ */
+
+.p360-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--p360-sidebar-width);
+  max-width: 90vw;
+  background: var(--p360-bg);
+  color: var(--p360-text);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+  box-shadow: var(--p360-shadow);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.p360-sidebar.p360-sidebar--open {
+  transform: translateX(0);
+}
+
+.p360-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--p360-overlay-bg);
+  z-index: 199;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.p360-sidebar-backdrop.p360-sidebar-backdrop--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ============================================================
+   Sidebar Toggle Button
+   ============================================================ */
+
+.p360-sidebar-toggle {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 201;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--p360-transition);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.p360-sidebar-toggle:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* ============================================================
+   Context Header (profile / discover / local)
+   ============================================================ */
+
+.p360-header {
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--p360-border);
+  flex-shrink: 0;
+}
+
+.p360-header-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.p360-header-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--p360-border-strong);
+  flex-shrink: 0;
+}
+
+.p360-header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.p360-header-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--p360-text);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p360-header-subtitle {
+  font-size: 13px;
+  color: var(--p360-text-muted);
+  margin: 2px 0 0;
+}
+
+.p360-header-links {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.p360-header-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--p360-text-muted);
+  text-decoration: none;
+  border: 1px solid var(--p360-border);
+  border-radius: 12px;
+  transition: all var(--p360-transition);
+}
+
+.p360-header-link:hover {
+  color: var(--p360-accent);
+  border-color: var(--p360-accent-border);
+  background: var(--p360-accent-active);
+}
+
+.p360-header-link i {
+  font-size: 14px;
+}
+
+/* ============================================================
+   Scrollable Content Area
+   ============================================================ */
+
+.p360-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.p360-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.p360-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.p360-content::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+[data-theme="light"] .p360-content {
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+[data-theme="light"] .p360-content::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================================
+   Section Headings
+   ============================================================ */
+
+.p360-section {
+  margin-bottom: 4px;
+}
+
+.p360-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--p360-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  user-select: none;
+  transition: all var(--p360-transition);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.p360-section-heading:hover {
+  color: var(--p360-text);
+  background: var(--p360-hover-bg);
+}
+
+.p360-section-heading i {
+  font-size: 16px;
+  color: var(--p360-accent);
+}
+
+.p360-section-heading-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--p360-text-dim);
+  background: var(--p360-hover-bg);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.p360-section-chevron {
+  margin-left: 4px;
+  font-size: 10px;
+  transition: transform 0.2s ease;
+  color: var(--p360-text-dim);
+}
+
+.p360-section--collapsed .p360-section-chevron {
+  transform: rotate(-90deg);
+}
+
+.p360-section-body {
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.p360-section--collapsed .p360-section-body {
+  max-height: 0 !important;
+}
+
+/* ============================================================
+   Grid Template
+   ============================================================ */
+
+.p360-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+  padding: 4px 12px 12px;
+}
+
+/* ============================================================
+   Thumbnail (shared across templates)
+   ============================================================ */
+
+.p360-thumbnail {
+  position: relative;
+  border-radius: var(--p360-thumbnail-radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all var(--p360-transition);
+  background: var(--p360-hover-bg);
+  aspect-ratio: 2 / 1;
+}
+
+.p360-thumbnail:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.p360-thumbnail:active {
+  transform: scale(0.98);
+}
+
+.p360-thumbnail--selected {
+  outline: 2px solid var(--p360-accent);
+  outline-offset: 1px;
+}
+
+.p360-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.3s ease;
+}
+
+.p360-thumbnail img[data-src] {
+  opacity: 0;
+}
+
+.p360-thumbnail img.p360-loaded {
+  opacity: 1;
+}
+
+/* ============================================================
+   Badges (emoji reaction overlays on thumbnails)
+   ============================================================ */
+
+.p360-badges {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  max-width: calc(100% - 8px);
+}
+
+.p360-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 5px;
+  background: var(--p360-badge-bg);
+  color: var(--p360-badge-text);
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--p360-transition);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.p360-badge:hover {
+  transform: scale(1.1);
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.p360-badge-icon {
+  font-size: 12px;
+}
+
+.p360-badge-count {
+  font-size: 9px;
+  font-weight: 600;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================================
+   Feed Template
+   ============================================================ */
+
+.p360-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 12px 12px;
+}
+
+.p360-feed-item {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all var(--p360-transition);
+  background: var(--p360-hover-bg);
+}
+
+.p360-feed-item:hover {
+  background: var(--p360-border);
+}
+
+.p360-feed-item img {
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+  display: block;
+}
+
+.p360-feed-item-info {
+  padding: 8px 10px;
+}
+
+.p360-feed-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--p360-text);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p360-feed-item-meta {
+  font-size: 11px;
+  color: var(--p360-text-muted);
+  margin: 2px 0 0;
+}
+
+/* ============================================================
+   Accordion Template
+   ============================================================ */
+
+.p360-accordion {
+  padding: 0 12px 8px;
+}
+
+.p360-accordion-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--p360-border);
+  border-radius: 8px;
+  background: var(--p360-hover-bg);
+  color: var(--p360-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: all var(--p360-transition);
+  text-align: left;
+  font-family: inherit;
+}
+
+.p360-accordion-trigger:hover {
+  background: var(--p360-border);
+  border-color: var(--p360-border-strong);
+}
+
+.p360-accordion-trigger i {
+  font-size: 18px;
+  color: var(--p360-accent);
+}
+
+.p360-accordion-chevron {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--p360-text-dim);
+  transition: transform 0.2s ease;
+}
+
+.p360-accordion--open .p360-accordion-chevron {
+  transform: rotate(180deg);
+}
+
+.p360-accordion-body {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.3s ease;
+}
+
+.p360-accordion--open .p360-accordion-body {
+  max-height: 5000px;
+}
+
+.p360-accordion-inner {
+  padding: 8px 0 0;
+}
+
+/* ============================================================
+   Hero Template
+   ============================================================ */
+
+.p360-hero {
+  position: relative;
+  margin: 4px 12px 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  aspect-ratio: 16 / 9;
+}
+
+.p360-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.p360-hero-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 32px 16px 16px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+}
+
+.p360-hero-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.p360-hero-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 4px 0 0;
+}
+
+/* ============================================================
+   List Template
+   ============================================================ */
+
+.p360-list {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 12px 12px;
+}
+
+.p360-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--p360-transition);
+}
+
+.p360-list-item:hover {
+  background: var(--p360-hover-bg);
+}
+
+.p360-list-item--selected {
+  background: var(--p360-accent-active);
+  border: 1px solid var(--p360-accent-border);
+}
+
+.p360-list-item-thumb {
+  width: 64px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.p360-list-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.p360-list-item-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--p360-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p360-list-item-meta {
+  font-size: 11px;
+  color: var(--p360-text-muted);
+}
+
+/* ============================================================
+   Carousel Template
+   ============================================================ */
+
+.p360-carousel {
+  padding: 4px 0 12px;
+}
+
+.p360-carousel-track {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 12px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.p360-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.p360-carousel-item {
+  flex: 0 0 200px;
+  scroll-snap-align: start;
+}
+
+.p360-carousel-item .p360-thumbnail {
+  width: 200px;
+  height: 100px;
+}
+
+/* ============================================================
+   Avatar Row Template (horizontal circular avatars)
+   ============================================================ */
+
+.p360-avatar-row {
+  display: flex;
+  gap: 12px;
+  padding: 8px 12px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.p360-avatar-row::-webkit-scrollbar {
+  display: none;
+}
+
+.p360-avatar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--p360-transition);
+}
+
+.p360-avatar-item:hover {
+  transform: scale(1.05);
+}
+
+.p360-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--p360-border-strong);
+  transition: border-color var(--p360-transition);
+}
+
+.p360-avatar-item:hover .p360-avatar {
+  border-color: var(--p360-accent);
+}
+
+.p360-avatar-name {
+  font-size: 11px;
+  color: var(--p360-text-muted);
+  text-align: center;
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   Avatar Grid Template (grid of avatar cards)
+   ============================================================ */
+
+.p360-avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+  padding: 4px 12px 12px;
+}
+
+.p360-avatar-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--p360-border);
+  background: var(--p360-hover-bg);
+  cursor: pointer;
+  transition: all var(--p360-transition);
+  gap: 8px;
+}
+
+.p360-avatar-card:hover {
+  border-color: var(--p360-accent-border);
+  background: var(--p360-accent-active);
+}
+
+.p360-avatar-card .p360-avatar {
+  width: 48px;
+  height: 48px;
+}
+
+.p360-avatar-card-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--p360-text);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.p360-avatar-card-meta {
+  font-size: 11px;
+  color: var(--p360-text-muted);
+}
+
+/* ============================================================
+   Empty State
+   ============================================================ */
+
+.p360-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  gap: 12px;
+}
+
+.p360-empty-state i {
+  font-size: 48px;
+  color: var(--p360-text-dim);
+  opacity: 0.5;
+}
+
+.p360-empty-state-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--p360-text-muted);
+}
+
+.p360-empty-state-message {
+  font-size: 13px;
+  color: var(--p360-text-dim);
+  max-width: 240px;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   Theme Toggle Button
+   ============================================================ */
+
+.p360-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--p360-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--p360-text-muted);
+  cursor: pointer;
+  font-size: 18px;
+  transition: all var(--p360-transition);
+}
+
+.p360-theme-toggle:hover {
+  color: var(--p360-text);
+  border-color: var(--p360-border-strong);
+  background: var(--p360-hover-bg);
+}
+
+/* ============================================================
+   Toolbar (inside sidebar)
+   ============================================================ */
+
+.p360-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--p360-border);
+  flex-shrink: 0;
+}
+
+.p360-toolbar-spacer {
+  flex: 1;
+}
+
+.p360-resolution-select {
+  height: 36px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 0 28px 0 10px;
+  background: var(--p360-hover-bg);
+  color: var(--p360-text);
+  border: 1px solid var(--p360-border);
+  border-radius: 8px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%2394a3b8' d='M5 6L0 0h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  cursor: pointer;
+  font-family: inherit;
+  outline: none;
+  transition: all var(--p360-transition);
+}
+
+.p360-resolution-select:hover {
+  border-color: var(--p360-border-strong);
+}
+
+.p360-resolution-select:focus {
+  border-color: var(--p360-accent-border);
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 480px) {
+  .p360-sidebar {
+    width: 100vw;
+    max-width: 100vw;
+  }
+
+  .p360-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 4px;
+    padding: 4px 8px 8px;
+  }
+
+  .p360-carousel-item {
+    flex: 0 0 160px;
+  }
+
+  .p360-carousel-item .p360-thumbnail {
+    width: 160px;
+    height: 80px;
+  }
+
+  .p360-hero {
+    margin: 4px 8px 8px;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .p360-sidebar {
+    width: 80vw;
+  }
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+
+@keyframes p360-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes p360-slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.p360-section {
+  animation: p360-slide-up 0.2s ease-out;
+}
