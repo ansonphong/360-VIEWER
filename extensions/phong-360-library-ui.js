@@ -585,7 +585,7 @@ class Phong360LibraryUI {
      * @param {string} [options.libraryUrl] - URL to fetch library.json
      * @param {Object} [options.libraryData] - Pre-loaded library data
      * @param {string} [options.autoloadId] - Auto-load image by id or slug after render
-     * @param {string} [options.filterAlbum] - Only render section matching this album slug
+     * @param {string} [options.filterCollection] - Only render section matching this collection slug
      * @param {string} [options.theme] - 'dark' | 'light' | 'auto'
      * @param {string} [options.accent] - Accent color hex (e.g. '#6366f1')
      * @param {string} [options.baseUrl] - Base URL for resolving image paths
@@ -600,7 +600,7 @@ class Phong360LibraryUI {
         this.libraryUrl = options.libraryUrl || null;
         this.libraryData = options.libraryData || null;
         this.autoloadId = options.autoloadId || null;
-        this.filterAlbum = options.filterAlbum || null;
+        this.filterCollection = options.filterCollection || null;
         this.baseUrl = options.baseUrl || '';
 
         // Core viewer instances (created internally)
@@ -902,8 +902,8 @@ class Phong360LibraryUI {
     _renderSections(sections) {
         this._contentEl.innerHTML = '';
 
-        const filtered = this.filterAlbum
-            ? sections.filter(s => s.id === this.filterAlbum || s.slug === this.filterAlbum)
+        const filtered = this.filterCollection
+            ? sections.filter(s => s.id === this.filterCollection || s.slug === this.filterCollection)
             : sections;
 
         if (filtered.length === 0) {
