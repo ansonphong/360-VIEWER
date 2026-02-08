@@ -79,6 +79,58 @@ def slugify(name):
     return s
 
 
+def clean_title(raw_title, section_overrides):
+    """Clean up image title using section overrides."""
+    title = raw_title
+
+    # Apply titleStrip prefix removal
+    title_strip = section_overrides.get('titleStrip', '')
+    if title_strip and title.startswith(title_strip):
+        title = title[len(title_strip):]
+
+    # Extract MDVR date before stripping (for fallback)
+    mdvr_match = re.search(r'MDVR-(\d{4})-(\d{2})-(\d{2})', title)
+    mdvr_date = None
+    if mdvr_match:
+        mdvr_date = f"{mdvr_match.group(1)}-{mdvr_match.group(2)}-{mdvr_match.group(3)}"
+
+    # Strip MDVR timestamp patterns: MDVR-YYYY-MM-DD-HH-MM-SS
+    title = re.sub(r'-?MDVR-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}', '', title)
+
+    # Strip Hextile suffixes: -Hextile_44_4K (possibly repeated)
+    title = re.sub(r'(-Hextile_\d+_\d+[Kk])+', '', title)
+
+    # Strip trailing hash suffixes like -33d4a9
+    title = re.sub(r'-[0-9a-f]{6}$', '', title)
+
+    # Strip trailing -2d_alpha suffixes
+    title = re.sub(r'-2d_alpha$', '', title, flags=re.IGNORECASE)
+
+    # Replace hyphens and underscores with spaces
+    title = title.replace('-', ' ').replace('_', ' ')
+
+    # Split camelCase: "MerkabaCoreV7Panorama" -> "Merkaba Core V7 Panorama"
+    title = re.sub(r'([a-z])([A-Z])', r'\1 \2', title)
+    title = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1 \2', title)
+    title = re.sub(r'(\d)([A-Z])', r'\1 \2', title)
+
+    # Collapse multiple spaces and strip
+    title = re.sub(r'\s+', ' ', title).strip()
+
+    # Title case
+    if title:
+        title = title.title()
+
+    # Fallback: use MDVR date if available, then raw title
+    if not title:
+        if mdvr_date:
+            title = mdvr_date
+        else:
+            title = raw_title
+
+    return title
+
+
 def get_image_metadata(image_path):
     try:
         with Image.open(image_path) as img:
@@ -95,7 +147,7 @@ def get_image_metadata(image_path):
         return None
 
 
-def generate_resolution_variants(image_path, presets, output_dir, rel_path):
+def generate_resolution_variants(image_path, presets, output_dir, rel_path, build_dir='_BUILD'):
     variants = []
     try:
         with Image.open(image_path) as img:
@@ -131,7 +183,7 @@ def generate_resolution_variants(image_path, presets, output_dir, rel_path):
                     'label': preset_config['label'],
                     'width': target_width,
                     'height': target_height,
-                    'path': f"_BUILD/{preset_id}/{base_filename}.jpg",
+                    'path': f"{build_dir}/{preset_id}/{base_filename}.jpg",
                     'fileSize': file_size,
                     'quality': preset_config['quality'],
                     'recommended': preset_config['recommended'],
@@ -149,7 +201,7 @@ def generate_resolution_variants(image_path, presets, output_dir, rel_path):
     return variants
 
 
-def generate_thumbnail(image_path, thumbnail_config, output_dir, rel_path):
+def generate_thumbnail(image_path, thumbnail_config, output_dir, rel_path, build_dir='_BUILD'):
     try:
         with Image.open(image_path) as img:
             if img.mode == 'RGBA':
@@ -165,7 +217,7 @@ def generate_thumbnail(image_path, thumbnail_config, output_dir, rel_path):
             img.save(thumbnail_path, "JPEG", quality=thumbnail_config['quality'])
 
             return {
-                'path': f"_BUILD/thumbnails/{thumbnail_name}",
+                'path': f"{build_dir}/thumbnails/{thumbnail_name}",
                 'width': img.width,
                 'height': img.height
             }
@@ -174,19 +226,23 @@ def generate_thumbnail(image_path, thumbnail_config, output_dir, rel_path):
         return None
 
 
-def scan_directory(root_dir, presets, thumbnail_config, default_template, include_metadata=True):
+def scan_directory(root_dir, presets, thumbnail_config, default_template, include_metadata=True, site_config=None, build_dir='_BUILD'):
     """Scan directory for images and build v4.0 library structure."""
     sections = []
     total_images = 0
 
+    skip_dirs = list(SKIP_DIRS)
+    if build_dir not in skip_dirs:
+        skip_dirs.append(build_dir)
+
     total_files = sum(
         len(files) for r, d, files in os.walk(root_dir)
-        if not any(skip in r for skip in SKIP_DIRS)
+        if not any(skip in r for skip in skip_dirs)
     )
 
     with tqdm(total=total_files, desc="Processing images") as pbar:
         for dirpath, dirnames, filenames in os.walk(root_dir):
-            if any(skip in dirpath for skip in SKIP_DIRS):
+            if any(skip in dirpath for skip in skip_dirs):
                 continue
 
             rel_path = os.path.relpath(dirpath, root_dir)
@@ -206,17 +262,27 @@ def scan_directory(root_dir, presets, thumbnail_config, default_template, includ
                 # Check if section already exists
                 existing = next((s for s in sections if s['id'] == section_id), None)
                 if not existing:
+                    section_overrides = {}
+                    if site_config and 'sections' in site_config:
+                        section_overrides = site_config['sections'].get(section_name, {})
                     existing = {
                         'id': section_id,
-                        'title': section_name,
-                        'template': default_template,
-                        'icon': 'folder',
+                        'title': section_overrides.get('title', section_name),
+                        'template': section_overrides.get('template', default_template),
+                        'icon': section_overrides.get('icon', 'folder'),
                         'images': []
                     }
                     sections.append(existing)
 
                 for image_file in image_files:
                     name_without_ext = os.path.splitext(image_file)[0]
+
+                    # Clean title using section overrides
+                    section_overrides = {}
+                    if site_config and 'sections' in site_config:
+                        section_overrides = site_config['sections'].get(section_name, {})
+                    title = clean_title(name_without_ext, section_overrides)
+
                     file_path = os.path.join(rel_path, image_file).replace(os.sep, '/') if rel_path else image_file
                     full_path = os.path.join(root_dir, file_path)
 
@@ -224,16 +290,18 @@ def scan_directory(root_dir, presets, thumbnail_config, default_template, includ
                     slug = slugify(name_without_ext)
                     thumbnail = generate_thumbnail(
                         full_path, thumbnail_config,
-                        os.path.join(root_dir, '_BUILD'), file_path
+                        os.path.join(root_dir, build_dir), file_path,
+                        build_dir=build_dir
                     )
                     resolutions = generate_resolution_variants(
                         full_path, presets,
-                        os.path.join(root_dir, '_BUILD'), file_path
+                        os.path.join(root_dir, build_dir), file_path,
+                        build_dir=build_dir
                     )
 
                     image_entry = {
                         'id': hash_id,
-                        'title': name_without_ext,
+                        'title': title,
                         'slug': slug,
                         'thumbnail': thumbnail,
                         'resolutions': resolutions
@@ -291,12 +359,12 @@ def main():
                         help='Root directory to scan (default: ./)')
     parser.add_argument('--output', '-o', default='library.json',
                         help='Output JSON file (default: library.json)')
-    parser.add_argument('--config', '-c', default='../resolutions.json',
-                        help='Resolution config file (default: ../resolutions.json)')
+    parser.add_argument('--config', '-c', default=None,
+                        help='360-viewer.json config file (context, sections, build settings)')
     parser.add_argument('--template', '-t', default='accordion',
                         help='Default section template (default: accordion)')
     parser.add_argument('--context', default=None,
-                        help='Custom context JSON string (e.g. \'{"type":"profile","title":"Phong"}\')')
+                        help='Custom context JSON string \u2014 overridden by --config if both provided')
     parser.add_argument('--no-metadata', action='store_true',
                         help='Exclude image metadata from output')
     parser.add_argument('--compact', action='store_true',
@@ -304,20 +372,38 @@ def main():
 
     args = parser.parse_args()
 
-    # Load configuration
-    config = load_config(args.config)
-    if config:
-        print(f"Loaded configuration from: {args.config}")
-        presets = config.get('presets', DEFAULT_PRESETS)
-        thumbnail_config = config.get('thumbnail', DEFAULT_THUMBNAIL)
-    else:
-        print("Using default configuration")
-        presets = DEFAULT_PRESETS
-        thumbnail_config = DEFAULT_THUMBNAIL
+    # Load 360-viewer.json config
+    site_config = None
+    if args.config:
+        site_config = load_config(args.config)
+        if site_config:
+            print(f"Loaded config from: {args.config}")
+        else:
+            print(f"Warning: Config file not found: {args.config}")
 
-    # Parse custom context
+    # Resolve presets: hardcoded defaults -> config overrides
+    presets = dict(DEFAULT_PRESETS)  # copy defaults
+    thumbnail_config = dict(DEFAULT_THUMBNAIL)
+    build_dir = '_BUILD'
+
+    if site_config and 'build' in site_config:
+        build_config = site_config['build']
+        build_dir = build_config.get('outputDir', '_BUILD')
+        # Merge resolution overrides on top of defaults
+        if 'resolutions' in build_config:
+            for preset_id, overrides in build_config['resolutions'].items():
+                if preset_id in presets:
+                    presets[preset_id] = {**presets[preset_id], **overrides}
+                else:
+                    presets[preset_id] = overrides
+        if 'thumbnail' in build_config:
+            thumbnail_config = {**thumbnail_config, **build_config['thumbnail']}
+
+    # Resolve context: --config context wins, --context CLI is fallback
     context = None
-    if args.context:
+    if site_config and 'context' in site_config:
+        context = site_config['context']
+    elif args.context:
         try:
             context = json.loads(args.context)
         except json.JSONDecodeError as e:
@@ -336,7 +422,9 @@ def main():
     sections, total_images = scan_directory(
         args.root, presets, thumbnail_config,
         args.template,
-        include_metadata=not args.no_metadata
+        include_metadata=not args.no_metadata,
+        site_config=site_config,
+        build_dir=build_dir
     )
 
     print(f"\nFound {total_images} images in {len(sections)} sections")
@@ -351,7 +439,7 @@ def main():
     print(f"{'=' * 60}\n")
     print(f"Generated:")
     print(f"  - {args.output} (v4.0 format)")
-    print(f"  - _BUILD/ folder with {len(presets)} resolution variants + thumbnails")
+    print(f"  - {build_dir}/ folder with {len(presets)} resolution variants + thumbnails")
     print(f"\nResolution variants:")
     for preset_id, preset in presets.items():
         print(f"  - {preset_id}: {preset['width']}x{preset['height']} @ Q{preset['quality']}")
