@@ -35,6 +35,7 @@
 | **[TEMPLATES.md](docs/TEMPLATES.md)** | Template system and renderers guide |
 | **[THEMING.md](docs/THEMING.md)** | Theming, CSS custom properties, accent colors |
 | **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Production deployment guide |
+| **[FORK-GUIDE.md](docs/FORK-GUIDE.md)** | Create your own 360 gallery website |
 | **[WORDPRESS-INTEGRATION-PLAN.md](docs/WORDPRESS-INTEGRATION-PLAN.md)** | WordPress integration guide |
 | **[OPEN-SOURCE-READY.md](docs/OPEN-SOURCE-READY.md)** | Open-source strategy and roadmap |
 
@@ -133,6 +134,18 @@ Layer 3: Library UI (+25KB)          Section-based sidebar, templates, badges, t
 ```
 
 **Full-featured viewer**: section-based sidebar, 9 template renderers, badge overlays, light/dark themes, context-aware headers, deep-linking, lazy loading.
+
+---
+
+## Create Your Own Gallery
+
+Use the Phong 360 Viewer to build your own 360 panoramic image gallery website:
+
+1. **[Gallery Template](gallery-template/)** — Starter files to get going quickly
+2. **[Fork Guide](docs/FORK-GUIDE.md)** — Step-by-step setup and configuration reference
+3. **[Example: 360.phong.com](https://360.phong.com)** — Live gallery built with this engine
+
+Using Claude Code? Run `/create-gallery` for guided setup.
 
 ---
 
@@ -265,8 +278,10 @@ npm install phong-360-viewer
 │   ├── THEMING.md                    # Theming and customization
 │   ├── QUICKSTART.md                 # Quick start guide
 │   ├── DEPLOYMENT.md                 # Production deployment
+│   ├── FORK-GUIDE.md                 # Create your own gallery guide
 │   ├── WORDPRESS-INTEGRATION-PLAN.md
 │   └── OPEN-SOURCE-READY.md
+├── gallery-template/                   # Starter kit for new galleries
 ├── index.html                         # Demo page
 ├── embed-example.html                 # Integration examples
 └── README.md                          # This file

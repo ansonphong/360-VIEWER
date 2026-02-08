@@ -56,6 +56,21 @@ Production deployment:
 
 ---
 
+## Create Your Own Gallery
+
+### [Fork Guide](FORK-GUIDE.md)
+Step-by-step guide to creating your own 360 gallery website:
+- Prerequisites and quick start
+- Configuration reference (`360-viewer.json`)
+- Context types, section options, themes, accent colors
+- Build settings and resolution overrides
+- Deployment (Netlify, GitHub Pages, any static host)
+- Claude Code kickoff prompt for guided setup
+
+Also see the **[Gallery Template](../gallery-template/)** for ready-to-use starter files.
+
+---
+
 ## Integration Guides
 
 ### [WordPress Integration](WORDPRESS-INTEGRATION-PLAN.md)
@@ -82,6 +97,7 @@ Roadmap for adoption and growth:
 | **[TEMPLATES.md](TEMPLATES.md)** | Customizing section layouts |
 | **[THEMING.md](THEMING.md)** | Styling, dark/light mode, colors |
 | **[DEPLOYMENT.md](DEPLOYMENT.md)** | Going live, hosting setup |
+| **[FORK-GUIDE.md](FORK-GUIDE.md)** | Creating your own 360 gallery website |
 | **[WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md)** | WordPress developers |
 
 ---
@@ -108,6 +124,9 @@ Go to [LIBRARY-FORMAT.md](LIBRARY-FORMAT.md) - Badge Object and [API.md](API.md)
 
 ### "I want to create a custom template renderer"
 Go to [TEMPLATES.md](TEMPLATES.md) - Custom Templates and [API.md](API.md) - BaseRenderer
+
+### "I want to create my own 360 gallery website"
+Go to [FORK-GUIDE.md](FORK-GUIDE.md) and the [Gallery Template](../gallery-template/)
 
 ### "I'm integrating into WordPress"
 Go to [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md)
