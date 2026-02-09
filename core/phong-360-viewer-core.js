@@ -609,9 +609,12 @@
             const deltaX = event.clientX - this.lastPointerX;
             const deltaY = event.clientY - this.lastPointerY;
 
-            // Desktop: smooth interpolation with target state (PERFECT - unchanged)
-            this.targetState.lon = (this.pointerStartX - event.clientX) * 0.1 + this.onPointerDownLon;
-            this.targetState.lat = (event.clientY - this.pointerStartY) * 0.1 + this.onPointerDownLat;
+            // Desktop: smooth interpolation with target state
+            // Scale sensitivity by FOV so panning slows down when zoomed in
+            const fovScale = this.state.fov / this.config.fov.initTarget;
+            const sensitivity = 0.1 * fovScale;
+            this.targetState.lon = (this.pointerStartX - event.clientX) * sensitivity + this.onPointerDownLon;
+            this.targetState.lat = (event.clientY - this.pointerStartY) * sensitivity + this.onPointerDownLat;
 
             // Calculate the sign (direction) of the Azimuth as (-1) or (+1)
             this.state.azimuthSign = deltaX / Math.max(Math.abs(deltaX), 0.001);
@@ -832,8 +835,10 @@
                 const deltaY = touch.clientY - this.touchStartY;
 
                 // DIRECT state manipulation for 1:1 feel (no interpolation during drag)
-                // This is best practice for mobile: update state directly, not target
-                const sensitivity = 0.3; // Higher sensitivity for responsive feel
+                // Scale sensitivity by FOV so panning slows down when zoomed in
+                const baseSensitivity = 0.3;
+                const fovScale = this.state.fov / this.config.fov.initTarget;
+                const sensitivity = baseSensitivity * fovScale;
                 this.state.lon = this.touchStartLon + (deltaX * sensitivity);
                 this.state.lat = Math.max(-85, Math.min(85, this.touchStartLat + (deltaY * sensitivity)));
 
