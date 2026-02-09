@@ -755,11 +755,6 @@ class Phong360LibraryUI {
         });
         this._toolbar.appendChild(this._resolutionSelect);
 
-        // Spacer
-        const spacer = document.createElement('div');
-        spacer.className = 'p360-toolbar-spacer';
-        this._toolbar.appendChild(spacer);
-
         // Projection toggle button
         this._projectionBtn = document.createElement('button');
         this._projectionBtn.className = 'p360-toolbar-btn';
@@ -776,7 +771,7 @@ class Phong360LibraryUI {
 
         // Theme toggle button
         this._themeBtn = document.createElement('button');
-        this._themeBtn.className = 'p360-theme-toggle';
+        this._themeBtn.className = 'p360-toolbar-btn';
         this._themeBtn.title = 'Toggle Theme';
         this._themeBtn.innerHTML = '<i class="ph ph-moon"></i>';
         this._themeBtn.addEventListener('click', () => {
