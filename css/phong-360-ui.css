@@ -305,8 +305,8 @@
 
 .p360-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--p360-grid-min-width, 180px), 1fr));
+  gap: var(--p360-grid-gap, 6px);
   padding: 4px 12px 12px;
 }
 

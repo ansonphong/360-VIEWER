@@ -611,6 +611,7 @@ class Phong360LibraryUI {
         this._infoBarAlign = options.infoBar || null;
         this._favicon = options.favicon || null;
         this._sensitivity = options.sensitivity || null;
+        this._grid = options.grid || null;
 
         // Core viewer instances (created internally)
         this.core = null;
@@ -682,6 +683,7 @@ class Phong360LibraryUI {
             if (!this._infoBarAlign && ctx.infoBar) this._infoBarAlign = ctx.infoBar;
             if (!this._favicon && ctx.favicon) this._favicon = ctx.favicon;
             if (!this._accent && ctx.accent) this._accent = ctx.accent;
+            if (!this._grid && ctx.grid) this._grid = ctx.grid;
             if (ctx.sensitivity && this.core) {
                 Object.assign(this.core.config.sensitivity, ctx.sensitivity);
             }
@@ -989,6 +991,17 @@ class Phong360LibraryUI {
         const emoji = this._favicon || this._context?.favicon;
         if (emoji) {
             this._setEmojiFavicon(emoji);
+        }
+
+        // Grid layout: constructor > context
+        const grid = this._grid || this._context?.grid;
+        if (grid) {
+            if (grid.minWidth) {
+                document.documentElement.style.setProperty('--p360-grid-min-width', parseInt(grid.minWidth) + 'px');
+            }
+            if (grid.gap) {
+                document.documentElement.style.setProperty('--p360-grid-gap', parseInt(grid.gap) + 'px');
+            }
         }
     }
 
