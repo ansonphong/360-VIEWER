@@ -589,6 +589,8 @@ class Phong360LibraryUI {
      * @param {string} [options.theme] - 'dark' | 'light' | 'auto'
      * @param {string} [options.accent] - Accent color hex (e.g. '#6366f1')
      * @param {string} [options.baseUrl] - Base URL for resolving image paths
+     * @param {number} [options.panelWidth] - Sidebar width in px (280-600)
+     * @param {string} [options.infoBar] - Info bar alignment: 'center' | 'left'
      */
     constructor(options = {}) {
         this.containerId = options.containerId;
@@ -602,6 +604,8 @@ class Phong360LibraryUI {
         this.autoloadId = options.autoloadId || null;
         this.filterCollection = options.filterCollection || null;
         this.baseUrl = options.baseUrl || '';
+        this._panelWidth = options.panelWidth || null;
+        this._infoBarAlign = options.infoBar || null;
 
         // Core viewer instances (created internally)
         this.core = null;
@@ -919,6 +923,22 @@ class Phong360LibraryUI {
         }
     }
 
+    _applyPanelConfig() {
+        // Panel width: constructor > context > default CSS
+        const pw = this._panelWidth || this._context?.panelWidth;
+        if (pw) {
+            const w = Math.max(280, Math.min(600, parseInt(pw)));
+            document.documentElement.style.setProperty('--p360-sidebar-width', w + 'px');
+        }
+
+        // Info bar alignment: constructor > context > default 'center'
+        if (this._infoBar) {
+            const align = this._infoBarAlign || this._context?.infoBar || 'center';
+            this._infoBar.classList.remove('p360-info-left', 'p360-info-center');
+            this._infoBar.classList.add(align === 'left' ? 'p360-info-left' : 'p360-info-center');
+        }
+    }
+
     // --------------------------------------------------------
     // Library loading
     // --------------------------------------------------------
@@ -971,6 +991,8 @@ class Phong360LibraryUI {
         if (this._theme === 'auto' && this._context?.theme && this._context.theme !== 'auto') {
             this._applyTheme(this._context.theme);
         }
+
+        this._applyPanelConfig();
 
         // Render
         this._renderContext(this._context);
