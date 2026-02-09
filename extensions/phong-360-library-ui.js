@@ -1274,7 +1274,10 @@ class Phong360LibraryUI {
     onImageClick(image) {
         this._currentImageId = image.id;
 
-        this.closeSidebar();
+        // Only close sidebar on mobile; keep open on desktop
+        if (window.innerWidth <= 768) {
+            this.closeSidebar();
+        }
 
         setTimeout(() => {
             if (this.multiViewer) {
