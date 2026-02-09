@@ -966,8 +966,10 @@
 .p360-info-text {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-width: 0;
   padding: 0 6px;
+  text-align: center;
 }
 
 .p360-info-title {
