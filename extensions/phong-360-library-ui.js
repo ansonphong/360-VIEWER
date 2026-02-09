@@ -1133,8 +1133,8 @@ class Phong360LibraryUI {
             }
         }
 
-        // Insert header before content
-        this._sidebar.insertBefore(header, this._contentEl);
+        // Insert header inside scrollable content area
+        this._contentEl.insertBefore(header, this._contentEl.firstChild);
     }
 
     _domainFromUrl(url) {
