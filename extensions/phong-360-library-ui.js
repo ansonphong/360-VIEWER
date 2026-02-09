@@ -1033,9 +1033,9 @@ class Phong360LibraryUI {
 
         this._applyPanelConfig();
 
-        // Render
-        this._renderContext(this._context);
+        // Render (sections first since it clears innerHTML, then context prepends header)
         this._renderSections(this._sections);
+        this._renderContext(this._context);
 
         // Callbacks
         if (this.callbacks.onLibraryLoad) {
