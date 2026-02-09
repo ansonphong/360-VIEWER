@@ -129,6 +129,7 @@
                 handleVisibilityChange: this.handleVisibilityChange.bind(this),
                 handleFocus: this.handleFocus.bind(this),
                 handleBlur: this.handleBlur.bind(this),
+                onDblClick: this.onDblClick.bind(this),
                 animate: this.animate.bind(this)
             };
 
@@ -380,6 +381,9 @@
             document.addEventListener('keydown', this.boundHandlers.onKeyDown);
             document.addEventListener('keyup', this.boundHandlers.onKeyUp);
 
+            // Double-click to toggle fullscreen
+            this.container.addEventListener('dblclick', this.boundHandlers.onDblClick);
+
             // Tab visibility
             document.addEventListener('visibilitychange', this.boundHandlers.handleVisibilityChange);
             window.addEventListener('focus', this.boundHandlers.handleFocus);
@@ -620,6 +624,14 @@
         onPointerUp(event) {
             this.isPointerDown = false;
             this.isUserInteracting = false;
+        }
+
+        onDblClick(event) {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
         }
 
         onDocumentMouseWheel(event) {
@@ -1180,6 +1192,7 @@
             document.removeEventListener('wheel', this.boundHandlers.onDocumentMouseWheel);
 
             if (this.container) {
+                this.container.removeEventListener('dblclick', this.boundHandlers.onDblClick);
                 this.container.removeEventListener('touchstart', this.boundHandlers.onTouchStart);
                 this.container.removeEventListener('touchmove', this.boundHandlers.onTouchMove);
                 this.container.removeEventListener('touchend', this.boundHandlers.onTouchEnd);
