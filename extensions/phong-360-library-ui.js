@@ -589,6 +589,7 @@ class Phong360LibraryUI {
      * @param {string} [options.theme] - 'dark' | 'light' | 'auto'
      * @param {string} [options.accent] - Accent color hex (e.g. '#6366f1')
      * @param {string} [options.baseUrl] - Base URL for resolving image paths
+     * @param {string} [options.configUrl] - URL to 360-viewer.json config (loaded separately from library)
      * @param {number} [options.panelWidth] - Sidebar width in px (280-600)
      * @param {string} [options.infoBar] - Info bar alignment: 'center' | 'left'
      * @param {string} [options.favicon] - Emoji to use as favicon (e.g. '🌐')
@@ -605,6 +606,7 @@ class Phong360LibraryUI {
         this.autoloadId = options.autoloadId || null;
         this.filterCollection = options.filterCollection || null;
         this.baseUrl = options.baseUrl || '';
+        this.configUrl = options.configUrl || null;
         this._panelWidth = options.panelWidth || null;
         this._infoBarAlign = options.infoBar || null;
         this._favicon = options.favicon || null;
@@ -656,10 +658,36 @@ class Phong360LibraryUI {
         this._setupLazyLoading();
         this._applyTheme(this._theme);
 
+        // Load standalone config (360-viewer.json) before library
+        if (this.configUrl) {
+            await this._loadConfig();
+        }
+
         if (this.libraryUrl) {
             await this.loadLibrary();
         } else if (this.libraryData) {
             this._processLibraryData(this.libraryData);
+        }
+    }
+
+    async _loadConfig() {
+        try {
+            const resp = await fetch(this.configUrl);
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const ctx = data.context || data;
+            // Apply config fields (constructor values take precedence)
+            if (!this._panelWidth && ctx.panelWidth) this._panelWidth = ctx.panelWidth;
+            if (!this._infoBarAlign && ctx.infoBar) this._infoBarAlign = ctx.infoBar;
+            if (!this._favicon && ctx.favicon) this._favicon = ctx.favicon;
+            if (!this._accent && ctx.accent) this._accent = ctx.accent;
+            if (this._theme === 'auto' && ctx.theme && ctx.theme !== 'auto') {
+                this._applyTheme(ctx.theme);
+            }
+            // Apply early so sidebar width is correct before library loads
+            this._applyPanelConfig();
+        } catch (e) {
+            console.warn('Could not load config:', e);
         }
     }
 
