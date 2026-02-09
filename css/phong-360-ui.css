@@ -87,6 +87,10 @@
   pointer-events: auto;
 }
 
+.p360-sidebar-backdrop--visible ~ .p360-info-bar {
+  display: none !important;
+}
+
 /* ============================================================
    Sidebar Toggle Button
    ============================================================ */
