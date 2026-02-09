@@ -802,6 +802,17 @@ class Phong360LibraryUI {
         });
         this._toolbar.appendChild(this._themeBtn);
 
+        // Help button
+        this._helpBtn = document.createElement('button');
+        this._helpBtn.className = 'p360-toolbar-btn';
+        this._helpBtn.title = 'Help';
+        this._helpBtn.innerHTML = '<i class="ph ph-question"></i>';
+        this._helpBtn.addEventListener('click', () => {
+            document.dispatchEvent(new CustomEvent('p360-help'));
+            if (this.callbacks.onHelpClick) this.callbacks.onHelpClick();
+        });
+        this._toolbar.appendChild(this._helpBtn);
+
         // Close resolution dropdown on outside click
         document.addEventListener('click', () => {
             if (this._resDropdown) this._resDropdown.classList.remove('open');
