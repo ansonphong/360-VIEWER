@@ -591,6 +591,7 @@ class Phong360LibraryUI {
      * @param {string} [options.baseUrl] - Base URL for resolving image paths
      * @param {number} [options.panelWidth] - Sidebar width in px (280-600)
      * @param {string} [options.infoBar] - Info bar alignment: 'center' | 'left'
+     * @param {string} [options.favicon] - Emoji to use as favicon (e.g. '🌐')
      */
     constructor(options = {}) {
         this.containerId = options.containerId;
@@ -606,6 +607,7 @@ class Phong360LibraryUI {
         this.baseUrl = options.baseUrl || '';
         this._panelWidth = options.panelWidth || null;
         this._infoBarAlign = options.infoBar || null;
+        this._favicon = options.favicon || null;
 
         // Core viewer instances (created internally)
         this.core = null;
@@ -937,6 +939,32 @@ class Phong360LibraryUI {
             this._infoBar.classList.remove('p360-info-left', 'p360-info-center');
             this._infoBar.classList.add(align === 'left' ? 'p360-info-left' : 'p360-info-center');
         }
+
+        // Favicon: constructor > context
+        const emoji = this._favicon || this._context?.favicon;
+        if (emoji) {
+            this._setEmojiFavicon(emoji);
+        }
+    }
+
+    _setEmojiFavicon(emoji) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.font = '56px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(emoji, 32, 38);
+
+        // Remove existing favicons
+        const existing = document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]');
+        existing.forEach(el => el.remove());
+
+        const link = document.createElement('link');
+        link.rel = 'icon';
+        link.href = canvas.toDataURL('image/png');
+        document.head.appendChild(link);
     }
 
     // --------------------------------------------------------
