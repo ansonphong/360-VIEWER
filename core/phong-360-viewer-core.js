@@ -610,9 +610,8 @@
             const deltaY = event.clientY - this.lastPointerY;
 
             // Desktop: smooth interpolation with target state
-            // Scale sensitivity by FOV so panning slows down when zoomed in
-            const fovScale = this.state.fov / this.config.fov.initTarget;
-            const sensitivity = 0.1 * fovScale;
+            // Degrees-per-pixel from FOV and container size for 1:1 tracking at all zoom levels
+            const sensitivity = this.state.fov / this.container.clientWidth;
             this.targetState.lon = (this.pointerStartX - event.clientX) * sensitivity + this.onPointerDownLon;
             this.targetState.lat = (event.clientY - this.pointerStartY) * sensitivity + this.onPointerDownLat;
 
@@ -807,8 +806,7 @@
                 const ratio = initialDistance / currentDistance;
 
                 // DIRECT state manipulation for instant 1:1 feedback
-                // More sensitivity than desktop for responsive feel
-                const sensitivity = 1.5; // Higher = more responsive to pinch
+                const sensitivity = 0.8; // Pinch zoom responsiveness
                 const fovChange = (ratio - 1) * this.pinchStartFov * sensitivity;
 
                 // Update state directly (no interpolation during pinch)
@@ -835,10 +833,8 @@
                 const deltaY = touch.clientY - this.touchStartY;
 
                 // DIRECT state manipulation for 1:1 feel (no interpolation during drag)
-                // Scale sensitivity by FOV so panning slows down when zoomed in
-                const baseSensitivity = 0.3;
-                const fovScale = this.state.fov / this.config.fov.initTarget;
-                const sensitivity = baseSensitivity * fovScale;
+                // Degrees-per-pixel from FOV and container size for true 1:1 finger tracking
+                const sensitivity = this.state.fov / this.container.clientWidth;
                 this.state.lon = this.touchStartLon + (deltaX * sensitivity);
                 this.state.lat = Math.max(-85, Math.min(85, this.touchStartLat + (deltaY * sensitivity)));
 
