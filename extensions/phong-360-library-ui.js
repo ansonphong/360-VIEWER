@@ -610,6 +610,7 @@ class Phong360LibraryUI {
         this._panelWidth = options.panelWidth || null;
         this._infoBarAlign = options.infoBar || null;
         this._favicon = options.favicon || null;
+        this._sensitivity = options.sensitivity || null;
 
         // Core viewer instances (created internally)
         this.core = null;
@@ -681,6 +682,9 @@ class Phong360LibraryUI {
             if (!this._infoBarAlign && ctx.infoBar) this._infoBarAlign = ctx.infoBar;
             if (!this._favicon && ctx.favicon) this._favicon = ctx.favicon;
             if (!this._accent && ctx.accent) this._accent = ctx.accent;
+            if (ctx.sensitivity && this.core) {
+                Object.assign(this.core.config.sensitivity, ctx.sensitivity);
+            }
             if (this._theme === 'auto' && ctx.theme && ctx.theme !== 'auto') {
                 this._applyTheme(ctx.theme);
             }
@@ -704,11 +708,13 @@ class Phong360LibraryUI {
         } catch (e) { /* ignore */ }
 
         if (typeof Phong360ViewerCore !== 'undefined') {
+            const coreConfig = {
+                viewRotation: { autoRotate, autoRotationRate: 1 }
+            };
+            if (this._sensitivity) coreConfig.sensitivity = this._sensitivity;
             this.core = new Phong360ViewerCore({
                 containerId: this.containerId,
-                config: {
-                    viewRotation: { autoRotate, autoRotationRate: 1 }
-                }
+                config: coreConfig
             });
         }
 

@@ -194,6 +194,12 @@
                     autoRotate: false,
                     autoRotationRate: 0,
                     smoothness: 8000
+                },
+                sensitivity: {
+                    touch: 1.0,      // Touch drag multiplier (1.0 = true 1:1 tracking)
+                    mouse: 1.0,      // Mouse drag multiplier (1.0 = true 1:1 tracking)
+                    pinchZoom: 0.8,  // Pinch zoom responsiveness
+                    scrollZoom: 1.0  // Mouse wheel zoom multiplier
                 }
             };
         }
@@ -610,8 +616,8 @@
             const deltaY = event.clientY - this.lastPointerY;
 
             // Desktop: smooth interpolation with target state
-            // Degrees-per-pixel from FOV and container size for 1:1 tracking at all zoom levels
-            const sensitivity = this.state.fov / this.container.clientWidth;
+            // Degrees-per-pixel from FOV and container size, scaled by config multiplier
+            const sensitivity = (this.state.fov / this.container.clientWidth) * this.config.sensitivity.mouse;
             this.targetState.lon = (this.pointerStartX - event.clientX) * sensitivity + this.onPointerDownLon;
             this.targetState.lat = (event.clientY - this.pointerStartY) * sensitivity + this.onPointerDownLat;
 
@@ -644,7 +650,8 @@
             // Only handle zoom if mouse is over canvas
             if (elementUnderMouse === canvas) {
                 event.preventDefault(); // Only prevent default when over canvas
-                let scrollDirection = event.deltaY < 0 ? 0.95 : 1.05;
+                const zoomStep = 0.05 * this.config.sensitivity.scrollZoom;
+                let scrollDirection = event.deltaY < 0 ? (1 - zoomStep) : (1 + zoomStep);
                 this.targetState.fov = this.clampFOV(this.targetState.fov * scrollDirection);
             }
             // If not over canvas, let the event bubble (allows library panel scrolling)
@@ -806,7 +813,7 @@
                 const ratio = initialDistance / currentDistance;
 
                 // DIRECT state manipulation for instant 1:1 feedback
-                const sensitivity = 0.8; // Pinch zoom responsiveness
+                const sensitivity = this.config.sensitivity.pinchZoom;
                 const fovChange = (ratio - 1) * this.pinchStartFov * sensitivity;
 
                 // Update state directly (no interpolation during pinch)
@@ -833,8 +840,8 @@
                 const deltaY = touch.clientY - this.touchStartY;
 
                 // DIRECT state manipulation for 1:1 feel (no interpolation during drag)
-                // Degrees-per-pixel from FOV and container size for true 1:1 finger tracking
-                const sensitivity = this.state.fov / this.container.clientWidth;
+                // Degrees-per-pixel from FOV and container size, scaled by config multiplier
+                const sensitivity = (this.state.fov / this.container.clientWidth) * this.config.sensitivity.touch;
                 this.state.lon = this.touchStartLon + (deltaX * sensitivity);
                 this.state.lat = Math.max(-85, Math.min(85, this.touchStartLat + (deltaY * sensitivity)));
 
