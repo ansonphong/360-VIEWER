@@ -639,18 +639,26 @@
         onKeyDown(event) {
             switch(event.key) {
                 case 'ArrowLeft':
+                case 'a':
+                case 'A':
                     this.activeKeys.panLeft = true;
                     this.startContinuousPan();
                     break;
                 case 'ArrowRight':
+                case 'd':
+                case 'D':
                     this.activeKeys.panRight = true;
                     this.startContinuousPan();
                     break;
                 case 'ArrowUp':
+                case 'w':
+                case 'W':
                     this.activeKeys.panUp = true;
                     this.startContinuousPan();
                     break;
                 case 'ArrowDown':
+                case 's':
+                case 'S':
                     this.activeKeys.panDown = true;
                     this.startContinuousPan();
                     break;
@@ -674,18 +682,26 @@
         onKeyUp(event) {
             switch(event.key) {
                 case 'ArrowLeft':
+                case 'a':
+                case 'A':
                     this.activeKeys.panLeft = false;
                     this.stopContinuousPan();
                     break;
                 case 'ArrowRight':
+                case 'd':
+                case 'D':
                     this.activeKeys.panRight = false;
                     this.stopContinuousPan();
                     break;
                 case 'ArrowUp':
+                case 'w':
+                case 'W':
                     this.activeKeys.panUp = false;
                     this.stopContinuousPan();
                     break;
                 case 'ArrowDown':
+                case 's':
+                case 'S':
                     this.activeKeys.panDown = false;
                     this.stopContinuousPan();
                     break;
