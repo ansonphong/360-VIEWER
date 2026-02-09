@@ -744,6 +744,7 @@ class Phong360LibraryUI {
         this._sidebar.appendChild(this._contentEl);
 
         document.body.appendChild(this._sidebar);
+        this._buildInfoBar();
     }
 
     _buildToolbar() {
@@ -799,6 +800,75 @@ class Phong360LibraryUI {
         document.addEventListener('click', () => {
             if (this._resDropdown) this._resDropdown.classList.remove('open');
         });
+    }
+
+    _buildInfoBar() {
+        this._infoBar = document.createElement('div');
+        this._infoBar.className = 'p360-info-bar p360-info-center'; // default center
+
+        // Prev button
+        this._prevBtn = document.createElement('button');
+        this._prevBtn.className = 'p360-info-nav';
+        this._prevBtn.innerHTML = '<i class="ph ph-caret-left"></i>';
+        this._prevBtn.title = 'Previous image';
+        this._prevBtn.disabled = true;
+        this._prevBtn.addEventListener('click', () => {
+            if (this.multiViewer) this.multiViewer.loadPreviousImage();
+        });
+
+        // Text
+        this._infoText = document.createElement('div');
+        this._infoText.className = 'p360-info-text';
+
+        this._infoTitle = document.createElement('div');
+        this._infoTitle.className = 'p360-info-title';
+        this._infoTitle.textContent = 'Loading...';
+
+        this._infoSubtitle = document.createElement('div');
+        this._infoSubtitle.className = 'p360-info-subtitle';
+        this._infoSubtitle.textContent = '360\u00B0 Viewer';
+
+        this._infoText.appendChild(this._infoTitle);
+        this._infoText.appendChild(this._infoSubtitle);
+
+        // Next button
+        this._nextBtn = document.createElement('button');
+        this._nextBtn.className = 'p360-info-nav';
+        this._nextBtn.innerHTML = '<i class="ph ph-caret-right"></i>';
+        this._nextBtn.title = 'Next image';
+        this._nextBtn.disabled = true;
+        this._nextBtn.addEventListener('click', () => {
+            if (this.multiViewer) this.multiViewer.loadNextImage();
+        });
+
+        this._infoBar.appendChild(this._prevBtn);
+        this._infoBar.appendChild(this._infoText);
+        this._infoBar.appendChild(this._nextBtn);
+        document.body.appendChild(this._infoBar);
+    }
+
+    _updateInfoBar(imageData, resolution) {
+        if (!this._infoBar) return;
+
+        // Title
+        this._infoTitle.textContent = imageData.title || imageData.name || 'Unknown';
+
+        // Subtitle: resolution info
+        if (resolution) {
+            this._infoSubtitle.textContent = resolution.id.toUpperCase() + ' (' + resolution.width + '\u00D7' + resolution.height + ')';
+        } else {
+            this._infoSubtitle.textContent = 'Equirectangular';
+        }
+
+        // Show the bar
+        this._infoBar.classList.add('visible');
+
+        // Update prev/next button disabled state
+        if (this.multiViewer && this._allImages.length > 0) {
+            const idx = this._allImages.findIndex(img => img.id === imageData.id);
+            this._prevBtn.disabled = idx <= 0;
+            this._nextBtn.disabled = idx === -1 || idx >= this._allImages.length - 1;
+        }
     }
 
     _updateResolutionSelector(imageData, currentResolution) {
@@ -1165,6 +1235,7 @@ class Phong360LibraryUI {
         // Update toolbar controls
         this._updateResolutionSelector(imageData, resolution);
         this._updateProjectionButton(this.core?.projectionType ?? 1);
+        this._updateInfoBar(imageData, resolution);
 
         if (this.callbacks.onImageLoad) {
             this.callbacks.onImageLoad(imageData, resolution);
