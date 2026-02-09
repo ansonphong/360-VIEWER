@@ -2,56 +2,60 @@
 
 **Ultra-lightweight, modular 360 image viewer with progressive enhancement.**
 
-[![Version](https://img.shields.io/badge/version-4.0.0-blue)](https://github.com/ansonphong/360-VIEWER)
+**[See it live at 360.phong.com](https://360.phong.com)**
+
+[![Version](https://img.shields.io/badge/version-4.1.0-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Three.js](https://img.shields.io/badge/three.js-r128-orange)](https://threejs.org/)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-ready-blueviolet)](CLAUDE.md)
 
 ## What Makes This Special
 
-- **Truly Modular**: Russian Doll architecture - use Layer 1 (30KB), add Layer 2 (+15KB), or Layer 3 (+25KB)
-- **Ultra-Lightweight**: Core is only 30KB - 6x smaller than competitors
+- **Claude Code Ready**: Includes `CLAUDE.md` project context, `/create-gallery` skill for guided setup, and comprehensive docs that AI agents can read and act on. Set up a full gallery site in minutes with Claude Code.
+- **Truly Modular**: Russian Doll architecture — use Layer 1 (30KB), add Layer 2 (+15KB), or Layer 3 (+25KB). Only load what you need.
+- **Ultra-Lightweight**: Core is only 30KB — 6x smaller than competitors. No webpack, no babel, no build step.
+- **Complete Gallery Engine**: Sidebar, toolbar, info bar, theming, favicon, resolution switching, prev/next navigation — all built in. Your host page stays minimal.
 - **Section-Based UI**: Template engine with 9 built-in renderers (grid, feed, accordion, hero, list, carousel, avatar-row, avatar-grid, empty-state)
+- **JSON-Driven Config**: One `360-viewer.json` file controls everything — title, theme, accent color, panel width, favicon, social links. No code changes needed.
+- **Deploy Templates**: Ready-to-use webhook scripts (PHP and Python) with documented server setup and gotchas.
 - **Theme System**: Light/dark/auto modes with CSS custom properties and accent color support
-- **Badge System**: Emoji and icon badges on thumbnails with click events
-- **Context-Aware Headers**: Profile, discover, and local context rendering with social link icons
-- **Deep-Linking**: URL parameter support (`?img=slug`) for direct image access
-- **Framework Agnostic**: Works with WordPress, React, Vue, or vanilla JS
-- **No Build Required**: Drop it in and go - no webpack, no babel
-- **Smart Preferences**: localStorage with namespaced keys
-- **Full Controls**: Mouse, touch, keyboard navigation
-- **Mobile Optimized**: Touch gestures and responsive sidebar
-- **Two Projections**: Gnomonic and Stereographic
-- **Adaptive Loading**: Smart resolution selection based on device and bandwidth
+- **Deep-Linking**: URL parameter support (`?img=slug`) for sharing specific images
+- **Mobile Optimized**: Touch gestures, responsive sidebar, WASD + arrow key controls, double-click fullscreen
+- **Adaptive Loading**: Smart resolution selection (8K/4K/2K) based on device and bandwidth
 
 ---
 
-## Documentation
+## Create Your Own Gallery
 
-| Document | Description |
-|----------|-------------|
-| **[QUICKSTART.md](docs/QUICKSTART.md)** | Get started in 5 minutes |
-| **[API.md](docs/API.md)** | Complete API reference for all 3 layers |
-| **[LIBRARY-FORMAT.md](docs/LIBRARY-FORMAT.md)** | Library format specification (v4.0) |
-| **[TEMPLATES.md](docs/TEMPLATES.md)** | Template system and renderers guide |
-| **[THEMING.md](docs/THEMING.md)** | Theming, CSS custom properties, accent colors |
-| **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Production deployment guide |
-| **[FORK-GUIDE.md](docs/FORK-GUIDE.md)** | Create your own 360 gallery website |
-| **[WORDPRESS-INTEGRATION-PLAN.md](docs/WORDPRESS-INTEGRATION-PLAN.md)** | WordPress integration guide |
-| **[OPEN-SOURCE-READY.md](docs/OPEN-SOURCE-READY.md)** | Open-source strategy and roadmap |
+The fastest way to get started:
+
+### With Claude Code
+
+```bash
+git submodule add https://github.com/ansonphong/360-VIEWER.git 360-viewer
+```
+
+Then run `/create-gallery` — the skill walks you through everything: profile setup, theme, deploy scripts, image building, and testing.
+
+### Manual Setup
+
+1. **[Gallery Template](gallery-template/)** — Starter files (index.html, config, deploy scripts, cache headers)
+2. **[Fork Guide](docs/FORK-GUIDE.md)** — Step-by-step setup and full configuration reference
+3. **[Example: 360.phong.com](https://360.phong.com)** — Live gallery built with this engine ([source](https://github.com/ansonphong/360-PHONG-COM))
 
 ---
 
 ## Architecture
 
-The viewer uses a **Russian Doll** architecture with three progressive layers. Use only what you need:
+The viewer uses a **Russian Doll** architecture with three progressive layers:
 
 ```
-Layer 3: Library UI (+25KB)          Section-based sidebar, templates, badges, themes
+Layer 3: Library UI (+25KB)          Sidebar, toolbar, info bar, templates, themes
   Layer 2: Multi-Image (+15KB)       Multiple images, adaptive resolution, preferences
     Layer 1: Core Viewer (30KB)      Three.js renderer, controls, projections
 ```
 
-**Layer 4** (optional, separate repo) adds gallery-specific features like reactions, auth, and sharing. It lives in the `360-HEXTILE-GALLERY` repo and extends Layer 3 via callbacks.
+**Layer 4** (optional, separate repo) adds gallery features like reactions, auth, and sharing via callbacks.
 
 ---
 
@@ -77,37 +81,9 @@ Layer 3: Library UI (+25KB)          Section-based sidebar, templates, badges, t
 </script>
 ```
 
-**You get**: mouse drag, wheel zoom, touch gestures, keyboard controls, auto-rotation, projection switching.
+**You get**: mouse drag, wheel zoom, touch gestures, keyboard controls (WASD + arrows), auto-rotation, projection switching, double-click fullscreen.
 
-### Layer 2: Multiple Images + Adaptive Resolution (+15KB)
-
-```html
-<script src="extensions/phong-360-multi-image.js"></script>
-
-<script>
-    const core = new Phong360ViewerCore({ containerId: 'viewer' });
-    const multi = new Phong360MultiImage({
-        core: core,
-        images: [
-            {
-                id: 'sunset',
-                title: 'Sunset Beach',
-                slug: 'sunset-beach',
-                resolutions: [
-                    { id: '4k', label: '4K', path: 'sunset-4k.jpg', width: 4096, height: 2048, default: true },
-                    { id: '2k', label: '2K', path: 'sunset-2k.jpg', width: 2048, height: 1024 }
-                ]
-            }
-        ],
-        adaptiveLoading: true
-    });
-    multi.loadFirstImage();
-</script>
-```
-
-**Adds**: multiple images, adaptive resolution, manual resolution switching, localStorage preferences.
-
-### Layer 3: Full Library UI (+25KB)
+### Layer 3: Full Gallery (recommended)
 
 ```html
 <script src="extensions/phong-360-library-ui.js"></script>
@@ -115,79 +91,68 @@ Layer 3: Library UI (+25KB)          Section-based sidebar, templates, badges, t
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
 
 <script>
-    const libraryUI = new Phong360LibraryUI({
+    const gallery = new Phong360LibraryUI({
         containerId: 'viewer',
         libraryUrl: 'library/library.json',
+        configUrl: '360-viewer.json',
         baseUrl: 'library/',
-        theme: 'auto',                  // 'light' | 'dark' | 'auto'
-        accent: '#6366f1',              // Custom accent color
-        callbacks: {
-            onImageLoad: (imageData, resolution) => {
-                console.log('Loaded:', imageData.title, resolution.label);
-            },
-            onBadgeClick: (imageData, badge) => {
-                console.log('Badge clicked:', badge.emoji, badge.count);
-            }
-        }
+        theme: 'auto'
     });
 </script>
 ```
 
-**Full-featured viewer**: section-based sidebar, 9 template renderers, badge overlays, light/dark themes, context-aware headers, deep-linking, lazy loading.
+**Full-featured gallery**: section-based sidebar, toolbar with resolution switching, glassmorphic info bar with prev/next navigation, light/dark themes, emoji favicon, deep-linking, lazy loading — all configured via `360-viewer.json`.
 
 ---
 
-## Create Your Own Gallery
+## Configuration
 
-Use the Phong 360 Viewer to build your own 360 panoramic image gallery website:
-
-1. **[Gallery Template](gallery-template/)** — Starter files to get going quickly
-2. **[Fork Guide](docs/FORK-GUIDE.md)** — Step-by-step setup and configuration reference
-3. **[Example: 360.phong.com](https://360.phong.com)** — Live gallery built with this engine
-
-Using Claude Code? Run `/create-gallery` for guided setup.
-
----
-
-## Library Format (v4.0)
-
-The viewer uses a JSON-based library format with sections and templates:
+Everything is driven by `360-viewer.json`:
 
 ```json
 {
-  "version": "4.0.0",
   "context": {
-    "type": "local",
-    "title": "My 360 Gallery",
-    "theme": "auto"
+    "type": "profile",
+    "title": "Your Name",
+    "subtitle": "360 Photography",
+    "avatar": "assets/avatar.jpg",
+    "theme": "dark",
+    "accent": "#6366f1",
+    "panelWidth": 420,
+    "infoBar": "center",
+    "favicon": "🎨",
+    "links": [
+      {"url": "https://yoursite.com", "label": "Website"},
+      {"url": "https://instagram.com/you", "label": "Instagram"}
+    ]
   },
-  "sections": [
-    {
-      "id": "landscapes",
+  "sections": {
+    "Landscapes": {
       "title": "Landscapes",
-      "template": "accordion",
       "icon": "mountains",
-      "images": [
-        {
-          "id": "abc123",
-          "title": "Mountain Sunset",
-          "slug": "mountain-sunset",
-          "thumbnail": { "path": "_BUILD/thumbnails/mountain-sunset.jpg", "width": 512, "height": 256 },
-          "resolutions": [
-            { "id": "4k", "label": "4K", "path": "_BUILD/4K/mountain-sunset.jpg", "width": 4096, "height": 2048, "default": true },
-            { "id": "2k", "label": "2K", "path": "_BUILD/2K/mountain-sunset.jpg", "width": 2048, "height": 1024 }
-          ],
-          "badges": [
-            { "emoji": "fire", "count": 42 }
-          ]
-        }
-      ]
+      "template": "grid"
     }
-  ]
+  }
 }
 ```
 
-See [LIBRARY-FORMAT.md](docs/LIBRARY-FORMAT.md) for the full specification and [TEMPLATES.md](docs/TEMPLATES.md) for available templates.
+See the [Fork Guide](docs/FORK-GUIDE.md) for all configuration options.
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| **[CLAUDE.md](CLAUDE.md)** | Project context for Claude Code and AI agents |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history with migration guides |
+| **[FORK-GUIDE.md](docs/FORK-GUIDE.md)** | Create your own 360 gallery website |
+| **[API.md](docs/API.md)** | Complete API reference for all 3 layers |
+| **[LIBRARY-FORMAT.md](docs/LIBRARY-FORMAT.md)** | Library format specification (v4.0) |
+| **[TEMPLATES.md](docs/TEMPLATES.md)** | Template system and renderers guide |
+| **[THEMING.md](docs/THEMING.md)** | Theming, CSS custom properties, accent colors |
+| **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Production deployment guide |
+| **[QUICKSTART.md](docs/QUICKSTART.md)** | Get started in 5 minutes |
 
 ---
 
@@ -207,47 +172,32 @@ Layer 3 includes a pluggable template engine with 9 built-in renderers:
 | `avatar-grid` | Grid of avatar cards | Creator directory |
 | `empty` | Placeholder for empty sections | No-content state |
 
-Custom templates can be registered via `templateEngine.register('name', RendererClass)`.
-
-See [TEMPLATES.md](docs/TEMPLATES.md) for config options and visual examples.
-
 ---
 
 ## Controls
 
 | Action | Mouse | Keyboard | Touch |
 |--------|-------|----------|-------|
-| **Look Around** | Click & Drag | Arrow Keys | Swipe |
+| **Look Around** | Click & Drag | WASD / Arrow Keys | Swipe |
 | **Zoom In** | Scroll Up | `+` or `=` | Pinch Out |
 | **Zoom Out** | Scroll Down | `-` or `_` | Pinch In |
+| **Fullscreen** | Double-click | - | Double-tap |
 | **Toggle Projection** | Button | `P` | Button |
-| **Auto-Rotate** | - | `Space` | - |
 
 ---
 
 ## Installation
 
-### Method 1: Download & Include
+### Git Submodule (Recommended)
 
 ```bash
-git clone https://github.com/ansonphong/360-VIEWER.git
-
-# Layer 1: core/phong-360-viewer-core.js
-# Layer 2: extensions/phong-360-multi-image.js
-# Layer 3: extensions/phong-360-library-ui.js
-```
-
-### Method 2: Git Submodule
-
-```bash
-cd your-project/assets/
 git submodule add https://github.com/ansonphong/360-VIEWER.git 360-viewer
 ```
 
-### Method 3: NPM (Coming Soon)
+### Download
 
 ```bash
-npm install phong-360-viewer
+git clone https://github.com/ansonphong/360-VIEWER.git
 ```
 
 ---
@@ -261,54 +211,23 @@ npm install phong-360-viewer
 ├── extensions/
 │   ├── phong-360-multi-image.js       # Layer 2: Multi-image manager (+15KB)
 │   └── phong-360-library-ui.js        # Layer 3: Library UI (+25KB)
-│                                       #   Includes TemplateEngine, BaseRenderer,
-│                                       #   and all 9 built-in template renderers
 ├── css/
 │   ├── styles.css                     # Core page styles
-│   └── phong-360-ui.css               # Library UI styles (CSS custom properties,
-│                                       #   light/dark themes, all template styles)
+│   └── phong-360-ui.css               # Library UI styles
 ├── library/
-│   ├── library.json                   # Sample library (v4.0 format)
-│   └── build_library.py              # Library builder script
-├── docs/
-│   ├── README.md                      # Documentation index
-│   ├── API.md                         # Complete API reference
-│   ├── LIBRARY-FORMAT.md             # Library format spec (v4.0)
-│   ├── TEMPLATES.md                  # Template system guide
-│   ├── THEMING.md                    # Theming and customization
-│   ├── QUICKSTART.md                 # Quick start guide
-│   ├── DEPLOYMENT.md                 # Production deployment
-│   ├── FORK-GUIDE.md                 # Create your own gallery guide
-│   ├── WORDPRESS-INTEGRATION-PLAN.md
-│   └── OPEN-SOURCE-READY.md
+│   └── build_library.py              # Multi-resolution library builder
 ├── gallery-template/                   # Starter kit for new galleries
-├── index.html                         # Demo page
-├── embed-example.html                 # Integration examples
+│   ├── index.html                     # Host page template
+│   ├── 360-viewer.json                # Config template
+│   ├── deploy/                        # Webhook deploy scripts (PHP + Python)
+│   └── netlify.toml                   # Cache headers for Netlify
+├── .claude/
+│   └── commands/create-gallery.md     # Claude Code setup skill
+├── docs/                              # Full documentation
+├── CLAUDE.md                          # AI agent project context
+├── CHANGELOG.md                       # Version history + migration guides
 └── README.md                          # This file
 ```
-
----
-
-## Requirements
-
-### Browser Support
-
-- Chrome/Edge 88+
-- Firefox 85+
-- Safari 14+
-- Modern mobile browsers
-- **WebGL support required**
-
-### Dependencies
-
-- **Three.js** r128 or later
-- **Phosphor Icons** (Layer 3 only, loaded via CDN or local)
-
-### Image Requirements
-
-- **Format**: Equirectangular (2:1 aspect ratio)
-- **File Types**: JPG, PNG
-- **Recommended Size**: 4096x2048 to 8192x4096
 
 ---
 
@@ -320,45 +239,41 @@ npm install phong-360-viewer
 | **Modular** | 3 Layers | No | No | No |
 | **Template Engine** | 9 renderers | No | No | No |
 | **Theme System** | Light/Dark/Auto | No | No | No |
-| **Badge System** | Built-in | No | No | No |
+| **AI-Assisted Setup** | Claude Code skill | No | No | No |
+| **Deploy Templates** | PHP + Python | No | No | No |
 | **Build Required** | No | Yes | No | Partial |
 | **Framework Agnostic** | Yes | Partial | Yes | Partial |
 | **Adaptive Loading** | Yes | No | No | Partial |
-| **localStorage Prefs** | Yes | Partial | No | No |
 | **License** | MIT | MIT | MIT | Apache 2.0 |
 
 ---
 
 ## Roadmap
 
-### v4.0 (Current)
+### v4.1 (Current)
 
-- [x] Section-based library UI with template engine
-- [x] 9 built-in template renderers
-- [x] Badge system with emoji/icon support
-- [x] Context-aware headers (profile, discover, local)
-- [x] Light/dark/auto theming with CSS custom properties
-- [x] Accent color customization
-- [x] Deep-linking via URL parameters
-- [x] Phosphor icon integration
-- [x] Lazy loading via IntersectionObserver
-- [x] Link auto-detection (URL to platform icon)
-- [x] v4.0 library format with sections, slugs, badges
+- [x] Glassmorphic info bar with prev/next navigation
+- [x] Custom resolution dropdown (replaces `<select>`)
+- [x] WASD keyboard controls
+- [x] Double-click fullscreen
+- [x] configUrl for separate config loading
+- [x] panelWidth, infoBar, favicon config fields
+- [x] Claude Code integration (CLAUDE.md, /create-gallery skill)
+- [x] Deploy script templates (PHP + Python)
+- [x] CHANGELOG.md with migration guides
 
-### v4.1 (Coming Soon)
+### v4.2 (Next)
 
 - [ ] NPM package
 - [ ] CDN distribution (jsDelivr)
 - [ ] TypeScript definitions
 - [ ] Minified builds
-- [ ] Source maps
 
-### v4.2 (Future)
+### v5.0 (Future)
 
 - [ ] VR mode support
 - [ ] Hotspot/annotation system
 - [ ] Video 360 support
-- [ ] Multi-resolution streaming
 - [ ] React/Vue wrapper components
 
 ---
@@ -373,8 +288,6 @@ Contributions are welcome! Please:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-See [OPEN-SOURCE-READY.md](docs/OPEN-SOURCE-READY.md) for growth strategy and roadmap.
-
 ---
 
 ## License
@@ -383,15 +296,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-## Support
-
-- **Documentation**: See [docs/](docs/) folder
-- **Issues**: [GitHub Issues](https://github.com/ansonphong/360-VIEWER/issues)
-- **Website**: [https://360.phong.com](https://360.phong.com)
-
----
-
-**Version**: 4.0.0
-**Last Updated**: February 2026
-**Author**: Phong
-**License**: MIT
+**Version**: 4.1.0 | **Author**: [Phong](https://phong.com) | **License**: MIT

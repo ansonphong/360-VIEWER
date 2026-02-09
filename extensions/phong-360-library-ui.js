@@ -5,7 +5,7 @@
  * Supports v4.0 library.json format with context, sections, badges,
  * theme management, accent colors, and deep-linking.
  *
- * @version 4.0.0
+ * @version 4.1.0
  * @author Phong
  * @license MIT
  */

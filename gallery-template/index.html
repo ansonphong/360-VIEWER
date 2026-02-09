@@ -10,6 +10,13 @@
 		</style>
 
 		<!-- TODO: Add your Google Analytics tracking code here -->
+		<!-- <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+		<script>
+			window.dataLayer = window.dataLayer || [];
+			function gtag(){dataLayer.push(arguments);}
+			gtag('js', new Date());
+			gtag('config', 'G-XXXXXXXXXX');
+		</script> -->
 
 		<title>My 360 Gallery</title>
 		<link rel="stylesheet" href="360-viewer/css/styles.css" />
@@ -26,13 +33,15 @@
 	</head>
 	<body style="background: #000;">
 		<div id="container" style="background: #000;"></div>
-		<div id="info-panel">
-			<!-- TODO: Add your logo: <img src="assets/logo.png" class="phong-logo" /> -->
-			<h1 id="imageTitle" class="title">Loading...</h1>
-			<h2 id="imageFormat" class="subtitle">360° Viewer</h2>
+
+		<div id="drag-drop-overlay">
+			<div class="icon">DROP</div>
+			<div class="message">EQUIRECTANGULAR IMAGE</div>
 		</div>
-		<div id="drag-drop-overlay"><div class="icon">DROP</div><div class="message">EQUIRECTANGULAR IMAGE</div></div>
-		<div id="loading-overlay"><div class="spinner"></div></div>
+
+		<div id="loading-overlay">
+			<div class="spinner"></div>
+		</div>
 
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 		<script src="360-viewer/core/phong-360-viewer-core.js"></script>
@@ -41,38 +50,114 @@
 
 		<script>
 			const LIBRARY_URL = new URLSearchParams(window.location.search).get('library') || 'library/library.json';
+			const BASE_URL = 'library/';
 			let viewer;
+
 			window.addEventListener('DOMContentLoaded', function() {
 				try {
-					viewer = new Phong360LibraryUI({ containerId: 'container', libraryUrl: LIBRARY_URL, baseUrl: 'library/', theme: 'auto' });
-					viewer.callbacks.onImageLoad = function(data, res) {
-						var t = document.getElementById('imageTitle'), f = document.getElementById('imageFormat');
-						if (t) t.textContent = data.title || 'Unknown';
-						if (f && res) f.textContent = res.label + ' (' + res.width + '\u00D7' + res.height + ')';
-					};
-					if (viewer.core) document.addEventListener('keydown', function(e) {
-						if ((e.key==='p'||e.key==='P') && e.target.tagName!=='INPUT' && e.target.tagName!=='TEXTAREA')
-							viewer.core.switchProjection(viewer.core.projectionType===0?1:0);
+					viewer = new Phong360LibraryUI({
+						containerId: 'container',
+						libraryUrl: LIBRARY_URL,
+						configUrl: '360-viewer.json',
+						baseUrl: BASE_URL,
+						theme: 'auto'
 					});
+
+					if (viewer.core) {
+						document.addEventListener('keydown', function(e) {
+							if (e.key === 'p' || e.key === 'P') {
+								if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+								viewer.core.switchProjection(viewer.core.projectionType === 0 ? 1 : 0);
+							}
+						});
+					}
+
 					window.phong360 = { viewer };
-					// Drag and drop
-					document.addEventListener('dragenter', function(e) { e.preventDefault(); document.getElementById('drag-drop-overlay').style.display='flex'; });
-					document.addEventListener('dragover', function(e) { e.preventDefault(); e.dataTransfer.dropEffect='copy'; });
-					document.addEventListener('dragleave', function(e) { e.preventDefault(); if(!e.relatedTarget||e.relatedTarget.nodeName==='HTML') document.getElementById('drag-drop-overlay').style.display='none'; });
-					document.addEventListener('drop', function(e) {
-						e.preventDefault(); document.getElementById('drag-drop-overlay').style.display='none';
-						var file=e.dataTransfer.files[0];
-						if(file&&(file.type==='image/jpeg'||file.type==='image/png')){
-							var url=URL.createObjectURL(file), img=new Image();
-							img.onload=function(){ document.getElementById('imageTitle').textContent=file.name.replace(/\.[^.]+$/,'');
-								document.getElementById('imageFormat').textContent=img.naturalWidth+'x'+img.naturalHeight;
-								if(viewer&&viewer.core) viewer.core.loadImage(url,img.naturalWidth,img.naturalHeight); };
-							img.src=url;
-						}
-					});
-				} catch(err) { console.error('Error:', err); }
+					setupDragAndDrop();
+					console.log('Gallery initialized with Phong 360 Viewer v4.0');
+				} catch (error) {
+					console.error('Error initializing Phong 360 Viewer:', error);
+				}
 			});
-			document.addEventListener('wheel', function(e) { if(e.ctrlKey) e.preventDefault(); }, { passive: false });
+
+			document.addEventListener('wheel', function(e) { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
+			document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+			document.addEventListener('gesturechange', function(e) { e.preventDefault(); });
+			document.addEventListener('gestureend', function(e) { e.preventDefault(); });
+
+			function setupDragAndDrop() {
+				document.addEventListener('dragenter', function(e) { e.preventDefault(); document.getElementById('drag-drop-overlay').style.display = 'flex'; });
+				document.addEventListener('dragover', function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+				document.addEventListener('dragleave', function(e) { e.preventDefault(); if (!e.relatedTarget || e.relatedTarget.nodeName === 'HTML') document.getElementById('drag-drop-overlay').style.display = 'none'; });
+				document.addEventListener('drop', function(e) {
+					e.preventDefault();
+					document.getElementById('drag-drop-overlay').style.display = 'none';
+					var file = e.dataTransfer.files[0];
+					if (file && (file.type === 'image/jpeg' || file.type === 'image/png')) {
+						var url = URL.createObjectURL(file);
+						var img = new Image();
+						img.onload = function() {
+							if (viewer && viewer.core) {
+								viewer.core.loadImage(url, img.naturalWidth, img.naturalHeight).then(function() {
+									if (!viewer.core.animationFrameId) viewer.core.animate();
+								});
+							}
+						};
+						img.onerror = function() { URL.revokeObjectURL(url); };
+						img.src = url;
+					}
+				});
+			}
+		</script>
+
+		<!-- Help modal (triggered by toolbar ? button via p360-help event) -->
+		<style>
+			#instructions {
+				position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+				background: rgba(0,0,0,0.9); color: white; z-index: 10000;
+				display: none; align-items: center; justify-content: center;
+				padding: 20px; backdrop-filter: blur(10px);
+			}
+			#instructions.show { display: flex; }
+			#instructions-content {
+				background: rgba(20,20,20,0.95); border-radius: 16px; padding: 30px;
+				max-width: 500px; width: 100%; border: 1px solid rgba(255,255,255,0.2);
+			}
+			#instructions h3 { margin: 0 0 20px 0; font-size: 24px; }
+			#instructions ul { text-align: left; margin: 20px 0; line-height: 2; padding-left: 0; list-style: none; }
+			#instructions li { margin-bottom: 12px; padding-left: 8px; }
+			#instructions button {
+				background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+				color: white; border: none; padding: 14px 32px; border-radius: 8px;
+				cursor: pointer; font-size: 16px; font-weight: 600; margin-top: 20px;
+				width: 100%; transition: all 0.2s ease;
+			}
+			#instructions button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
+			@media (max-width: 768px) {
+				#instructions-content { padding: 24px; max-height: 85vh; overflow-y: auto; }
+				#instructions h3 { font-size: 20px; }
+				#instructions li { font-size: 15px; }
+			}
+		</style>
+
+		<div id="instructions" onclick="event.target === this && this.classList.remove('show')">
+			<div id="instructions-content">
+				<h3>360 Viewer</h3>
+				<ul>
+					<li><i class="ph ph-cursor-click"></i> <strong>Click & Drag</strong> to look around</li>
+					<li><i class="ph ph-magnifying-glass-plus"></i> <strong>Scroll</strong> to zoom in/out</li>
+					<li><i class="ph ph-list"></i> <strong>Click menu</strong> to browse library</li>
+					<li><i class="ph ph-upload-simple"></i> <strong>Drag & Drop</strong> your own 360 images</li>
+					<li><i class="ph ph-keyboard"></i> <strong>WASD / Arrow keys</strong> to pan, +/- to zoom, <strong>P</strong> to switch projection</li>
+				</ul>
+				<button onclick="document.getElementById('instructions').classList.remove('show')">Got it!</button>
+			</div>
+		</div>
+
+		<script>
+			document.addEventListener('p360-help', function() {
+				document.getElementById('instructions').classList.add('show');
+			});
 		</script>
 	</body>
 </html>

@@ -1,6 +1,7 @@
 [build]
   publish = "."
 
+# Build output images - content-addressed, never change
 [[headers]]
   for = "/library/_BUILD/8K/*"
   [headers.values]
@@ -21,17 +22,24 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+# Viewer JS/CSS - always revalidate (fast 304s via ETag)
 [[headers]]
   for = "/360-viewer/**/*.js"
   [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+    Cache-Control = "no-cache"
 
 [[headers]]
   for = "/360-viewer/**/*.css"
   [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+    Cache-Control = "no-cache"
 
+# Library manifest and config - always revalidate
 [[headers]]
   for = "/library/library.json"
   [headers.values]
-    Cache-Control = "public, max-age=3600"
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/360-viewer.json"
+  [headers.values]
+    Cache-Control = "no-cache"

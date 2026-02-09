@@ -4,7 +4,10 @@
     "title": "My 360 Gallery",
     "subtitle": "Explore panoramic images",
     "theme": "auto",
-    "accent": "#6366f1"
+    "accent": "#6366f1",
+    "panelWidth": 420,
+    "infoBar": "center",
+    "favicon": ""
   },
   "sections": {},
   "build": {
