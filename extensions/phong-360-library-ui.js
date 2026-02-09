@@ -691,8 +691,13 @@ class Phong360LibraryUI {
                         console.error('Image load error:', error);
                     },
                     onResolutionChange: (resolution) => {
-                        if (this._resolutionSelect) {
-                            this._resolutionSelect.value = resolution.id;
+                        if (this._resBtn) {
+                            this._resBtn.textContent = resolution.id.toUpperCase();
+                        }
+                        if (this._resDropdown) {
+                            this._resDropdown.querySelectorAll('.p360-res-option').forEach(b => {
+                                b.classList.toggle('active', b.dataset.resId === resolution.id);
+                            });
                         }
                     }
                 }
@@ -742,18 +747,26 @@ class Phong360LibraryUI {
     }
 
     _buildToolbar() {
-        // Resolution selector
-        this._resolutionSelect = document.createElement('select');
-        this._resolutionSelect.className = 'p360-resolution-select';
-        this._resolutionSelect.title = 'Image Resolution';
-        this._resolutionSelect.style.display = 'none'; // Hidden until an image loads
-        this._resolutionSelect.addEventListener('change', () => {
-            const resId = this._resolutionSelect.value;
-            if (this.multiViewer) {
-                this.multiViewer.switchResolution(resId);
-            }
+        // Resolution dropdown
+        this._resWrapper = document.createElement('div');
+        this._resWrapper.className = 'p360-res-wrapper';
+        this._resWrapper.style.display = 'none';
+
+        this._resBtn = document.createElement('button');
+        this._resBtn.className = 'p360-res-btn';
+        this._resBtn.title = 'Image Resolution';
+        this._resBtn.textContent = '--';
+        this._resBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this._resDropdown.classList.toggle('open');
         });
-        this._toolbar.appendChild(this._resolutionSelect);
+
+        this._resDropdown = document.createElement('div');
+        this._resDropdown.className = 'p360-res-dropdown';
+
+        this._resWrapper.appendChild(this._resBtn);
+        this._resWrapper.appendChild(this._resDropdown);
+        this._toolbar.appendChild(this._resWrapper);
 
         // Projection toggle button
         this._projectionBtn = document.createElement('button');
@@ -781,23 +794,37 @@ class Phong360LibraryUI {
             this._updateThemeButton(next);
         });
         this._toolbar.appendChild(this._themeBtn);
+
+        // Close resolution dropdown on outside click
+        document.addEventListener('click', () => {
+            if (this._resDropdown) this._resDropdown.classList.remove('open');
+        });
     }
 
     _updateResolutionSelector(imageData, currentResolution) {
-        if (!this._resolutionSelect || !imageData?.resolutions) return;
+        if (!this._resBtn || !imageData?.resolutions) return;
 
-        this._resolutionSelect.innerHTML = '';
+        this._resDropdown.innerHTML = '';
         for (const res of imageData.resolutions) {
-            const option = document.createElement('option');
-            option.value = res.id;
-            const sizeStr = res.fileSize ? ` (${this.multiViewer?.formatFileSize(res.fileSize) || ''})` : '';
-            option.textContent = `${res.label} ${res.width}\u00D7${res.height}${sizeStr}`;
+            const btn = document.createElement('button');
+            btn.className = 'p360-res-option';
+            btn.textContent = res.id.toUpperCase();
+            btn.dataset.resId = res.id;
             if (currentResolution && currentResolution.id === res.id) {
-                option.selected = true;
+                btn.classList.add('active');
+                this._resBtn.textContent = res.id.toUpperCase();
             }
-            this._resolutionSelect.appendChild(option);
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (this.multiViewer) this.multiViewer.switchResolution(res.id);
+                this._resDropdown.querySelectorAll('.p360-res-option').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this._resBtn.textContent = res.id.toUpperCase();
+                this._resDropdown.classList.remove('open');
+            });
+            this._resDropdown.appendChild(btn);
         }
-        this._resolutionSelect.style.display = '';
+        this._resWrapper.style.display = '';
     }
 
     _updateProjectionButton(type) {
