@@ -24,6 +24,11 @@
   --p360-overlay-bg: rgba(0, 0, 0, 0.5);
   --p360-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   --p360-transition: 0.2s ease;
+
+  /* Sidebar surface hooks (no-op defaults — consumers override via theming) */
+  --p360-sidebar-bg: var(--p360-bg);
+  --p360-sidebar-backdrop-filter: none;
+  --p360-sidebar-border-left: none;
 }
 
 /* ============================================================
@@ -56,7 +61,10 @@
   bottom: 0;
   width: var(--p360-sidebar-width);
   max-width: 90vw;
-  background: var(--p360-bg);
+  background: var(--p360-sidebar-bg);
+  backdrop-filter: var(--p360-sidebar-backdrop-filter);
+  -webkit-backdrop-filter: var(--p360-sidebar-backdrop-filter);
+  border-left: var(--p360-sidebar-border-left);
   color: var(--p360-text);
   z-index: 200;
   display: flex;
