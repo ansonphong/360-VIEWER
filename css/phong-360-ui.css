@@ -1,6 +1,14 @@
 /* Phong 360 Library UI — v4.0 Styles */
 
 /* ============================================================
+   BREAKPOINT CONTRACT — keep media queries below in sync with
+   Phong360LibraryUI.MOBILE_BREAKPOINT (currently 768).
+   The JS class constant is the source of truth; this CSS file
+   mirrors it because CSS @media queries cannot read custom
+   properties. If you change one, change both.
+   ============================================================ */
+
+/* ============================================================
    CSS Custom Properties — Dark mode default
    ============================================================ */
 

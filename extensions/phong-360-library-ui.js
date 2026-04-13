@@ -579,6 +579,8 @@ function detectLinkIcon(url) {
 // ============================================================
 
 class Phong360LibraryUI {
+    static MOBILE_BREAKPOINT = 768;
+
     /**
      * @param {Object} options
      * @param {string} options.containerId - DOM element ID for the 360 viewer canvas
@@ -1341,7 +1343,7 @@ class Phong360LibraryUI {
         this._currentImageId = image.id;
 
         // Only close sidebar on mobile; keep open on desktop
-        if (window.innerWidth <= 768) {
+        if (window.innerWidth <= Phong360LibraryUI.MOBILE_BREAKPOINT) {
             this.closeSidebar();
         }
 
@@ -1450,7 +1452,7 @@ class Phong360LibraryUI {
     // --------------------------------------------------------
 
     _isDesktop() {
-        return window.innerWidth > 768;
+        return window.innerWidth > Phong360LibraryUI.MOBILE_BREAKPOINT;
     }
 
     _handleResize() {
