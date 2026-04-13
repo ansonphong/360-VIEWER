@@ -45,6 +45,26 @@ Then run `/create-gallery` — the skill walks you through everything: profile s
 
 ---
 
+## Peer Dependencies
+
+The viewer uses [Phosphor Icons](https://phosphoricons.com/) for all UI glyphs
+(toolbar buttons, sidebar toggle, info bar nav). Your host page **must** load
+Phosphor Icons before the viewer initializes — either via CDN:
+
+```html
+<link rel="stylesheet"
+      href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+```
+
+or via your own bundled copy. If Phosphor is missing you'll see empty boxes
+where the icons should be — there is no fallback inside the viewer.
+
+Three.js r128 is also required for Layer 1 (Core Viewer) and is similarly
+loaded by the host page. See [QUICKSTART.md](docs/QUICKSTART.md) for the full
+host-page template.
+
+---
+
 ## Architecture
 
 The viewer uses a **Russian Doll** architecture with three progressive layers:
