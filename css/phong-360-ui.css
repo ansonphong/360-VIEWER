@@ -37,6 +37,21 @@
   --p360-sidebar-bg: var(--p360-bg);
   --p360-sidebar-backdrop-filter: none;
   --p360-sidebar-border-left: none;
+
+  /* Toolbar (top of sidebar — res/projection/theme/help buttons) */
+  --p360-toolbar-bg: transparent;
+  --p360-toolbar-border-bottom: 1px solid var(--p360-border);
+  --p360-toolbar-backdrop-filter: none;
+
+  /* Info bar (bottom floating prev/next) */
+  --p360-info-bar-bg: rgba(0, 0, 0, 0.45);
+  --p360-info-bar-backdrop-filter: blur(20px) saturate(1.4);
+  --p360-info-bar-border: 1px solid rgba(255, 255, 255, 0.08);
+
+  /* Sidebar toggle button (floating top-right) */
+  --p360-toggle-btn-bg: rgba(0, 0, 0, 0.5);
+  --p360-toggle-btn-border: 1px solid rgba(255, 255, 255, 0.2);
+  --p360-toggle-btn-backdrop-filter: blur(8px);
 }
 
 /* ============================================================
@@ -118,9 +133,9 @@
   z-index: 201;
   width: 44px;
   height: 44px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: var(--p360-toggle-btn-border);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--p360-toggle-btn-bg);
   color: rgba(255, 255, 255, 0.8);
   font-size: 20px;
   cursor: pointer;
@@ -128,8 +143,8 @@
   align-items: center;
   justify-content: center;
   transition: all var(--p360-transition);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: var(--p360-toggle-btn-backdrop-filter);
+  -webkit-backdrop-filter: var(--p360-toggle-btn-backdrop-filter);
 }
 
 .p360-sidebar-toggle:hover {
@@ -805,7 +820,10 @@
   align-items: center;
   gap: 6px;
   padding: 14px 12px;
-  border-bottom: 1px solid var(--p360-border);
+  background: var(--p360-toolbar-bg);
+  border-bottom: var(--p360-toolbar-border-bottom);
+  backdrop-filter: var(--p360-toolbar-backdrop-filter);
+  -webkit-backdrop-filter: var(--p360-toolbar-backdrop-filter);
   flex-shrink: 0;
 }
 
@@ -926,10 +944,10 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--p360-info-bar-bg);
+  backdrop-filter: var(--p360-info-bar-backdrop-filter);
+  -webkit-backdrop-filter: var(--p360-info-bar-backdrop-filter);
+  border: var(--p360-info-bar-border);
   border-radius: 14px;
   color: rgba(255, 255, 255, 0.85);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
