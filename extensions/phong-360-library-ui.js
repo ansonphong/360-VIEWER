@@ -1469,7 +1469,9 @@ class Phong360LibraryUI {
     openSidebar() {
         this._sidebarOpen = true;
         this._sidebar.classList.add('p360-sidebar--open');
-        this._backdrop.classList.add('p360-sidebar-backdrop--visible');
+        if (!this._isDesktop()) {
+            this._backdrop.classList.add('p360-sidebar-backdrop--visible');
+        }
 
         // Re-observe in case images were added
         this._observeImages();
