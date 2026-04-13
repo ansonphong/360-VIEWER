@@ -674,6 +674,12 @@ class Phong360LibraryUI {
         } else if (this.libraryData) {
             this._processLibraryData(this.libraryData);
         }
+
+        // Opt-in default-open on desktop (after config + library applied, so
+        // panel width / theme / content are settled before first paint).
+        if (this._desktopOpenByDefault && this._isDesktop()) {
+            this.openSidebar();
+        }
     }
 
     async _loadConfig() {
@@ -1433,6 +1439,10 @@ class Phong360LibraryUI {
     // --------------------------------------------------------
     // Sidebar toggle
     // --------------------------------------------------------
+
+    _isDesktop() {
+        return window.innerWidth > 768;
+    }
 
     toggleSidebar() {
         this._sidebarOpen ? this.closeSidebar() : this.openSidebar();
