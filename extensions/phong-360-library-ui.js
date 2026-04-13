@@ -767,6 +767,7 @@ class Phong360LibraryUI {
         this._toggle.className = 'p360-sidebar-toggle';
         this._toggle.innerHTML = '<i class="ph ph-list"></i>';
         this._toggle.title = 'Browse Library';
+        this._toggle.setAttribute('aria-controls', 'p360-sidebar');
         this._toggle.addEventListener('click', (e) => {
             e.stopPropagation();
             this.toggleSidebar();
@@ -782,6 +783,7 @@ class Phong360LibraryUI {
         // Sidebar
         this._sidebar = document.createElement('div');
         this._sidebar.className = 'p360-sidebar';
+        this._sidebar.id = 'p360-sidebar';
         this._sidebar.setAttribute('data-theme', this._resolveTheme());
 
         // Toolbar (resolution selector + projection toggle)
@@ -797,6 +799,7 @@ class Phong360LibraryUI {
 
         document.body.appendChild(this._sidebar);
         this._buildInfoBar();
+        this._updateToggleIcon();
     }
 
     _buildToolbar() {
@@ -1444,6 +1447,21 @@ class Phong360LibraryUI {
         return window.innerWidth > 768;
     }
 
+    _updateToggleIcon() {
+        if (!this._toggle) return;
+        if (this._sidebarOpen) {
+            this._toggle.innerHTML = '<i class="ph ph-caret-right"></i>';
+            this._toggle.title = 'Collapse panel';
+            this._toggle.setAttribute('aria-label', 'Collapse panel');
+            this._toggle.setAttribute('aria-expanded', 'true');
+        } else {
+            this._toggle.innerHTML = '<i class="ph ph-list"></i>';
+            this._toggle.title = 'Browse Library';
+            this._toggle.setAttribute('aria-label', 'Browse library');
+            this._toggle.setAttribute('aria-expanded', 'false');
+        }
+    }
+
     toggleSidebar() {
         this._sidebarOpen ? this.closeSidebar() : this.openSidebar();
     }
@@ -1455,12 +1473,14 @@ class Phong360LibraryUI {
 
         // Re-observe in case images were added
         this._observeImages();
+        this._updateToggleIcon();
     }
 
     closeSidebar() {
         this._sidebarOpen = false;
         this._sidebar.classList.remove('p360-sidebar--open');
         this._backdrop.classList.remove('p360-sidebar-backdrop--visible');
+        this._updateToggleIcon();
     }
 
     // --------------------------------------------------------
