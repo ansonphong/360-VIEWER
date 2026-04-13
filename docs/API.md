@@ -381,8 +381,43 @@ new Phong360LibraryUI(options)
     accent: string,                 // Accent color hex (e.g. '#6366f1')
     autoloadId: string,             // Auto-load image by ID or slug after library loads
     filterCollection: string,       // Only render section matching this ID/slug
+
+    // Optional - Sidebar behavior
+    desktopOpenByDefault: boolean,  // If true, sidebar opens automatically on
+                                    // first load when window > MOBILE_BREAKPOINT
+                                    // (768px). Manual collapse on desktop is
+                                    // remembered across resize round-trips.
+                                    // Default: false (opt-in).
 }
 ```
+
+### Sidebar behavior
+
+The sidebar can be in one of two states: open or collapsed. The toggle button
+(top-right) reflects state:
+- Closed → hamburger icon (`ph-list`), `aria-expanded="false"`
+- Open → chevron-right icon (`ph-caret-right`), `aria-expanded="true"`
+
+**Initial state:**
+- Mobile (`window.innerWidth <= Phong360LibraryUI.MOBILE_BREAKPOINT`): closed.
+- Desktop: closed by default. Set `desktopOpenByDefault: true` to open on load
+  instead.
+
+**Resize behavior:**
+- Desktop → mobile: always closes (the sidebar covers the canvas on mobile).
+- Mobile → desktop: re-opens IF `desktopOpenByDefault: true` AND the user
+  hasn't manually collapsed it during this session. Manual collapse via the
+  toggle button is remembered until the user manually re-opens.
+
+**Backdrop:**
+- Mobile: dim backdrop appears behind the sidebar; tap-to-close.
+- Desktop: no backdrop, the canvas beside the sidebar stays interactive (the
+  user can pan the panorama with the panel open).
+
+**Class constant:**
+- `Phong360LibraryUI.MOBILE_BREAKPOINT = 768` — single source of truth for the
+  desktop/mobile boundary. The CSS file mirrors this value in its `@media`
+  queries; if you change one, change both.
 
 ### Callbacks
 
