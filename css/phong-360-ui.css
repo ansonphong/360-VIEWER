@@ -1082,6 +1082,8 @@
    ============================================================ */
 
 :fullscreen .p360-sidebar-toggle,
+:fullscreen .p360-sidebar,
+:fullscreen .p360-sidebar-backdrop,
 :fullscreen .p360-info-bar {
   display: none !important;
 }
