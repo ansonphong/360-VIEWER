@@ -645,6 +645,8 @@ class Phong360LibraryUI {
         this._allImages = [];
         this._context = null;
         this._sidebarOpen = false;
+        this._userCollapsedOnDesktop = false;
+        this._wasDesktop = null;
         this._currentImageId = null;
 
         // DOM references
@@ -663,6 +665,10 @@ class Phong360LibraryUI {
         this._buildSidebarDOM();
         this._setupLazyLoading();
         this._applyTheme(this._theme);
+
+        // Track viewport class for resize handler
+        this._wasDesktop = this._isDesktop();
+        window.addEventListener('resize', () => this._handleResize());
 
         // Load standalone config (360-viewer.json) before library
         if (this.configUrl) {
@@ -1447,6 +1453,24 @@ class Phong360LibraryUI {
         return window.innerWidth > 768;
     }
 
+    _handleResize() {
+        const desktop = this._isDesktop();
+        if (desktop && this._wasDesktop === false) {
+            // mobile → desktop: re-open only if opted in AND user hasn't collapsed
+            this._backdrop.classList.remove('p360-sidebar-backdrop--visible');
+            if (this._desktopOpenByDefault && !this._userCollapsedOnDesktop) {
+                this.openSidebar();
+            }
+        } else if (!desktop && this._wasDesktop === true) {
+            // desktop → mobile: always close so panel doesn't trap the canvas
+            this.closeSidebar();
+        } else if (desktop && this._sidebarOpen) {
+            // already desktop, sidebar already open — ensure no leftover backdrop
+            this._backdrop.classList.remove('p360-sidebar-backdrop--visible');
+        }
+        this._wasDesktop = desktop;
+    }
+
     _updateToggleIcon() {
         if (!this._toggle) return;
         if (this._sidebarOpen) {
@@ -1463,7 +1487,13 @@ class Phong360LibraryUI {
     }
 
     toggleSidebar() {
-        this._sidebarOpen ? this.closeSidebar() : this.openSidebar();
+        if (this._sidebarOpen) {
+            if (this._isDesktop()) this._userCollapsedOnDesktop = true;
+            this.closeSidebar();
+        } else {
+            this._userCollapsedOnDesktop = false;
+            this.openSidebar();
+        }
     }
 
     openSidebar() {
