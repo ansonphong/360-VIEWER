@@ -593,6 +593,9 @@ class Phong360LibraryUI {
      * @param {number} [options.panelWidth] - Sidebar width in px (280-600)
      * @param {string} [options.infoBar] - Info bar alignment: 'center' | 'left'
      * @param {string} [options.favicon] - Emoji to use as favicon (e.g. '🌐')
+     * @param {boolean} [options.desktopOpenByDefault=false] - If true, sidebar opens
+     *     automatically on load when window > MOBILE_BREAKPOINT. Manual collapse
+     *     on desktop is remembered across resize round-trips.
      */
     constructor(options = {}) {
         this.containerId = options.containerId;
@@ -612,6 +615,7 @@ class Phong360LibraryUI {
         this._favicon = options.favicon || null;
         this._sensitivity = options.sensitivity || null;
         this._grid = options.grid || null;
+        this._desktopOpenByDefault = options.desktopOpenByDefault === true;
 
         // Core viewer instances (created internally)
         this.core = null;
