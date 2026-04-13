@@ -273,6 +273,60 @@ Icons inherit `color` from their parent, so they automatically adapt to the curr
 | 481-768px | 80vw | auto-fill, min 120px |
 | < 480px | 100vw | auto-fill, min 100px |
 
+The 768px boundary is the source of truth in JS as
+`Phong360LibraryUI.MOBILE_BREAKPOINT`. CSS `@media` queries in
+`css/phong-360-ui.css` mirror this value — if you change one, change both.
+
+---
+
+## Override Slot — Skinning Without Forking
+
+The viewer is designed to be re-skinned by consumers without modifying the
+vendored source. The pattern:
+
+1. **Load `phong-360-ui.css` first** in your host page.
+2. **Load your own override stylesheet immediately after**, e.g.
+   `<link rel="stylesheet" href="my-viewer-overrides.css">`.
+3. **In your override file, set CSS custom properties** scoped to the elements
+   you want to skin. The viewer's default values are no-ops where possible
+   (no blur, no extra borders), so any property you don't set falls back to
+   the existing visual.
+
+### Example: smoked-glass desktop sidebar
+
+```css
+@media (min-width: 769px) {
+  .p360-sidebar[data-theme="dark"] {
+    --p360-sidebar-bg: rgba(12, 14, 20, 0.62);
+    --p360-sidebar-backdrop-filter: blur(28px) saturate(160%);
+    --p360-sidebar-border-left: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+```
+
+### Hookable Variables
+
+Per-component surface hooks (set on the component selector, not `:root`,
+to scope cleanly):
+
+| Component               | Variables                                                                                 |
+|-------------------------|--------------------------------------------------------------------------------------------|
+| `.p360-sidebar`         | `--p360-sidebar-bg`, `--p360-sidebar-backdrop-filter`, `--p360-sidebar-border-left`        |
+| `.p360-toolbar`         | `--p360-toolbar-bg`, `--p360-toolbar-border-bottom`, `--p360-toolbar-backdrop-filter`      |
+| `.p360-info-bar`        | `--p360-info-bar-bg`, `--p360-info-bar-border`, `--p360-info-bar-backdrop-filter`          |
+| `.p360-sidebar-toggle`  | `--p360-toggle-btn-bg`, `--p360-toggle-btn-border`, `--p360-toggle-btn-backdrop-filter`    |
+
+Global theme variables (`--p360-bg`, `--p360-text`, `--p360-accent`, etc.)
+are defined on `:root` and apply across all components — set those for
+broad theme changes, set per-component hooks for surface-only changes.
+
+### Why scope to the component selector, not `:root`?
+
+Setting `--p360-sidebar-bg` on `:root` would technically work, but scoping
+it to `.p360-sidebar[data-theme="dark"]` (or similar) gives you free
+dark/light variants and prevents the variable from leaking to unrelated
+selectors that might consume it later.
+
 ---
 
 **See also:**
@@ -282,5 +336,5 @@ Icons inherit `color` from their parent, so they automatically adapt to the curr
 
 ---
 
-**Last Updated**: February 2026
+**Last Updated**: April 2026
 **Version**: 4.0.0
