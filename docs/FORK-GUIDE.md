@@ -48,29 +48,29 @@ Edit `360-viewer.json`:
 
 ```json
 {
-  "context": {
-    "type": "profile",
-    "title": "Your Name",
-    "subtitle": "360 Photography",
-    "avatar": "assets/avatar.jpg",
-    "theme": "dark",
-    "accent": "#6366f1",
-    "panelWidth": 420,
-    "infoBar": "center",
-    "favicon": "🎨",
-    "links": [
-      {"url": "https://yourwebsite.com", "label": "Website"},
-      {"url": "https://instagram.com/you", "label": "Instagram"}
-    ]
-  },
-  "sections": {
-    "Landscapes": {
-      "title": "Landscapes",
-      "icon": "mountains",
-      "template": "grid",
-      "titleStrip": "MyPrefix-"
-    }
-  }
+	"context": {
+		"type": "profile",
+		"title": "Your Name",
+		"subtitle": "360 Photography",
+		"avatar": "assets/avatar.jpg",
+		"theme": "dark",
+		"accent": "#6366f1",
+		"panelWidth": 420,
+		"infoBar": "center",
+		"favicon": "🎨",
+		"links": [
+			{ "url": "https://yourwebsite.com", "label": "Website" },
+			{ "url": "https://instagram.com/you", "label": "Instagram" }
+		]
+	},
+	"sections": {
+		"Landscapes": {
+			"title": "Landscapes",
+			"icon": "mountains",
+			"template": "grid",
+			"titleStrip": "MyPrefix-"
+		}
+	}
 }
 ```
 
@@ -78,27 +78,27 @@ Edit `360-viewer.json`:
 
 #### Context Fields
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `type` | string | `"local"` | Header type: `profile` (avatar + links), `discover`, or `local` |
-| `title` | string | | Gallery name |
-| `subtitle` | string | | Shown below title |
-| `avatar` | string | | Path to avatar image (profile type only) |
-| `theme` | string | `"auto"` | `"dark"`, `"light"`, or `"auto"` (follows system) |
-| `accent` | string | `"#6366f1"` | Accent color (hex) |
-| `panelWidth` | number | 360 | Sidebar width in px (280-600) |
-| `infoBar` | string | `"center"` | Bottom info bar alignment: `"center"` or `"left"` |
-| `favicon` | string | | Emoji favicon (e.g. `"🌐"`, `"🎨"`) or empty for default |
-| `links` | array | | Social links (profile type only) |
+| Field        | Type   | Default     | Description                                                     |
+| ------------ | ------ | ----------- | --------------------------------------------------------------- |
+| `type`       | string | `"local"`   | Header type: `profile` (avatar + links), `discover`, or `local` |
+| `title`      | string |             | Gallery name                                                    |
+| `subtitle`   | string |             | Shown below title                                               |
+| `avatar`     | string |             | Path to avatar image (profile type only)                        |
+| `theme`      | string | `"auto"`    | `"dark"`, `"light"`, or `"auto"` (follows system)               |
+| `accent`     | string | `"#6366f1"` | Accent color (hex)                                              |
+| `panelWidth` | number | 360         | Sidebar width in px (280-600)                                   |
+| `infoBar`    | string | `"center"`  | Bottom info bar alignment: `"center"` or `"left"`               |
+| `favicon`    | string |             | Emoji favicon (e.g. `"🌐"`, `"🎨"`) or empty for default        |
+| `links`      | array  |             | Social links (profile type only)                                |
 
 #### Section Options
 
-| Field | Description |
-|-------|-------------|
-| `title` | Display title (overrides directory name) |
-| `icon` | Phosphor icon name (e.g., `mountains`, `buildings`, `flower-lotus`) |
-| `template` | Rendering template: `grid`, `feed`, `accordion`, `hero`, `list`, `carousel` |
-| `titleStrip` | Prefix to strip from image filenames for cleaner titles |
+| Field        | Description                                                                 |
+| ------------ | --------------------------------------------------------------------------- |
+| `title`      | Display title (overrides directory name)                                    |
+| `icon`       | Phosphor icon name (e.g., `mountains`, `buildings`, `flower-lotus`)         |
+| `template`   | Rendering template: `grid`, `feed`, `accordion`, `hero`, `list`, `carousel` |
+| `titleStrip` | Prefix to strip from image filenames for cleaner titles                     |
 
 #### Themes & Accent Colors
 
@@ -111,23 +111,30 @@ Add a `build` key to customize build behavior. All fields are optional — defau
 
 ```json
 {
-  "build": {
-    "outputDir": "_BUILD",
-    "resolutions": {
-      "8K": { "width": 8192, "height": 4096, "quality": 95, "label": "8K", "bandwidth": "high" },
-      "4K": { "width": 4096, "height": 2048, "quality": 90, "label": "4K", "bandwidth": "medium", "default": true },
-      "2K": { "width": 2048, "height": 1024, "quality": 85, "label": "2K", "bandwidth": "low" }
-    },
-    "thumbnail": { "width": 512, "height": 256, "quality": 80 }
-  }
+	"build": {
+		"outputDir": "_BUILD",
+		"resolutions": {
+			"8K": { "width": 8192, "height": 4096, "quality": 95, "label": "8K", "bandwidth": "high" },
+			"4K": {
+				"width": 4096,
+				"height": 2048,
+				"quality": 90,
+				"label": "4K",
+				"bandwidth": "medium",
+				"default": true
+			},
+			"2K": { "width": 2048, "height": 1024, "quality": 85, "label": "2K", "bandwidth": "low" }
+		},
+		"thumbnail": { "width": 512, "height": 256, "quality": 80 }
+	}
 }
 ```
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| `outputDir` | `_BUILD` | Build output directory inside `library/` |
+| Field         | Default          | Description                                        |
+| ------------- | ---------------- | -------------------------------------------------- |
+| `outputDir`   | `_BUILD`         | Build output directory inside `library/`           |
 | `resolutions` | 8K/4K/2K presets | Override quality, dimensions, or labels per preset |
-| `thumbnail` | 512x256 @ Q80 | Thumbnail dimensions and quality |
+| `thumbnail`   | 512x256 @ Q80    | Thumbnail dimensions and quality                   |
 
 ### 6. Build the Library
 
@@ -140,6 +147,7 @@ python 360-viewer/library/build_library.py \
 ```
 
 This generates:
+
 - `library/library.json` — Image catalog in v4.0 format with context from 360-viewer.json
 - `library/_BUILD/thumbnails/` — 512x256 preview thumbnails
 - `library/_BUILD/8K/` — 8192x4096 ultra-quality variants
@@ -178,11 +186,13 @@ For self-hosted servers with automatic deployment on push.
 The template includes ready-to-use webhook scripts in `deploy/`:
 
 **PHP** (if your server already runs PHP/Nginx):
+
 ```bash
 cp deploy/deploy-webhook.php deploy.php
 ```
 
 **Python** (Flask + Gunicorn):
+
 ```bash
 cp deploy/deploy-webhook.py deploy-webhook.py
 pip install flask gunicorn
@@ -191,12 +201,14 @@ pip install flask gunicorn
 #### Server Setup
 
 1. **Create a deploy user** (runs git operations):
+
    ```bash
    sudo adduser --system --group gallery-deploy
    sudo usermod -aG www-data gallery-deploy
    ```
 
 2. **Clone your repo on the server**:
+
    ```bash
    sudo -u gallery-deploy git clone https://github.com/YOU/YOUR-GALLERY.git /var/www/gallery
    cd /var/www/gallery
@@ -204,6 +216,7 @@ pip install flask gunicorn
    ```
 
 3. **Configure git for the deploy user** (critical):
+
    ```bash
    sudo -u gallery-deploy git config --global pull.ff only
    sudo -u gallery-deploy git config --global --add safe.directory /var/www/gallery
@@ -211,6 +224,7 @@ pip install flask gunicorn
    ```
 
 4. **Generate webhook secrets**:
+
    ```bash
    python3 -c "import secrets; print(secrets.token_hex(32))"
    # Generate two: one for WEBHOOK_SECRET, one for URL_SECRET

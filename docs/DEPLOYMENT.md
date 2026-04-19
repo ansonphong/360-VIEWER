@@ -87,6 +87,7 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
 **Best for**: Simple drag-and-drop deployment
 
 1. **Prepare your files**:
+
    ```bash
    # Clone the repo
    git clone https://github.com/ansonphong/360-VIEWER.git my-360-site
@@ -110,6 +111,7 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
    - Update DNS records
 
 4. **Configure Headers** (`netlify.toml`):
+
    ```toml
    [[headers]]
      for = "/*"
@@ -139,6 +141,7 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
 **Best for**: Git-based deployment with automatic updates
 
 1. **Connect Git Repository**:
+
    ```bash
    # Push your code to GitHub
    git init
@@ -158,26 +161,26 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
 3. **Configure** (`vercel.json`):
    ```json
    {
-     "headers": [
-       {
-         "source": "/(.*).jpg",
-         "headers": [
-           {
-             "key": "Cache-Control",
-             "value": "public, max-age=31536000, immutable"
-           }
-         ]
-       },
-       {
-         "source": "/(.*).js",
-         "headers": [
-           {
-             "key": "Cache-Control",
-             "value": "public, max-age=31536000, immutable"
-           }
-         ]
-       }
-     ]
+   	"headers": [
+   		{
+   			"source": "/(.*).jpg",
+   			"headers": [
+   				{
+   					"key": "Cache-Control",
+   					"value": "public, max-age=31536000, immutable"
+   				}
+   			]
+   		},
+   		{
+   			"source": "/(.*).js",
+   			"headers": [
+   				{
+   					"key": "Cache-Control",
+   					"value": "public, max-age=31536000, immutable"
+   				}
+   			]
+   		}
+   	]
    }
    ```
 
@@ -186,6 +189,7 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
 **Best for**: Free hosting with GitHub
 
 1. **Prepare Repository**:
+
    ```bash
    git init
    git add .
@@ -231,6 +235,7 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
 **Best for**: High-performance production servers
 
 1. **Basic Configuration** (`/etc/nginx/sites-available/360-viewer`):
+
    ```nginx
    server {
        listen 80;
@@ -278,6 +283,7 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
    ```
 
 2. **Enable Site**:
+
    ```bash
    sudo ln -s /etc/nginx/sites-available/360-viewer /etc/nginx/sites-enabled/
    sudo nginx -t
@@ -295,6 +301,7 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
 **Best for**: Shared hosting, traditional setups
 
 1. **VirtualHost Configuration** (`/etc/apache2/sites-available/360-viewer.conf`):
+
    ```apache
    <VirtualHost *:80>
        ServerName 360.yourdomain.com
@@ -328,6 +335,7 @@ The viewer works perfectly on static hosting platforms. No server-side code requ
    ```
 
 2. **.htaccess** (Alternative - place in root directory):
+
    ```apache
    # Enable compression
    <IfModule mod_deflate.c>
@@ -376,6 +384,7 @@ See [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md) for complete 
 **Quick Steps:**
 
 1. **Add to Theme**:
+
    ```
    wp-content/themes/your-theme/
    └── assets/
@@ -386,6 +395,7 @@ See [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md) for complete 
    ```
 
 2. **Enqueue Scripts** (`functions.php`):
+
    ```php
    function enqueue_360_viewer() {
        wp_enqueue_script('threejs',
@@ -404,6 +414,7 @@ See [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md) for complete 
    ```
 
 3. **Use in Templates**:
+
    ```php
    <div id="viewer-360" style="width: 100%; height: 70vh;"></div>
 
@@ -430,14 +441,17 @@ See [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md) for complete 
    - DigitalOcean Spaces
 
 2. **Update Image Paths**:
+
    ```javascript
    // In your library.json or code
    const CDN_URL = 'https://cdn.yourdomain.com/360-images/';
 
    const multi = new Phong360MultiImage({
-       core: core,
-       baseUrl: CDN_URL,
-       images: [/* ... */]
+   	core: core,
+   	baseUrl: CDN_URL,
+   	images: [
+   		/* ... */
+   	]
    });
    ```
 
@@ -451,6 +465,7 @@ See [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md) for complete 
 1. **Add Site to Cloudflare**
 2. **Update DNS**
 3. **Configure Page Rules**:
+
    ```
    *360.yourdomain.com/*.jpg
    - Cache Level: Cache Everything
@@ -473,6 +488,7 @@ See [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md) for complete 
 ### 1. Image Optimization
 
 **Before Deployment:**
+
 ```bash
 # Use the library builder (automatically optimizes)
 cd library
@@ -483,6 +499,7 @@ mogrify -strip -quality 85 -resize 4096x2048 *.jpg
 ```
 
 **Best Practices:**
+
 - 8K (8192×4096): Desktop with good connection
 - 4K (4096×2048): Desktop default
 - 2K (2048×1024): Mobile default
@@ -493,6 +510,7 @@ mogrify -strip -quality 85 -resize 4096x2048 *.jpg
 ### 2. Enable Compression
 
 **Nginx:**
+
 ```nginx
 gzip on;
 gzip_vary on;
@@ -501,6 +519,7 @@ gzip_types text/plain text/css text/javascript application/javascript;
 ```
 
 **Apache:**
+
 ```apache
 <IfModule mod_deflate.c>
     AddOutputFilterByType DEFLATE text/html text/css application/javascript
@@ -510,11 +529,12 @@ gzip_types text/plain text/css text/javascript application/javascript;
 ### 3. Lazy Loading
 
 For multi-image galleries:
+
 ```javascript
 const multi = new Phong360MultiImage({
-    core: core,
-    adaptiveLoading: true,  // ← Automatically selects best resolution
-    preloadNext: false      // ← Don't preload until needed
+	core: core,
+	adaptiveLoading: true, // ← Automatically selects best resolution
+	preloadNext: false // ← Don't preload until needed
 });
 ```
 
@@ -525,24 +545,16 @@ Cache the viewer for offline use:
 ```javascript
 // sw.js
 const CACHE_NAME = '360-viewer-v1';
-const urlsToCache = [
-    '/',
-    '/core/phong-360-viewer-core.js',
-    '/css/styles.css'
-];
+const urlsToCache = ['/', '/core/phong-360-viewer-core.js', '/css/styles.css'];
 
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => cache.addAll(urlsToCache))
-    );
+	event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache)));
 });
 
 self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        caches.match(event.request)
-            .then((response) => response || fetch(event.request))
-    );
+	event.respondWith(
+		caches.match(event.request).then((response) => response || fetch(event.request))
+	);
 });
 ```
 
@@ -553,12 +565,15 @@ self.addEventListener('fetch', (event) => {
 ### 1. Content Security Policy
 
 Add to your HTML `<head>`:
+
 ```html
-<meta http-equiv="Content-Security-Policy"
-      content="default-src 'self';
+<meta
+	http-equiv="Content-Security-Policy"
+	content="default-src 'self';
                script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline';
                img-src 'self' data: https:;
-               style-src 'self' 'unsafe-inline';">
+               style-src 'self' 'unsafe-inline';"
+/>
 ```
 
 ### 2. CORS Configuration
@@ -566,6 +581,7 @@ Add to your HTML `<head>`:
 If images are on a different domain:
 
 **Nginx:**
+
 ```nginx
 location ~* \.(jpg|jpeg|png)$ {
     add_header Access-Control-Allow-Origin "*";
@@ -573,6 +589,7 @@ location ~* \.(jpg|jpeg|png)$ {
 ```
 
 **Apache (.htaccess):**
+
 ```apache
 <FilesMatch "\.(jpg|jpeg|png)$">
     Header set Access-Control-Allow-Origin "*"
@@ -584,6 +601,7 @@ location ~* \.(jpg|jpeg|png)$ {
 Prevent bandwidth theft:
 
 **Nginx:**
+
 ```nginx
 location ~* \.(jpg|jpeg|png)$ {
     valid_referers none blocked yourdomain.com *.yourdomain.com;
@@ -594,6 +612,7 @@ location ~* \.(jpg|jpeg|png)$ {
 ```
 
 **Apache:**
+
 ```apache
 RewriteEngine on
 RewriteCond %{HTTP_REFERER} !^$
@@ -608,12 +627,14 @@ RewriteRule \.(jpg|jpeg|png)$ - [F]
 ### Images Not Loading
 
 **Check:**
+
 1. File paths are correct (case-sensitive on Linux)
 2. CORS headers if on different domain
 3. File permissions (644 for files, 755 for directories)
 4. Browser console for errors (F12)
 
 **Test CORS:**
+
 ```bash
 curl -I https://yourdomain.com/image.jpg
 # Look for: Access-Control-Allow-Origin header
@@ -623,15 +644,17 @@ curl -I https://yourdomain.com/image.jpg
 
 **Solution:**
 Add fallback detection:
+
 ```javascript
 if (!window.WebGLRenderingContext) {
-    alert('WebGL not supported. Please use a modern browser.');
+	alert('WebGL not supported. Please use a modern browser.');
 }
 ```
 
 ### Slow Loading
 
 **Optimize:**
+
 1. Reduce image sizes (use 4K instead of 8K for most users)
 2. Enable CDN
 3. Use adaptive loading
@@ -641,6 +664,7 @@ if (!window.WebGLRenderingContext) {
 ### Mobile Issues
 
 **Check:**
+
 1. Viewport meta tag present
 2. Touch events enabled
 3. Images sized appropriately (2K for mobile)
@@ -726,9 +750,3 @@ If you encounter deployment issues:
 **Version**: 3.0.0
 **Last Updated**: January 2026
 **See Also**: [QUICKSTART.md](QUICKSTART.md), [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md)
-
-
-
-
-
-

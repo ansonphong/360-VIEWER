@@ -7,6 +7,7 @@ This project uses [Semantic Versioning](https://semver.org/). When updating the 
 ## [4.1.0] - 2026-02-09
 
 ### Added
+
 - **Info bar**: Glassmorphic bottom panel with image title, resolution, and prev/next navigation buttons. Built into the engine — no host page markup needed.
 - **Resolution dropdown**: Compact button+dropdown replaces the old `<select>` element in the toolbar.
 - **Help button**: Added to toolbar, dispatches `p360-help` custom event for decoupled help modals.
@@ -24,12 +25,14 @@ This project uses [Semantic Versioning](https://semver.org/). When updating the 
 - **Claude skill**: `/create-gallery` skill with guided setup including deploy options.
 
 ### Changed
+
 - Toolbar buttons are larger (42px, was 36px) with more padding.
 - Theme toggle button uses unified `p360-toolbar-btn` class.
 - Gallery template updated to match current engine patterns.
 - `netlify.toml` updated: JS/CSS use `no-cache` (revalidate via ETag), only `_BUILD/` images are immutable.
 
 ### Removed
+
 - **Toolbar spacer** element (`.p360-toolbar-spacer`).
 - **Old resolution `<select>`** element (`.p360-resolution-select`).
 - **`.p360-theme-toggle`** CSS class (unified into `.p360-toolbar-btn`).
@@ -43,29 +46,37 @@ This project uses [Semantic Versioning](https://semver.org/). When updating the 
 2. **Remove `onImageLoad` callback** if you were using it to update a title/format display. The info bar handles this automatically.
 
 3. **Add `configUrl`** to your constructor call:
+
    ```js
    // Before:
    new Phong360LibraryUI({ containerId: 'container', libraryUrl: '...', baseUrl: '...' });
 
    // After:
-   new Phong360LibraryUI({ containerId: 'container', libraryUrl: '...', configUrl: '360-viewer.json', baseUrl: '...' });
+   new Phong360LibraryUI({
+   	containerId: 'container',
+   	libraryUrl: '...',
+   	configUrl: '360-viewer.json',
+   	baseUrl: '...'
+   });
    ```
 
 4. **Add `p360-help` event listener** if you have a help/instructions modal:
+
    ```js
-   document.addEventListener('p360-help', function() {
-       document.getElementById('instructions').classList.add('show');
+   document.addEventListener('p360-help', function () {
+   	document.getElementById('instructions').classList.add('show');
    });
    ```
 
 5. **Update `360-viewer.json`** with new fields:
+
    ```json
    {
-     "context": {
-       "panelWidth": 420,
-       "infoBar": "center",
-       "favicon": "🎨"
-     }
+   	"context": {
+   		"panelWidth": 420,
+   		"infoBar": "center",
+   		"favicon": "🎨"
+   	}
    }
    ```
 
@@ -75,6 +86,7 @@ This project uses [Semantic Versioning](https://semver.org/). When updating the 
    ```
 
 **CSS changes:**
+
 - If you had custom styles targeting `.p360-theme-toggle`, `.p360-toolbar-spacer`, or `.p360-resolution-select`, remove them. These classes no longer exist.
 
 ---
@@ -82,6 +94,7 @@ This project uses [Semantic Versioning](https://semver.org/). When updating the 
 ## [4.0.0] - 2026-02-01
 
 ### Added
+
 - Section-based library UI with template engine (Layer 3)
 - 9 built-in template renderers: grid, feed, accordion, hero, list, carousel, avatar-row, avatar-grid, empty
 - Badge system with emoji/icon support and click events
@@ -97,6 +110,7 @@ This project uses [Semantic Versioning](https://semver.org/). When updating the 
 - Gallery template starter kit
 
 ### Breaking Changes from v3.x
+
 - Library JSON format changed from flat array to section-based structure
 - Constructor API changed for Layer 3
 - CSS class prefix changed to `p360-`

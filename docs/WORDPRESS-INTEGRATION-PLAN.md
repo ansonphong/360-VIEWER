@@ -1,6 +1,7 @@
 # WordPress Theme Integration Plan - v3.0 Architecture
 
 ## Overview
+
 This integration plan demonstrates how the **Phong 360 Viewer** can be seamlessly integrated into **any** WordPress theme. This example uses the Postworld theme but the modular "Russian Doll" architecture makes it portable to any CMS or static site.
 
 ## Why This Architecture is Perfect for Open Source
@@ -47,6 +48,7 @@ This integration plan demonstrates how the **Phong 360 Viewer** can be seamlessl
 ## Phase 1: ✅ COMPLETED - 360 Viewer Refactoring
 
 ### What Was Done:
+
 1. ✅ **Modular "Russian Doll" Architecture** created:
    - **Layer 1**: `core/phong-360-viewer-core.js` - Ultra-lightweight single image viewer
    - **Layer 2**: `extensions/phong-360-multi-image.js` - Multi-image + resolution management
@@ -101,7 +103,7 @@ dist/
 
 ### Step 2: Create README.md (Open Source Best Practices)
 
-```markdown
+````markdown
 # Phong 360 Viewer
 
 Ultra-lightweight, modular 360° equirectangular image viewer built with Three.js.
@@ -116,7 +118,7 @@ Ultra-lightweight, modular 360° equirectangular image viewer built with Three.j
 📱 **Mobile Ready**: Touch gestures and responsive  
 🎮 **Full Controls**: Mouse, touch, keyboard navigation  
 🌐 **Two Projections**: Gnomonic and Stereographic  
-🎯 **Adaptive Loading**: Smart resolution selection  
+🎯 **Adaptive Loading**: Smart resolution selection
 
 ## Quick Start
 
@@ -132,23 +134,25 @@ Perfect for embedding single 360° images anywhere:
 
 <!-- Load Core -->
 <script src="dist/core/phong-360-viewer-core.js"></script>
-<link rel="stylesheet" href="dist/styles/phong-360-core.css">
+<link rel="stylesheet" href="dist/styles/phong-360-core.css" />
 
 <!-- Create container -->
 <div id="my-360-viewer" style="width: 100%; height: 600px;"></div>
 
 <script>
-  const viewer = new Phong360ViewerCore({
-    containerId: 'my-360-viewer',
-    imageUrl: 'path/to/your/360-image.jpg',
-    config: {
-      viewRotation: { autoRotate: true }
-    }
-  });
+	const viewer = new Phong360ViewerCore({
+		containerId: 'my-360-viewer',
+		imageUrl: 'path/to/your/360-image.jpg',
+		config: {
+			viewRotation: { autoRotate: true }
+		}
+	});
 </script>
 ```
+````
 
 **That's it!** You have a working 360° viewer with:
+
 - Mouse drag to pan
 - Mouse wheel to zoom
 - Touch gestures on mobile
@@ -165,46 +169,61 @@ Add multiple images with adaptive resolution:
 <script src="dist/extensions/phong-360-multi-image.js"></script>
 
 <script>
-  // Initialize core
-  const core = new Phong360ViewerCore({
-    containerId: 'my-360-viewer'
-  });
+	// Initialize core
+	const core = new Phong360ViewerCore({
+		containerId: 'my-360-viewer'
+	});
 
-  // Add multi-image manager
-  const multi = new Phong360MultiImage({
-    core: core,
-    images: [
-      {
-        id: 'image1',
-        name: 'Sunset Beach',
-        resolutions: [
-          { id: '4k', label: '4K', path: 'sunset-4k.jpg', width: 4096, height: 2048, default: true },
-          { id: '2k', label: '2K', path: 'sunset-2k.jpg', width: 2048, height: 1024 }
-        ]
-      },
-      {
-        id: 'image2',
-        name: 'Mountain View',
-        resolutions: [
-          { id: '4k', label: '4K', path: 'mountain-4k.jpg', width: 4096, height: 2048, default: true }
-        ]
-      }
-    ],
-    adaptiveLoading: true
-  });
+	// Add multi-image manager
+	const multi = new Phong360MultiImage({
+		core: core,
+		images: [
+			{
+				id: 'image1',
+				name: 'Sunset Beach',
+				resolutions: [
+					{
+						id: '4k',
+						label: '4K',
+						path: 'sunset-4k.jpg',
+						width: 4096,
+						height: 2048,
+						default: true
+					},
+					{ id: '2k', label: '2K', path: 'sunset-2k.jpg', width: 2048, height: 1024 }
+				]
+			},
+			{
+				id: 'image2',
+				name: 'Mountain View',
+				resolutions: [
+					{
+						id: '4k',
+						label: '4K',
+						path: 'mountain-4k.jpg',
+						width: 4096,
+						height: 2048,
+						default: true
+					}
+				]
+			}
+		],
+		adaptiveLoading: true
+	});
 
-  // Load first image
-  multi.loadImageById('image1');
+	// Load first image
+	multi.loadImageById('image1');
 
-  // Switch images
-  document.getElementById('next-btn').onclick = () => multi.loadImageById('image2');
+	// Switch images
+	document.getElementById('next-btn').onclick = () => multi.loadImageById('image2');
 
-  // Switch resolution
-  document.getElementById('res-btn').onclick = () => multi.switchResolution('2k');
+	// Switch resolution
+	document.getElementById('res-btn').onclick = () => multi.switchResolution('2k');
 </script>
 ```
 
 **Now you have**:
+
 - Multiple image support
 - Adaptive resolution based on device/bandwidth
 - Resolution switching
@@ -218,19 +237,20 @@ Add browsable library tree with thumbnails:
 ```html
 <!-- Layers 1+2 files + -->
 <script src="dist/extensions/phong-360-library-ui.js"></script>
-<link rel="stylesheet" href="dist/styles/phong-360-ui.css">
+<link rel="stylesheet" href="dist/styles/phong-360-ui.css" />
 
 <script>
-  const libraryUI = new Phong360LibraryUI({
-    containerId: 'my-360-viewer',
-    libraryUrl: 'library/library.json',  // Or inline JSON
-    showLibraryPanel: true,
-    showInfoPanel: true
-  });
+	const libraryUI = new Phong360LibraryUI({
+		containerId: 'my-360-viewer',
+		libraryUrl: 'library/library.json', // Or inline JSON
+		showLibraryPanel: true,
+		showInfoPanel: true
+	});
 </script>
 ```
 
 **Full featured viewer**:
+
 - Categorized image library
 - Thumbnail previews
 - Search/filter
@@ -280,6 +300,7 @@ MIT License - Use freely in any project!
 ## Examples
 
 See `/examples` folder for:
+
 - Minimal single image
 - Multi-image gallery
 - WordPress integration
@@ -293,7 +314,8 @@ See `/examples` folder for:
 - [WordPress Integration](docs/WORDPRESS-INTEGRATION-PLAN.md)
 - [Custom Projections](docs/PROJECTIONS.md)
 - [Building Image Libraries](docs/LIBRARY-FORMAT.md)
-```
+
+````
 
 ---
 
@@ -310,7 +332,7 @@ cd /path/to/wp-content/themes/postworld/assets/
 git submodule add https://github.com/ansonphong/360-VIEWER.git 360-viewer
 cd 360-viewer
 git checkout library  # Or main/master branch
-```
+````
 
 **Option B: Copy dist/ Files**
 
@@ -328,7 +350,7 @@ Find the `GALLERY_TYPES` constant and add `'360'`:
 ```php
 const GALLERY_TYPES = [
     'horizontal',
-    'vertical', 
+    'vertical',
     'grid',
     'masonry',
     '360'  // ADD THIS
@@ -344,9 +366,9 @@ Add radio option for 360 Viewer (around line 220-280):
 ```php
 <p style="margin: 0 0 8px 0;">
     <label style="display: block; cursor: pointer;">
-        <input type="radio" 
-               name="postworld_gallery_type" 
-               value="360" 
+        <input type="radio"
+               name="postworld_gallery_type"
+               value="360"
                <?php checked($gallery_type, '360'); ?>>
         <strong>🌐 <?php _e('360° Viewer', 'postworld'); ?></strong>
         <br><small><?php _e('Interactive 360-degree equirectangular images', 'postworld'); ?></small>
@@ -393,7 +415,7 @@ $viewer_images = postworld_prepare_360_images($gallery_images);
 <script>
 (function() {
     const viewerData = <?php echo wp_json_encode($viewer_images); ?>;
-    
+
     // Initialize core viewer (Layer 1)
     const core = new Phong360ViewerCore({
         containerId: 'viewer-360-<?php echo esc_js($post_id); ?>',
@@ -404,7 +426,7 @@ $viewer_images = postworld_prepare_360_images($gallery_images);
             }
         }
     });
-    
+
     // Initialize multi-image manager (Layer 2)
     const multiViewer = new Phong360MultiImage({
         core: core,
@@ -412,12 +434,12 @@ $viewer_images = postworld_prepare_360_images($gallery_images);
         baseUrl: '',
         adaptiveLoading: true
     });
-    
+
     // Load first image
     if (viewerData.length > 0) {
         multiViewer.loadImageById(viewerData[0].id);
     }
-    
+
     // Setup projection toggle
     const projectionBtn = document.getElementById('projection-toggle-<?php echo esc_js($post_id); ?>');
     let currentProjection = 1;
@@ -426,7 +448,7 @@ $viewer_images = postworld_prepare_360_images($gallery_images);
         core.switchProjection(currentProjection);
         projectionBtn.textContent = currentProjection === 0 ? '📐 Gnomonic' : '🌐 Stereographic';
     });
-    
+
     // Setup resolution selector
     const resolutionSelect = document.getElementById('resolution-selector-<?php echo esc_js($post_id); ?>');
     resolutionSelect.addEventListener('change', function() {
@@ -456,18 +478,18 @@ $viewer_images = postworld_prepare_360_images($gallery_images);
  */
 function postworld_prepare_360_images($image_ids) {
     $images = [];
-    
+
     foreach ($image_ids as $image_id) {
         $image_meta = wp_get_attachment_metadata($image_id);
         $image_url = wp_get_attachment_url($image_id);
-        
+
         if (!$image_url) {
             continue;
         }
-        
+
         // Generate resolutions array
         $resolutions = [];
-        
+
         // Original (assume 4K)
         $resolutions[] = [
             'id' => '4k',
@@ -479,7 +501,7 @@ function postworld_prepare_360_images($image_ids) {
             'default' => true,
             'bandwidth' => 'medium'
         ];
-        
+
         // 2K version (if large size exists)
         $large_url = wp_get_attachment_image_url($image_id, 'large');
         if ($large_url && $large_url !== $image_url) {
@@ -494,7 +516,7 @@ function postworld_prepare_360_images($image_ids) {
                 'bandwidth' => 'low'
             ];
         }
-        
+
         $images[] = [
             'id' => (string)$image_id,
             'name' => get_the_title($image_id),
@@ -504,7 +526,7 @@ function postworld_prepare_360_images($image_ids) {
             ]
         ];
     }
-    
+
     return $images;
 }
 
@@ -518,7 +540,7 @@ function postworld_is_360_gallery($post_id = null) {
     if (!$post_id) {
         $post_id = get_the_ID();
     }
-    
+
     $gallery_type = get_post_meta($post_id, 'postworld_gallery_type', true);
     return $gallery_type === '360';
 }
@@ -533,7 +555,7 @@ function postworld_get_360_viewer($post_id = null) {
     if (!$post_id) {
         $post_id = get_the_ID();
     }
-    
+
     ob_start();
     get_template_part('template-parts/galleries/gallery', '360');
     return ob_get_clean();
@@ -541,6 +563,7 @@ function postworld_get_360_viewer($post_id = null) {
 ```
 
 **Include in functions.php**:
+
 ```php
 // 360 Viewer Functions
 require_once get_template_directory() . '/inc/360-viewer-functions.php';
@@ -561,7 +584,7 @@ if (is_singular('post') && postworld_is_360_gallery()) {
         'r128',
         true
     );
-    
+
     // 360 Viewer Core (Layer 1) - REQUIRED
     wp_enqueue_script(
         'phong-360-viewer-core',
@@ -570,7 +593,7 @@ if (is_singular('post') && postworld_is_360_gallery()) {
         POSTWORLD_VERSION,
         true
     );
-    
+
     // Multi-Image Manager (Layer 2) - REQUIRED for multiple images
     wp_enqueue_script(
         'phong-360-multi-image',
@@ -579,10 +602,10 @@ if (is_singular('post') && postworld_is_360_gallery()) {
         POSTWORLD_VERSION,
         true
     );
-    
+
     // Note: Layer 3 (Library UI) is NOT needed for WordPress!
     // We'll create custom controls instead
-    
+
     // Core Styles
     wp_enqueue_style(
         'phong-360-viewer-core',
@@ -590,7 +613,7 @@ if (is_singular('post') && postworld_is_360_gallery()) {
         [],
         POSTWORLD_VERSION
     );
-    
+
     // Custom WordPress styles
     wp_enqueue_style(
         'postworld-360-viewer',
@@ -608,7 +631,7 @@ if (is_singular('post') && postworld_is_360_gallery()) {
 Add check for 360 gallery type:
 
 ```php
-<?php 
+<?php
 // Check for 360 gallery
 $has_360_gallery = postworld_is_360_gallery() && postworld_has_gallery();
 
@@ -638,69 +661,69 @@ if ($has_360_gallery): ?>
    ========================================================================== */
 
 .gallery-360-container {
-    width: 100%;
-    height: 70vh;
-    min-height: 400px;
-    position: relative;
-    background: #000;
+	width: 100%;
+	height: 70vh;
+	min-height: 400px;
+	position: relative;
+	background: #000;
 }
 
 .gallery-360-container > div:first-child {
-    width: 100%;
-    height: calc(100% - 50px); /* Leave space for controls */
+	width: 100%;
+	height: calc(100% - 50px); /* Leave space for controls */
 }
 
 .viewer-360-controls {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    display: flex;
-    gap: 10px;
-    z-index: 10;
+	position: absolute;
+	bottom: 20px;
+	right: 20px;
+	display: flex;
+	gap: 10px;
+	z-index: 10;
 }
 
 .viewer-360-button,
 .viewer-360-select {
-    padding: 10px 16px;
-    background-color: rgba(0, 0, 0, 0.7);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.3s ease;
+	padding: 10px 16px;
+	background-color: rgba(0, 0, 0, 0.7);
+	color: white;
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	border-radius: 4px;
+	font-size: 14px;
+	cursor: pointer;
+	transition: all 0.3s ease;
 }
 
 .viewer-360-button:hover,
 .viewer-360-select:hover {
-    background-color: rgba(0, 0, 0, 0.9);
-    border-color: rgba(255, 255, 255, 0.6);
+	background-color: rgba(0, 0, 0, 0.9);
+	border-color: rgba(255, 255, 255, 0.6);
 }
 
 /* Ensure canvas fills container */
 .gallery-360-container canvas {
-    width: 100% !important;
-    height: 100% !important;
+	width: 100% !important;
+	height: 100% !important;
 }
 
 /* Full-width hero section */
-.post-gallery-section[data-gallery-type="360"] {
-    margin: 0;
-    padding: 0;
+.post-gallery-section[data-gallery-type='360'] {
+	margin: 0;
+	padding: 0;
 }
 
 /* Mobile responsive */
 @media (max-width: 768px) {
-    .gallery-360-container {
-        height: 50vh;
-        min-height: 300px;
-    }
-    
-    .viewer-360-controls {
-        bottom: 10px;
-        right: 10px;
-        flex-direction: column;
-    }
+	.gallery-360-container {
+		height: 50vh;
+		min-height: 300px;
+	}
+
+	.viewer-360-controls {
+		bottom: 10px;
+		right: 10px;
+		flex-direction: column;
+	}
 }
 ```
 
@@ -754,6 +777,7 @@ if ($has_360_gallery): ?>
 ## Customization
 
 Edit `template-parts/galleries/gallery-360.php` to customize:
+
 - Container dimensions
 - Control position
 - Auto-rotation settings
@@ -766,23 +790,23 @@ Edit `template-parts/galleries/gallery-360.php` to customize:
 
 ### ✅ Best Practices Checklist
 
-| Practice | Status | Implementation |
-|----------|--------|----------------|
-| **Zero Global Pollution** | ✅ | Namespaced classes, no global vars except THREE |
-| **Progressive Enhancement** | ✅ | 3 layers, use only what you need |
-| **Framework Agnostic** | ✅ | Pure JS, works with any framework |
-| **Mobile First** | ✅ | Touch gestures, passive listeners |
-| **Accessible** | ✅ | Keyboard navigation, semantic HTML |
-| **Performant** | ✅ | Lazy loading, adaptive resolution |
-| **Documented** | ✅ | Inline JSDoc, examples, integration guides |
-| **Tested** | ✅ | Works in WordPress, standalone, any CMS |
-| **Versioned** | ✅ | Semantic versioning (v3.0.0) |
-| **Licensed** | ✅ | MIT license |
-| **localStorage Best Practices** | ✅ | Namespaced keys (`phong360.preferences.*`) |
-| **Event System** | ✅ | Callback pattern for extensibility |
-| **Error Handling** | ✅ | Graceful fallbacks, clear error messages |
-| **CSS Isolation** | ✅ | Scoped selectors, no ID pollution |
-| **Build-Free** | ✅ | No webpack/babel required |
+| Practice                        | Status | Implementation                                  |
+| ------------------------------- | ------ | ----------------------------------------------- |
+| **Zero Global Pollution**       | ✅     | Namespaced classes, no global vars except THREE |
+| **Progressive Enhancement**     | ✅     | 3 layers, use only what you need                |
+| **Framework Agnostic**          | ✅     | Pure JS, works with any framework               |
+| **Mobile First**                | ✅     | Touch gestures, passive listeners               |
+| **Accessible**                  | ✅     | Keyboard navigation, semantic HTML              |
+| **Performant**                  | ✅     | Lazy loading, adaptive resolution               |
+| **Documented**                  | ✅     | Inline JSDoc, examples, integration guides      |
+| **Tested**                      | ✅     | Works in WordPress, standalone, any CMS         |
+| **Versioned**                   | ✅     | Semantic versioning (v3.0.0)                    |
+| **Licensed**                    | ✅     | MIT license                                     |
+| **localStorage Best Practices** | ✅     | Namespaced keys (`phong360.preferences.*`)      |
+| **Event System**                | ✅     | Callback pattern for extensibility              |
+| **Error Handling**              | ✅     | Graceful fallbacks, clear error messages        |
+| **CSS Isolation**               | ✅     | Scoped selectors, no ID pollution               |
+| **Build-Free**                  | ✅     | No webpack/babel required                       |
 
 ### 🚀 What Makes This Special
 
@@ -817,17 +841,17 @@ Edit `template-parts/galleries/gallery-360.php` to customize:
 
 ### 📊 Competitive Advantage
 
-| Feature | Phong 360 Viewer | Photo Sphere Viewer | Pannellum | Marzipano |
-|---------|------------------|---------------------|-----------|-----------|
-| **Size (Core)** | 30KB | 180KB | 75KB | 95KB |
-| **Modular** | ✅ 3 layers | ❌ Monolithic | ❌ Monolithic | ❌ Monolithic |
-| **Framework Agnostic** | ✅ Pure JS | ⚠️ Custom framework | ✅ | ⚠️ |
-| **Build Required** | ❌ Optional | ✅ Required | ❌ | ⚠️ |
-| **WordPress Ready** | ✅ Documented | ❌ | ❌ | ❌ |
-| **localStorage Prefs** | ✅ Namespaced | ⚠️ | ❌ | ❌ |
-| **Adaptive Loading** | ✅ | ❌ | ❌ | ⚠️ |
-| **Touch Optimized** | ✅ | ✅ | ✅ | ✅ |
-| **License** | MIT | MIT | MIT | Apache 2.0 |
+| Feature                | Phong 360 Viewer | Photo Sphere Viewer | Pannellum     | Marzipano     |
+| ---------------------- | ---------------- | ------------------- | ------------- | ------------- |
+| **Size (Core)**        | 30KB             | 180KB               | 75KB          | 95KB          |
+| **Modular**            | ✅ 3 layers      | ❌ Monolithic       | ❌ Monolithic | ❌ Monolithic |
+| **Framework Agnostic** | ✅ Pure JS       | ⚠️ Custom framework | ✅            | ⚠️            |
+| **Build Required**     | ❌ Optional      | ✅ Required         | ❌            | ⚠️            |
+| **WordPress Ready**    | ✅ Documented    | ❌                  | ❌            | ❌            |
+| **localStorage Prefs** | ✅ Namespaced    | ⚠️                  | ❌            | ❌            |
+| **Adaptive Loading**   | ✅               | ❌                  | ❌            | ⚠️            |
+| **Touch Optimized**    | ✅               | ✅                  | ✅            | ✅            |
+| **License**            | MIT              | MIT                 | MIT           | Apache 2.0    |
 
 ### 🎯 Target Audiences
 
@@ -900,6 +924,7 @@ Edit `template-parts/galleries/gallery-360.php` to customize:
 ## Next Steps for Open Source Release
 
 ### Phase A: Repository Preparation
+
 1. ✅ Create modular architecture
 2. ✅ Implement best practices
 3. 🔲 Create `dist/` folder structure
@@ -910,6 +935,7 @@ Edit `template-parts/galleries/gallery-360.php` to customize:
 8. 🔲 Add CHANGELOG.md
 
 ### Phase B: Documentation
+
 1. ✅ WordPress integration guide (this file)
 2. 🔲 API documentation
 3. 🔲 Examples folder with HTML files
@@ -917,6 +943,7 @@ Edit `template-parts/galleries/gallery-360.php` to customize:
 5. 🔲 Interactive demo site (GitHub Pages)
 
 ### Phase C: Testing
+
 1. ✅ Test WordPress integration locally
 2. 🔲 Test with multiple WordPress themes
 3. 🔲 Test with React
@@ -925,6 +952,7 @@ Edit `template-parts/galleries/gallery-360.php` to customize:
 6. 🔲 Browser compatibility testing
 
 ### Phase D: Release
+
 1. 🔲 Tag v3.0.0 release on GitHub
 2. 🔲 Publish to npm
 3. 🔲 Submit to jsDelivr CDN
@@ -933,6 +961,7 @@ Edit `template-parts/galleries/gallery-360.php` to customize:
 6. 🔲 Submit to Product Hunt
 
 ### Phase E: WordPress Specific
+
 1. 🔲 Create WordPress plugin version (optional)
 2. 🔲 Submit to WordPress.org plugin directory
 3. 🔲 Create WordPress theme showcases
@@ -943,6 +972,7 @@ Edit `template-parts/galleries/gallery-360.php` to customize:
 ## Summary of Key Differences from Original Plan
 
 ### What Changed:
+
 1. ✅ **Architecture is now modular** (3 layers instead of monolithic)
 2. ✅ **No library panel needed** for WordPress (simpler integration)
 3. ✅ **V3.0 library format** with semantic resolution naming
@@ -950,6 +980,7 @@ Edit `template-parts/galleries/gallery-360.php` to customize:
 5. ✅ **Callback pattern** for extensibility
 
 ### WordPress Integration Benefits:
+
 - **Layer 1 only** for basic single-image viewer
 - **Layer 2** for multi-image posts
 - **No Layer 3** needed (no library tree UI in WordPress)
@@ -957,8 +988,8 @@ Edit `template-parts/galleries/gallery-360.php` to customize:
 - Easier to customize per WordPress needs
 
 ### Next Steps:
+
 1. Create `dist/` folder with WordPress-ready files
 2. Test integration in local WordPress environment
 3. Document WordPress-specific configuration
 4. Create demo post with sample 360° images
-

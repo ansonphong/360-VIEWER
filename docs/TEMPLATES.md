@@ -118,10 +118,10 @@ Collapsible section with a trigger button and inner content rendered by another 
 }
 ```
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `defaultOpen` | boolean | `true` | Whether accordion starts expanded |
-| `innerTemplate` | string | `"grid"` | Template for inner content |
+| Field           | Type    | Default  | Description                       |
+| --------------- | ------- | -------- | --------------------------------- |
+| `defaultOpen`   | boolean | `true`   | Whether accordion starts expanded |
+| `innerTemplate` | string  | `"grid"` | Template for inner content        |
 
 ---
 
@@ -233,11 +233,11 @@ Horizontal row of circular avatars. Designed for non-image content like user/cre
 
 ```json
 {
-  "template": "avatar-row",
-  "items": [
-    { "name": "Phong", "avatar": "/avatars/phong.jpg", "url": "/u/phong" },
-    { "name": "AJ", "avatar": "/avatars/aj.jpg", "url": "/u/aj" }
-  ]
+	"template": "avatar-row",
+	"items": [
+		{ "name": "Phong", "avatar": "/avatars/phong.jpg", "url": "/u/phong" },
+		{ "name": "AJ", "avatar": "/avatars/aj.jpg", "url": "/u/aj" }
+	]
 }
 ```
 
@@ -264,10 +264,8 @@ Grid of avatar cards with name and image count.
 
 ```json
 {
-  "template": "avatar-grid",
-  "items": [
-    { "name": "Phong", "avatar": "/avatars/phong.jpg", "count": 47, "url": "/u/phong" }
-  ]
+	"template": "avatar-grid",
+	"items": [{ "name": "Phong", "avatar": "/avatars/phong.jpg", "count": 47, "url": "/u/phong" }]
 }
 ```
 
@@ -291,10 +289,10 @@ Placeholder for empty sections.
 
 ```json
 {
-  "template": "empty",
-  "title": "No images yet",
-  "icon": "image",
-  "message": "Upload your first 360 image to get started."
+	"template": "empty",
+	"title": "No images yet",
+	"icon": "image",
+	"message": "Upload your first 360 image to get started."
 }
 ```
 
@@ -306,18 +304,18 @@ Register a custom template renderer:
 
 ```javascript
 class MyCustomRenderer extends BaseRenderer {
-    render() {
-        const el = document.createElement('div');
-        el.className = 'my-custom-template';
+	render() {
+		const el = document.createElement('div');
+		el.className = 'my-custom-template';
 
-        for (const image of (this.section.images || [])) {
-            // createThumbnail() handles lazy loading, badges, and click events
-            const thumb = this.createThumbnail(image);
-            el.appendChild(thumb);
-        }
+		for (const image of this.section.images || []) {
+			// createThumbnail() handles lazy loading, badges, and click events
+			const thumb = this.createThumbnail(image);
+			el.appendChild(thumb);
+		}
 
-        return el;
-    }
+		return el;
+	}
 }
 
 // Register after viewer creation
@@ -339,14 +337,14 @@ Then use it in library.json:
 
 All renderers inherit these methods from `BaseRenderer`:
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `createSectionHeading()` | HTMLElement | Section heading with icon, title, count, chevron |
-| `createThumbnail(image)` | HTMLElement | Thumbnail with lazy-loading `data-src`, badges, click handler |
-| `_renderBadges(el, badges)` | void | Renders badge overlays (max 3 shown) |
-| `_formatCount(n)` | string | "42", "1.5K", "2.3M" |
-| `_resolvePath(path)` | string | Prepends baseUrl to relative paths |
-| `_resolveIcon(name)` | string | Converts "folder" to "ph ph-folder" |
+| Method                      | Returns     | Description                                                   |
+| --------------------------- | ----------- | ------------------------------------------------------------- |
+| `createSectionHeading()`    | HTMLElement | Section heading with icon, title, count, chevron              |
+| `createThumbnail(image)`    | HTMLElement | Thumbnail with lazy-loading `data-src`, badges, click handler |
+| `_renderBadges(el, badges)` | void        | Renders badge overlays (max 3 shown)                          |
+| `_formatCount(n)`           | string      | "42", "1.5K", "2.3M"                                          |
+| `_resolvePath(path)`        | string      | Prepends baseUrl to relative paths                            |
+| `_resolveIcon(name)`        | string      | Converts "folder" to "ph ph-folder"                           |
 
 ---
 
@@ -374,6 +372,7 @@ Full section object shape used by all templates:
 ---
 
 **See also:**
+
 - [API.md](API.md) - Full API reference
 - [THEMING.md](THEMING.md) - Styling and theming
 - [LIBRARY-FORMAT.md](LIBRARY-FORMAT.md) - Library format specification

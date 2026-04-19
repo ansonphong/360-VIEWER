@@ -1,12 +1,16 @@
-<!DOCTYPE html>
-<html lang="en" style="background: #000;">
+<!doctype html>
+<html lang="en" style="background: #000">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no"
+		/>
 
 		<!-- Inline styles to prevent white flash on load -->
 		<style>
-			html, body {
+			html,
+			body {
 				background: #000;
 				margin: 0;
 				overflow: hidden;
@@ -20,62 +24,78 @@
 			}
 		</style>
 
-        <!-- Google tag (gtag.js) -->
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-5KQMLC5EPS"></script>
-        <script>
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', 'G-5KQMLC5EPS');
-        </script>
+		<!-- Google tag (gtag.js) -->
+		<script async src="https://www.googletagmanager.com/gtag/js?id=G-5KQMLC5EPS"></script>
+		<script>
+			window.dataLayer = window.dataLayer || [];
+			function gtag() {
+				dataLayer.push(arguments);
+			}
+			gtag('js', new Date());
+			gtag('config', 'G-5KQMLC5EPS');
+		</script>
 
-	<title>Phong 360 Viewer</title>
-	<link rel="stylesheet" href="css/styles.css?ver=2026-02-07" />
-	<link rel="stylesheet" href="css/phong-360-ui.css?ver=2026-02-07" />
-	<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+		<title>Phong 360 Viewer</title>
+		<link rel="stylesheet" href="css/styles.css?ver=2026-02-07" />
+		<link rel="stylesheet" href="css/phong-360-ui.css?ver=2026-02-07" />
+		<link
+			rel="stylesheet"
+			href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css"
+		/>
 
-        <!-- SEO Meta Tags -->
-        <meta name="description" content="Explore the Phong 360 Gallery, a cutting-edge, immersive experience featuring high-res equirectangular images rendered by Anson Phong." />
-        <meta name="keywords" content="360 gallery, Phong, equirectangular, VR, immersive, 3D images, virtual tour" />
-        <meta name="author" content="Phong" />
-        <meta name="robots" content="index, follow" />
-        <meta name="googlebot" content="index, follow" />
+		<!-- SEO Meta Tags -->
+		<meta
+			name="description"
+			content="Explore the Phong 360 Gallery, a cutting-edge, immersive experience featuring high-res equirectangular images rendered by Anson Phong."
+		/>
+		<meta
+			name="keywords"
+			content="360 gallery, Phong, equirectangular, VR, immersive, 3D images, virtual tour"
+		/>
+		<meta name="author" content="Phong" />
+		<meta name="robots" content="index, follow" />
+		<meta name="googlebot" content="index, follow" />
 
-        <!-- Open Graph (Facebook) -->
-        <meta property="og:title" content="Phong | 360 Gallery" />
-        <meta property="og:description" content="Immerse yourself in the 360 Gallery by Phong, showcasing equirectangular images generated with 360 Hextile." />
-        <meta property="og:image" content="https://example.com/images/phong-logo.png" />
-        <meta property="og:url" content="https://360.phong.com" />
-        <meta property="og:type" content="website" />
-        <meta property="og:locale" content="en_US" />
+		<!-- Open Graph (Facebook) -->
+		<meta property="og:title" content="Phong | 360 Gallery" />
+		<meta
+			property="og:description"
+			content="Immerse yourself in the 360 Gallery by Phong, showcasing equirectangular images generated with 360 Hextile."
+		/>
+		<meta property="og:image" content="https://example.com/images/phong-logo.png" />
+		<meta property="og:url" content="https://360.phong.com" />
+		<meta property="og:type" content="website" />
+		<meta property="og:locale" content="en_US" />
 
-        <!-- Twitter Card -->
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Phong | 360 Gallery" />
-        <meta name="twitter:description" content="Explore the 360 Gallery by Phong for a visually stunning, immersive experience." />
-        <meta name="twitter:image" content="https://example.com/images/phong-logo.png" />
-        <meta name="twitter:site" content="@ansonphong" />
+		<!-- Twitter Card -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="Phong | 360 Gallery" />
+		<meta
+			name="twitter:description"
+			content="Explore the 360 Gallery by Phong for a visually stunning, immersive experience."
+		/>
+		<meta name="twitter:image" content="https://example.com/images/phong-logo.png" />
+		<meta name="twitter:site" content="@ansonphong" />
 
-        <!-- Structured Data for SEO (JSON-LD) -->
-        <script type="application/ld+json">
-        {
-          "@context": "https://schema.org",
-          "@type": "WebSite",
-          "name": "Phong | 360 Gallery",
-          "url": "https://360.phong.com",
-          "description": "Explore the Phong 360 Gallery, featuring immersive equirectangular images.",
-          "image": "https://example.com/images/phong-logo.png",
-          "creator": {
-            "@type": "Organization",
-            "name": "Phong"
-          }
-        }
-        </script>
-
+		<!-- Structured Data for SEO (JSON-LD) -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "WebSite",
+				"name": "Phong | 360 Gallery",
+				"url": "https://360.phong.com",
+				"description": "Explore the Phong 360 Gallery, featuring immersive equirectangular images.",
+				"image": "https://example.com/images/phong-logo.png",
+				"creator": {
+					"@type": "Organization",
+					"name": "Phong"
+				}
+			}
+		</script>
 	</head>
-	<body style="background: #000;">
+	<body style="background: #000">
 		<!-- Container for 360 Viewer -->
-		<div id="container" style="background: #000;"></div>
+		<div id="container" style="background: #000"></div>
 
 		<!-- Info Panel -->
 		<div id="info-panel">
@@ -113,12 +133,13 @@
 
 		<!-- Initialize Viewer -->
 		<script>
-			const LIBRARY_URL = new URLSearchParams(window.location.search).get('library') || 'library/library.json';
+			const LIBRARY_URL =
+				new URLSearchParams(window.location.search).get('library') || 'library/library.json';
 			const BASE_URL = 'library/';
 
 			let viewer;
 
-			window.addEventListener('DOMContentLoaded', function() {
+			window.addEventListener('DOMContentLoaded', function () {
 				try {
 					// Layer 3 now creates Layers 1 & 2 internally
 					viewer = new Phong360LibraryUI({
@@ -129,7 +150,7 @@
 					});
 
 					// Image info callback — update info panel
-					viewer.callbacks.onImageLoad = function(imageData, resolution) {
+					viewer.callbacks.onImageLoad = function (imageData, resolution) {
 						const titleEl = document.getElementById('imageTitle');
 						const formatEl = document.getElementById('imageFormat');
 
@@ -157,7 +178,6 @@
 					setupDragAndDrop();
 
 					console.log('Phong 360 Viewer v4.0 initialized');
-
 				} catch (error) {
 					console.error('Error initializing Phong 360 Viewer:', error);
 					document.getElementById('imageTitle').textContent = 'Error Initializing Viewer';
@@ -168,7 +188,7 @@
 			// Projection switcher
 			function setupProjectionSwitcher(core) {
 				// Keyboard shortcut: P to toggle projection
-				document.addEventListener('keydown', function(e) {
+				document.addEventListener('keydown', function (e) {
 					if (e.key === 'p' || e.key === 'P') {
 						if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 						const current = core.projectionType;
@@ -190,36 +210,46 @@
 			}
 
 			// Prevent pinch zoom
-			document.addEventListener('wheel', function(event) {
-				if (event.ctrlKey) {
-					event.preventDefault();
-				}
-			}, { passive: false });
+			document.addEventListener(
+				'wheel',
+				function (event) {
+					if (event.ctrlKey) {
+						event.preventDefault();
+					}
+				},
+				{ passive: false }
+			);
 
-			document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
-			document.addEventListener('gesturechange', function(e) { e.preventDefault(); });
-			document.addEventListener('gestureend', function(e) { e.preventDefault(); });
+			document.addEventListener('gesturestart', function (e) {
+				e.preventDefault();
+			});
+			document.addEventListener('gesturechange', function (e) {
+				e.preventDefault();
+			});
+			document.addEventListener('gestureend', function (e) {
+				e.preventDefault();
+			});
 
 			// Drag and Drop functionality
 			function setupDragAndDrop() {
-				document.addEventListener('dragenter', function(event) {
+				document.addEventListener('dragenter', function (event) {
 					event.preventDefault();
 					showDropOverlay();
 				});
 
-				document.addEventListener('dragover', function(event) {
+				document.addEventListener('dragover', function (event) {
 					event.preventDefault();
 					event.dataTransfer.dropEffect = 'copy';
 				});
 
-				document.addEventListener('dragleave', function(event) {
+				document.addEventListener('dragleave', function (event) {
 					event.preventDefault();
 					if (!event.relatedTarget || event.relatedTarget.nodeName === 'HTML') {
 						hideDropOverlay();
 					}
 				});
 
-				document.addEventListener('drop', function(event) {
+				document.addEventListener('drop', function (event) {
 					event.preventDefault();
 					hideDropOverlay();
 
@@ -227,25 +257,29 @@
 					if (file && (file.type === 'image/jpeg' || file.type === 'image/png')) {
 						const objectUrl = URL.createObjectURL(file);
 						const img = new Image();
-						img.onload = function() {
+						img.onload = function () {
 							const width = img.naturalWidth;
 							const height = img.naturalHeight;
 
 							const titleEl = document.getElementById('imageTitle');
 							const formatEl = document.getElementById('imageFormat');
 							if (titleEl) titleEl.textContent = file.name.split('.').slice(0, -1).join('.');
-							if (formatEl) formatEl.textContent = `${width}x${height} / ${file.type.split('/')[1].toUpperCase()}`;
+							if (formatEl)
+								formatEl.textContent = `${width}x${height} / ${file.type.split('/')[1].toUpperCase()}`;
 
 							if (viewer && viewer.core) {
-								viewer.core.loadImage(objectUrl, width, height).then(function() {
-									console.log('Dropped image loaded successfully');
-									if (!viewer.core.animationFrameId) viewer.core.animate();
-								}).catch(function(error) {
-									console.error('Error loading dropped image:', error);
-								});
+								viewer.core
+									.loadImage(objectUrl, width, height)
+									.then(function () {
+										console.log('Dropped image loaded successfully');
+										if (!viewer.core.animationFrameId) viewer.core.animate();
+									})
+									.catch(function (error) {
+										console.error('Error loading dropped image:', error);
+									});
 							}
 						};
-						img.onerror = function() {
+						img.onerror = function () {
 							console.error('Error reading image file');
 							URL.revokeObjectURL(objectUrl);
 						};
@@ -326,7 +360,7 @@
 			}
 
 			#instructions button {
-				background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+				background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
 				color: white;
 				border: none;
 				padding: 14px 32px;
@@ -373,7 +407,7 @@
 				height: 26px;
 			}
 
-			.toggle-switch-wrapper input[type="checkbox"] {
+			.toggle-switch-wrapper input[type='checkbox'] {
 				opacity: 0;
 				width: 0;
 				height: 0;
@@ -394,7 +428,7 @@
 
 			.toggle-slider:before {
 				position: absolute;
-				content: "";
+				content: '';
 				height: 20px;
 				width: 20px;
 				left: 3px;
@@ -405,7 +439,7 @@
 			}
 
 			.toggle-switch-wrapper input:checked + .toggle-slider {
-				background-color: #4CAF50;
+				background-color: #4caf50;
 			}
 
 			.toggle-switch-wrapper input:checked + .toggle-slider:before {
@@ -426,11 +460,22 @@
 					overflow-y: auto;
 				}
 
-				#instructions h3 { font-size: 20px; }
-				#instructions ul { line-height: 1.8; }
-				#instructions li { margin-bottom: 10px; font-size: 15px; }
-				.toggle-label-text { font-size: 15px; }
-				.toggle-description { font-size: 12px; }
+				#instructions h3 {
+					font-size: 20px;
+				}
+				#instructions ul {
+					line-height: 1.8;
+				}
+				#instructions li {
+					margin-bottom: 10px;
+					font-size: 15px;
+				}
+				.toggle-label-text {
+					font-size: 15px;
+				}
+				.toggle-description {
+					font-size: 12px;
+				}
 			}
 
 			/* Help button — fixed bottom-left */
@@ -459,7 +504,11 @@
 		</style>
 
 		<!-- Help button -->
-		<button id="help-button" onclick="document.getElementById('instructions').classList.add('show')" title="Help & Instructions">
+		<button
+			id="help-button"
+			onclick="document.getElementById('instructions').classList.add('show')"
+			title="Help & Instructions"
+		>
 			<i class="ph ph-question"></i>
 		</button>
 
@@ -468,18 +517,27 @@
 				<h3>Phong 360 Viewer</h3>
 				<ul>
 					<li><i class="ph ph-cursor-click"></i> <strong>Click & Drag</strong> to look around</li>
-					<li><i class="ph ph-magnifying-glass-plus"></i> <strong>Scroll</strong> to zoom in/out</li>
+					<li>
+						<i class="ph ph-magnifying-glass-plus"></i> <strong>Scroll</strong> to zoom in/out
+					</li>
 					<li><i class="ph ph-list"></i> <strong>Click menu</strong> to browse library</li>
-					<li><i class="ph ph-upload-simple"></i> <strong>Drag & Drop</strong> your own 360° images</li>
-					<li><i class="ph ph-keyboard"></i> <strong>Arrow keys</strong> to pan, +/- to zoom, <strong>P</strong> to switch projection</li>
+					<li>
+						<i class="ph ph-upload-simple"></i> <strong>Drag & Drop</strong> your own 360° images
+					</li>
+					<li>
+						<i class="ph ph-keyboard"></i> <strong>Arrow keys</strong> to pan, +/- to zoom,
+						<strong>P</strong> to switch projection
+					</li>
 				</ul>
 
 				<!-- Auto-rotate toggle -->
 				<div class="auto-rotate-toggle">
 					<label class="toggle-container">
-						<span class="toggle-label-text"><i class="ph ph-arrows-clockwise"></i> Auto-rotate</span>
+						<span class="toggle-label-text"
+							><i class="ph ph-arrows-clockwise"></i> Auto-rotate</span
+						>
 						<div class="toggle-switch-wrapper">
-							<input type="checkbox" id="autoRotateToggle">
+							<input type="checkbox" id="autoRotateToggle" />
 							<span class="toggle-slider"></span>
 						</div>
 					</label>
@@ -502,7 +560,7 @@
 					if (saved === 'true') autoRotateToggle.checked = true;
 				} catch (e) {}
 
-				autoRotateToggle.addEventListener('change', function() {
+				autoRotateToggle.addEventListener('change', function () {
 					const enabled = autoRotateToggle.checked;
 					if (viewer && viewer.core) {
 						viewer.core.config.viewRotation.autoRotate = enabled;

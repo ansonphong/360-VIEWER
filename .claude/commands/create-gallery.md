@@ -11,6 +11,7 @@ The engine handles everything internally (sidebar, toolbar, info bar, theming, f
 ## Step 1: Gather Info
 
 Ask the user for:
+
 - **Gallery name** and subtitle
 - **Profile type**: `profile` (with avatar, name, social links — like an Instagram profile) or `local` (simple, no avatar)
 - **Theme**: dark, light, or auto (follows system)
@@ -37,38 +38,45 @@ Generate based on user's answers. All fields:
 
 ```json
 {
-  "context": {
-    "type": "profile",
-    "title": "User's Name",
-    "subtitle": "360° Photography",
-    "avatar": "assets/avatar.jpg",
-    "theme": "dark",
-    "accent": "#6366f1",
-    "panelWidth": 420,
-    "infoBar": "center",
-    "favicon": "🎨",
-    "links": [
-      {"url": "https://example.com", "label": "Website"},
-      {"url": "https://instagram.com/user", "label": "Instagram"}
-    ]
-  },
-  "sections": {
-    "Landscapes": {
-      "title": "Landscapes",
-      "icon": "mountains",
-      "template": "grid",
-      "titleStrip": "Prefix-"
-    }
-  },
-  "build": {
-    "outputDir": "_BUILD",
-    "resolutions": {
-      "8K": { "width": 8192, "height": 4096, "quality": 95, "label": "8K", "bandwidth": "high" },
-      "4K": { "width": 4096, "height": 2048, "quality": 90, "label": "4K", "bandwidth": "medium", "default": true },
-      "2K": { "width": 2048, "height": 1024, "quality": 85, "label": "2K", "bandwidth": "low" }
-    },
-    "thumbnail": { "width": 512, "height": 256, "quality": 80 }
-  }
+	"context": {
+		"type": "profile",
+		"title": "User's Name",
+		"subtitle": "360° Photography",
+		"avatar": "assets/avatar.jpg",
+		"theme": "dark",
+		"accent": "#6366f1",
+		"panelWidth": 420,
+		"infoBar": "center",
+		"favicon": "🎨",
+		"links": [
+			{ "url": "https://example.com", "label": "Website" },
+			{ "url": "https://instagram.com/user", "label": "Instagram" }
+		]
+	},
+	"sections": {
+		"Landscapes": {
+			"title": "Landscapes",
+			"icon": "mountains",
+			"template": "grid",
+			"titleStrip": "Prefix-"
+		}
+	},
+	"build": {
+		"outputDir": "_BUILD",
+		"resolutions": {
+			"8K": { "width": 8192, "height": 4096, "quality": 95, "label": "8K", "bandwidth": "high" },
+			"4K": {
+				"width": 4096,
+				"height": 2048,
+				"quality": 90,
+				"label": "4K",
+				"bandwidth": "medium",
+				"default": true
+			},
+			"2K": { "width": 2048, "height": 1024, "quality": 85, "label": "2K", "bandwidth": "low" }
+		},
+		"thumbnail": { "width": 512, "height": 256, "quality": 80 }
+	}
 }
 ```
 
@@ -89,16 +97,19 @@ Common Phosphor icons for sections: `mountains`, `buildings`, `flower-lotus`, `p
 If user chose VPS deployment, copy the appropriate deploy script:
 
 **PHP:**
+
 ```bash
 cp 360-viewer/gallery-template/deploy/deploy-webhook.php deploy.php
 ```
 
 **Python:**
+
 ```bash
 cp 360-viewer/gallery-template/deploy/deploy-webhook.py deploy-webhook.py
 ```
 
 Then customize the config variables at the top:
+
 - `$webhookSecret` / `WEBHOOK_SECRET` — generate with: `python3 -c "import secrets; print(secrets.token_hex(32))"`
 - `$urlSecret` / `URL_SECRET` — generate another one
 - `$deployDir` / `DEPLOY_DIR` — server path
@@ -108,6 +119,7 @@ Then customize the config variables at the top:
 Tell the user about the server setup steps documented in the deploy script comments.
 
 Key gotchas to warn about:
+
 - `.git` directories must be owned by deploy user, not www-data
 - `safe.directory` must be configured for both the main repo AND the 360-viewer submodule
 - `pull.ff only` should be set for the deploy user
@@ -124,6 +136,7 @@ mkdir -p library/Architecture
 ```
 
 Images should be:
+
 - JPEG or PNG
 - 2:1 aspect ratio (equirectangular)
 - Ideally 4096x2048 or 8192x4096
@@ -139,6 +152,7 @@ python 360-viewer/library/build_library.py \
 ```
 
 This generates:
+
 - `library/library.json` — Image catalog with context from 360-viewer.json
 - `library/_BUILD/thumbnails/` — 512x256 preview thumbnails
 - `library/_BUILD/8K/`, `4K/`, `2K/` — Multi-resolution variants
@@ -151,6 +165,7 @@ python -m http.server 8000
 ```
 
 Verify:
+
 - Sidebar opens with sections and thumbnails
 - Clicking an image loads it in the viewer
 - Info bar shows at the bottom with title and prev/next

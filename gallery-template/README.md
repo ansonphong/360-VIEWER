@@ -5,6 +5,7 @@ Starter template for creating a 360 panoramic image gallery with the [Phong 360 
 ## Quick Start
 
 1. Create a new repo and add the viewer as a submodule:
+
    ```bash
    mkdir my-gallery && cd my-gallery
    git init
@@ -14,6 +15,7 @@ Starter template for creating a 360 panoramic image gallery with the [Phong 360 
    ```
 
 2. Add your equirectangular 360 images:
+
    ```bash
    mkdir -p library/MyCollection
    # Copy your images into library/MyCollection/
@@ -22,6 +24,7 @@ Starter template for creating a 360 panoramic image gallery with the [Phong 360 
 3. Edit `360-viewer.json` with your profile info, theme, accent color, and section settings.
 
 4. Build the library:
+
    ```bash
    pip install Pillow tqdm
    python 360-viewer/library/build_library.py \
@@ -37,14 +40,14 @@ Starter template for creating a 360 panoramic image gallery with the [Phong 360 
 
 ## What's Included
 
-| File | Purpose |
-|------|---------|
-| `index.html` | Host page with viewer init, drag-and-drop, help modal |
-| `360-viewer.json` | Gallery config (title, theme, accent, panelWidth, favicon, etc.) |
-| `netlify.toml` | Optimized cache headers for Netlify hosting |
-| `.gitignore` | Ignores build artifacts and OS files |
-| `deploy/deploy-webhook.php` | GitHub webhook deploy script (PHP) |
-| `deploy/deploy-webhook.py` | GitHub webhook deploy script (Python/Flask) |
+| File                        | Purpose                                                          |
+| --------------------------- | ---------------------------------------------------------------- |
+| `index.html`                | Host page with viewer init, drag-and-drop, help modal            |
+| `360-viewer.json`           | Gallery config (title, theme, accent, panelWidth, favicon, etc.) |
+| `netlify.toml`              | Optimized cache headers for Netlify hosting                      |
+| `.gitignore`                | Ignores build artifacts and OS files                             |
+| `deploy/deploy-webhook.php` | GitHub webhook deploy script (PHP)                               |
+| `deploy/deploy-webhook.py`  | GitHub webhook deploy script (Python/Flask)                      |
 
 ## Using Claude Code?
 

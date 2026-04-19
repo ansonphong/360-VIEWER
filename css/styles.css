@@ -1,9 +1,9 @@
-html, body {
-    background: rgb(0, 0, 0);    /* Set background color */
-    overflow: hidden;            /* Prevent scrolling */
-    margin: 0px;                 /* Remove default margin */
+html,
+body {
+	background: rgb(0, 0, 0); /* Set background color */
+	overflow: hidden; /* Prevent scrolling */
+	margin: 0px; /* Remove default margin */
 }
-
 
 canvas {
 	display: block;
@@ -19,7 +19,7 @@ canvas {
 }
 
 .background-text {
-	font-family: "Karla", sans-serif;
+	font-family: 'Karla', sans-serif;
 	font-size: 64px;
 	font-weight: 100;
 	color: rgba(255, 255, 255, 0.3);
@@ -80,9 +80,9 @@ canvas {
 	height: 100vh;
 	position: absolute;
 	left: 0;
-	right:0;
-	top:0;
-	bottom:0;
+	right: 0;
+	top: 0;
+	bottom: 0;
 	background: #000;
 }
 
@@ -116,17 +116,17 @@ canvas {
 		margin-right: 50px; /* Less space on mobile */
 		gap: 6px;
 	}
-	
+
 	#toolbar-panel .toolbar-button {
 		height: 44px; /* Smaller on mobile */
 		font-size: 11px;
 	}
-	
+
 	#switchProjectionButton {
 		font-size: 10px !important;
 		padding: 6px 8px !important;
 	}
-	
+
 	.resolution-selector {
 		font-size: 11px !important;
 		height: 44px !important;
@@ -151,7 +151,7 @@ canvas {
 	background-color: rgba(0, 0, 0, 0.8);
 	border-radius: 4px;
 	bottom: 10px;
-	font-family: "Karla", sans-serif;
+	font-family: 'Karla', sans-serif;
 	padding: 12px 32px 12px 80px;
 	position: absolute;
 	left: 10px;
@@ -238,8 +238,12 @@ canvas {
 }
 
 @keyframes spin {
-	0% { transform: rotate(0deg); }
-	100% { transform: rotate(360deg); }
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
 }
 
 /* Disable clicks during transitions */
@@ -365,7 +369,6 @@ body {
 	display: block;
 	border-radius: 6px;
 }
-
 
 #library-tree .folder > span {
 	display: flex;
@@ -512,7 +515,7 @@ body {
 	font-weight: 500;
 	cursor: pointer;
 	margin-left: 8px;
-	font-family: "Karla", sans-serif;
+	font-family: 'Karla', sans-serif;
 	padding: 8px 32px 8px 12px;
 	background-color: rgba(0, 0, 0, 0.5);
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23ffffff' opacity='0.8' d='M6 8L0 0h12z'/%3E%3C/svg%3E");

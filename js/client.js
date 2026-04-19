@@ -4,17 +4,17 @@ let scene, camera, renderer, mesh;
 let loadingOverlay, phongLogoCenterImg, threeJSCanvas;
 let isTabVisible = true;
 
-const DEFAULT_IMAGE_ID = "a02580ab";
+const DEFAULT_IMAGE_ID = 'a02580ab';
 
 // Interaction State
 let isUserInteracting = false,
-    onPointerDownMouseX = 0,
-    onPointerDownMouseY = 0,
-    onPointerDownLon = 0,
-    onPointerDownLat = 0,
-    targetLon = 0,
-    targetLat = 0,
-    fov = 90;
+	onPointerDownMouseX = 0,
+	onPointerDownMouseY = 0,
+	onPointerDownLon = 0,
+	onPointerDownLat = 0,
+	targetLon = 0,
+	targetLat = 0,
+	fov = 90;
 
 let isZoomingIn = false;
 let isZoomingOut = false;
@@ -28,19 +28,17 @@ let panInterval = null;
 let lastKeyPressTime = 0;
 const DOUBLE_PRESS_DELAY = 300; // milliseconds
 
-
 // Add a new object to track active keys
 const activeKeys = {
-    ArrowUp: false,
-    ArrowDown: false,
-    ArrowLeft: false,
-    ArrowRight: false,
-    '=': false,
-    '+': false,
-    '-': false,
-    '_': false
+	ArrowUp: false,
+	ArrowDown: false,
+	ArrowLeft: false,
+	ArrowRight: false,
+	'=': false,
+	'+': false,
+	'-': false,
+	_: false
 };
-
 
 let isPointerDown = false;
 let lastPointerX = 0;
@@ -48,7 +46,7 @@ let lastPointerY = 0;
 let pointerStartX = 0;
 let pointerStartY = 0;
 
-let currentImagePath = "";
+let currentImagePath = '';
 
 // Time for calculating frame delta
 let lastUpdate = Date.now();
@@ -59,239 +57,241 @@ let projectionType = 1;
 // Configure the hyper params of the view
 // Can be unique per image
 var config = {
-    fov: { // This is the old object
-        max: 300,
-        min: 45,
-        init: 100,
-        initTarget: 60,
-    },
+	fov: {
+		// This is the old object
+		max: 300,
+		min: 45,
+		init: 100,
+		initTarget: 60
+	},
 
-    fov_gnomonic: { // Impliment this one when gnomonic projection is used
-        max: 130,
-        min: 45,
-        init: 100,
-        initTarget: 60,
-    },
+	fov_gnomonic: {
+		// Impliment this one when gnomonic projection is used
+		max: 130,
+		min: 45,
+		init: 100,
+		initTarget: 60
+	},
 
-    fov_stereographic: {  // Impliment this one when stereographic projection is used
-        max: 330,
-        min: 45,
-        init: 100,
-        initTarget: 60,
-    },
+	fov_stereographic: {
+		// Impliment this one when stereographic projection is used
+		max: 330,
+		min: 45,
+		init: 100,
+		initTarget: 60
+	},
 
-    zoom: {
-        increment: 2,
-        smoothing: 6000,
-    },
-    viewRotation: {
-        initAltitude: 0,
-        initAzimuth: 90,
-        autoRotate: true,
-        autoRotationRate: 1,
-        smoothness: 8000,
-    },
+	zoom: {
+		increment: 2,
+		smoothing: 6000
+	},
+	viewRotation: {
+		initAltitude: 0,
+		initAzimuth: 90,
+		autoRotate: true,
+		autoRotationRate: 1,
+		smoothness: 8000
+	}
 };
 
 // Setup initial rotation values
 let initPhi = THREE.MathUtils.degToRad(90 - config.viewRotation.initAltitude),
-    initTheta = THREE.MathUtils.degToRad(config.viewRotation.initAzimuth);
+	initTheta = THREE.MathUtils.degToRad(config.viewRotation.initAzimuth);
 
 // Setup State Objects
 var state = {
-    lat: config.viewRotation.initAltitude,
-    lon: config.viewRotation.initAzimuth,
-    phi: initPhi,
-    theta: initTheta,
-    fov: config.fov.init,
-    azimuthSign: 1,
+	lat: config.viewRotation.initAltitude,
+	lon: config.viewRotation.initAzimuth,
+	phi: initPhi,
+	theta: initTheta,
+	fov: config.fov.init,
+	azimuthSign: 1
 };
 var targetState = {
-    lat: config.viewRotation.initAltitude,
-    lon: config.viewRotation.initAzimuth,
-    phi: initPhi,
-    theta: initTheta,
-    fov: config.fov.initTarget,
+	lat: config.viewRotation.initAltitude,
+	lon: config.viewRotation.initAzimuth,
+	phi: initPhi,
+	theta: initTheta,
+	fov: config.fov.initTarget
 };
 
 function loadInitialImage() {
-    window.removeEventListener('libraryLoaded', loadInitialImage);
-    const urlParams = new URLSearchParams(window.location.search);
-    const imgId = urlParams.get("img") || DEFAULT_IMAGE_ID;
-    window.loadImageById(imgId);
+	window.removeEventListener('libraryLoaded', loadInitialImage);
+	const urlParams = new URLSearchParams(window.location.search);
+	const imgId = urlParams.get('img') || DEFAULT_IMAGE_ID;
+	window.loadImageById(imgId);
 }
 
 // Update the loadTextureAndCreateMaterial function
 function loadTextureAndCreateMaterial(source, onLoad, fileName = null) {
-    console.log("loadTextureAndCreateMaterial called with:", source, fileName);
-    showLoading();
-    fadeOutCurrentImage();
+	console.log('loadTextureAndCreateMaterial called with:', source, fileName);
+	showLoading();
+	fadeOutCurrentImage();
 
-    const createMaterial = (texture) => {
-        console.log("Creating material with texture:", texture);
+	const createMaterial = (texture) => {
+		console.log('Creating material with texture:', texture);
 
-        if (!texture || !(texture instanceof THREE.Texture)) {
-            console.error("Invalid texture:", texture);
-            hideLoading();
-            alert('The image could not be loaded as a valid texture.');
-            return;
-        }
+		if (!texture || !(texture instanceof THREE.Texture)) {
+			console.error('Invalid texture:', texture);
+			hideLoading();
+			alert('The image could not be loaded as a valid texture.');
+			return;
+		}
 
-        // Enable mipmaps and set optimal texture settings
-        texture.generateMipmaps = true;
-        texture.minFilter = THREE.LinearMipmapLinearFilter;
-        texture.magFilter = THREE.LinearFilter;
-        texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+		// Enable mipmaps and set optimal texture settings
+		texture.generateMipmaps = true;
+		texture.minFilter = THREE.LinearMipmapLinearFilter;
+		texture.magFilter = THREE.LinearFilter;
+		texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.ClampToEdgeWrapping;
-        texture.repeat.x = -1;
+		texture.wrapS = THREE.RepeatWrapping;
+		texture.wrapT = THREE.ClampToEdgeWrapping;
+		texture.repeat.x = -1;
 
-        // Use texture.format to determine the internal format
-        let internalFormat;
-        switch (texture.format) {
-            case THREE.RGBAFormat:
-                internalFormat = THREE.RGBA8;
-                break;
-            case THREE.RGBFormat:
-                internalFormat = THREE.RGB8;
-                break;
-            default:
-                internalFormat = THREE.RGBA8;
-        }
-        texture.internalFormat = internalFormat;
+		// Use texture.format to determine the internal format
+		let internalFormat;
+		switch (texture.format) {
+			case THREE.RGBAFormat:
+				internalFormat = THREE.RGBA8;
+				break;
+			case THREE.RGBFormat:
+				internalFormat = THREE.RGB8;
+				break;
+			default:
+				internalFormat = THREE.RGBA8;
+		}
+		texture.internalFormat = internalFormat;
 
-        try {
-            const material = new THREE.ShaderMaterial({
-                uniforms: {
-                    equirectangularMap: { value: texture },
-                    lon: { value: state.lon },
-                    lat: { value: state.lat },
-                    fov: { value: state.fov },
-                    aspect: { value: aspect },
-                    projectionType: { value: projectionType }
-                },
-                vertexShader: vertexShader,
-                fragmentShader: fragmentShader,
-            });
+		try {
+			const material = new THREE.ShaderMaterial({
+				uniforms: {
+					equirectangularMap: { value: texture },
+					lon: { value: state.lon },
+					lat: { value: state.lat },
+					fov: { value: state.fov },
+					aspect: { value: aspect },
+					projectionType: { value: projectionType }
+				},
+				vertexShader: vertexShader,
+				fragmentShader: fragmentShader
+			});
 
-            console.log("Material created successfully");
+			console.log('Material created successfully');
 
-            // Update DOM elements
-            updateImageInfo(source, fileName);
+			// Update DOM elements
+			updateImageInfo(source, fileName);
 
-            onLoad(material);
-            hideLoading();
-            fadeInNewImage();
+			onLoad(material);
+			hideLoading();
+			fadeInNewImage();
 
-            // Update the current image path and highlight it in the library
-            currentImagePath = source instanceof THREE.Texture ? fileName : source;
-            window.currentImagePath = currentImagePath;
-            console.log("Material created and loaded");
-        } catch (error) {
-            console.error("Error creating material:", error);
-            hideLoading();
-            alert('Error creating material from the texture.');
-        }
-    };
+			// Update the current image path and highlight it in the library
+			currentImagePath = source instanceof THREE.Texture ? fileName : source;
+			window.currentImagePath = currentImagePath;
+			console.log('Material created and loaded');
+		} catch (error) {
+			console.error('Error creating material:', error);
+			hideLoading();
+			alert('Error creating material from the texture.');
+		}
+	};
 
-    if (source instanceof THREE.Texture || source instanceof THREE.CanvasTexture) {
-        console.log("Source is already a texture");
-        createMaterial(source);
-    } else {
-        console.log("Loading texture from source:", source);
-        const textureLoader = new THREE.TextureLoader();
-        textureLoader.load(
-            source,
-            createMaterial,
-            (progress) => {
-                console.log("Loading progress:", progress);
-            },
-            (error) => {
-                console.error("An error occurred while loading the texture:", error);
-                hideLoading();
-                alert('Error loading the image.');
-            }
-        );
-    }
+	if (source instanceof THREE.Texture || source instanceof THREE.CanvasTexture) {
+		console.log('Source is already a texture');
+		createMaterial(source);
+	} else {
+		console.log('Loading texture from source:', source);
+		const textureLoader = new THREE.TextureLoader();
+		textureLoader.load(
+			source,
+			createMaterial,
+			(progress) => {
+				console.log('Loading progress:', progress);
+			},
+			(error) => {
+				console.error('An error occurred while loading the texture:', error);
+				hideLoading();
+				alert('Error loading the image.');
+			}
+		);
+	}
 }
-
 
 // Add this helper function to check if an object is a valid THREE.Texture
 function isValidTexture(obj) {
-    return obj instanceof THREE.Texture && obj.image && obj.image.width > 0 && obj.image.height > 0;
+	return obj instanceof THREE.Texture && obj.image && obj.image.width > 0 && obj.image.height > 0;
 }
 
 function showLoading() {
-    loadingOverlay.style.display = "block";
-    phongLogoCenterImg.style.display = "block";
-    phongLogoCenterImg.style.opacity = "1";
-    startPulsing();
+	loadingOverlay.style.display = 'block';
+	phongLogoCenterImg.style.display = 'block';
+	phongLogoCenterImg.style.opacity = '1';
+	startPulsing();
 }
 
 function hideLoading() {
-    loadingOverlay.style.display = "none";
-    stopPulsing();
-    // Fade out the logo
-    phongLogoCenterImg.style.transition = "opacity 0.5s ease-out";
-    phongLogoCenterImg.style.opacity = "0";
-    // Remove the logo after the fade-out transition
-    setTimeout(() => {
-        phongLogoCenterImg.style.display = "none";
-    }, 500); // 500ms matches the transition duration
+	loadingOverlay.style.display = 'none';
+	stopPulsing();
+	// Fade out the logo
+	phongLogoCenterImg.style.transition = 'opacity 0.5s ease-out';
+	phongLogoCenterImg.style.opacity = '0';
+	// Remove the logo after the fade-out transition
+	setTimeout(() => {
+		phongLogoCenterImg.style.display = 'none';
+	}, 500); // 500ms matches the transition duration
 }
 
 function startPulsing() {
-    phongLogoCenterImg.style.animation = "pulse 2s infinite";
+	phongLogoCenterImg.style.animation = 'pulse 2s infinite';
 }
 
 function stopPulsing() {
-    phongLogoCenterImg.style.animation = "none";
-    phongLogoCenterImg.style.opacity = "0";
+	phongLogoCenterImg.style.animation = 'none';
+	phongLogoCenterImg.style.opacity = '0';
 }
 
 function fadeOutCurrentImage() {
-    threeJSCanvas.style.transition = "opacity 1s ease-out";
-    threeJSCanvas.style.opacity = "0";
+	threeJSCanvas.style.transition = 'opacity 1s ease-out';
+	threeJSCanvas.style.opacity = '0';
 }
 
 function fadeInNewImage() {
-    setTimeout(() => {
-        threeJSCanvas.style.transition = "opacity 1.8s ease-in";
-        threeJSCanvas.style.opacity = "1";
-    }, 100);
+	setTimeout(() => {
+		threeJSCanvas.style.transition = 'opacity 1.8s ease-in';
+		threeJSCanvas.style.opacity = '1';
+	}, 100);
 }
 
 // Update the updateImageInfo function to handle both file names and URLs
 function updateImageInfo(source, fileName = null) {
-    let basename, extension;
+	let basename, extension;
 
-    if (fileName) {
-        // Use the provided file name for drag and drop
-        basename = fileName.split(".").slice(0, -1).join(".");
-        extension = fileName.split(".").pop().toUpperCase();
-    } else if (typeof source === 'string') {
-        // Extract filename from URL for initial load or other cases
-        const filename = source.split("/").pop();
-        basename = filename.split(".").slice(0, -1).join(".");
-        extension = filename.split(".").pop().toUpperCase();
-    } else {
-        // Handle case where source is a texture (drag and drop)
-        basename = "Dropped Image";
-        extension = "Unknown";
-    }
+	if (fileName) {
+		// Use the provided file name for drag and drop
+		basename = fileName.split('.').slice(0, -1).join('.');
+		extension = fileName.split('.').pop().toUpperCase();
+	} else if (typeof source === 'string') {
+		// Extract filename from URL for initial load or other cases
+		const filename = source.split('/').pop();
+		basename = filename.split('.').slice(0, -1).join('.');
+		extension = filename.split('.').pop().toUpperCase();
+	} else {
+		// Handle case where source is a texture (drag and drop)
+		basename = 'Dropped Image';
+		extension = 'Unknown';
+	}
 
-    // Update title
-    const titleElement = document.getElementById("imageTitle");
-    if (titleElement) {
-        titleElement.textContent = basename;
-    }
+	// Update title
+	const titleElement = document.getElementById('imageTitle');
+	if (titleElement) {
+		titleElement.textContent = basename;
+	}
 
-    // Update format
-    const formatElement = document.getElementById("imageFormat");
-    if (formatElement) {
-        formatElement.textContent = `${extension} / Equirectangular`;
-    }
+	// Update format
+	const formatElement = document.getElementById('imageFormat');
+	if (formatElement) {
+		formatElement.textContent = `${extension} / Equirectangular`;
+	}
 }
 
 // Shaders
@@ -450,595 +450,602 @@ void main() {
 
 `;
 
-
 // Initialize and Animate
 init();
 animate();
 
 function init() {
-    const container = document.getElementById("container");
-    lastUpdate = Date.now();
+	const container = document.getElementById('container');
+	lastUpdate = Date.now();
 
-    loadingOverlay = document.getElementById("loading-overlay");
-    phongLogoCenterImg = document.getElementById("phong-logo-center");
+	loadingOverlay = document.getElementById('loading-overlay');
+	phongLogoCenterImg = document.getElementById('phong-logo-center');
 
-    // Set up scene, camera, and renderer
-    scene = new THREE.Scene();
-    camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-    camera.position.z = 1;
+	// Set up scene, camera, and renderer
+	scene = new THREE.Scene();
+	camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+	camera.position.z = 1;
 
-    renderer = new THREE.WebGLRenderer();
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    container.appendChild(renderer.domElement);
-    threeJSCanvas = renderer.domElement;
+	renderer = new THREE.WebGLRenderer();
+	renderer.setPixelRatio(window.devicePixelRatio);
+	renderer.setSize(window.innerWidth, window.innerHeight);
+	container.appendChild(renderer.domElement);
+	threeJSCanvas = renderer.domElement;
 
-    // Create full-screen quad
-    const geometry = new THREE.PlaneGeometry(2, 2);
-    mesh = new THREE.Mesh(geometry);
-    scene.add(mesh);
+	// Create full-screen quad
+	const geometry = new THREE.PlaneGeometry(2, 2);
+	mesh = new THREE.Mesh(geometry);
+	scene.add(mesh);
 
-    // Calculate initial aspect ratio
-    aspect = window.innerWidth / window.innerHeight;
+	// Calculate initial aspect ratio
+	aspect = window.innerWidth / window.innerHeight;
 
-    // Event listeners
-    window.addEventListener("resize", onWindowResize);
-    document.addEventListener("wheel", onDocumentMouseWheel);
-    document.addEventListener('pointerdown', onPointerDown, false);
-    document.addEventListener('pointermove', onPointerMove, false);
-    document.addEventListener('pointerup', onPointerUp, false);
-    document.addEventListener('pointercancel', onPointerUp, false);
+	// Event listeners
+	window.addEventListener('resize', onWindowResize);
+	document.addEventListener('wheel', onDocumentMouseWheel);
+	document.addEventListener('pointerdown', onPointerDown, false);
+	document.addEventListener('pointermove', onPointerMove, false);
+	document.addEventListener('pointerup', onPointerUp, false);
+	document.addEventListener('pointercancel', onPointerUp, false);
 
-    // Add touch events for pinch zooming
-    // TODO: These aren't working at all... why aren't they firing?
-    container.addEventListener('touchstart', onTouchStart, false);
-    container.addEventListener('touchmove', onTouchMove, false);
-    container.addEventListener('touchend', onTouchEnd, false);
-    
+	// Add touch events for pinch zooming
+	// TODO: These aren't working at all... why aren't they firing?
+	container.addEventListener('touchstart', onTouchStart, false);
+	container.addEventListener('touchmove', onTouchMove, false);
+	container.addEventListener('touchend', onTouchEnd, false);
 
-    // Set up drag and drop functionality
-    setupDragAndDrop();
+	// Set up drag and drop functionality
+	setupDragAndDrop();
 
-    // Window / Tab visibility Change event listeners
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleFocus);
-    window.addEventListener("blur", handleBlur);
+	// Window / Tab visibility Change event listeners
+	document.addEventListener('visibilitychange', handleVisibilityChange);
+	window.addEventListener('focus', handleFocus);
+	window.addEventListener('blur', handleBlur);
 
-    document.getElementById('switchProjectionButton').addEventListener('click', function () {
-        let currentType = projectionType;
-        let newType = currentType === 0 ? 1 : 0;
-        switchProjection(newType, this);
-    });
+	document.getElementById('switchProjectionButton').addEventListener('click', function () {
+		let currentType = projectionType;
+		let newType = currentType === 0 ? 1 : 0;
+		switchProjection(newType, this);
+	});
 
-    switchProjection(projectionType, document.getElementById('switchProjectionButton'));
+	switchProjection(projectionType, document.getElementById('switchProjectionButton'));
 
-    // Add fullscreen change event listeners
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+	// Add fullscreen change event listeners
+	document.addEventListener('fullscreenchange', handleFullscreenChange);
+	document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+	document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+	document.addEventListener('MSFullscreenChange', handleFullscreenChange);
 }
 
 // MOBILE PINCH ZOOMING
 function onTouchStart(event) {
-    console.log("onTouchStart", event)
-    if (event.touches.length === 2) {
-        isZooming = true;
-        console.log("isZooming", isZooming)
-        initialPinchDistance = getPinchDistance(event);
-
-    }
+	console.log('onTouchStart', event);
+	if (event.touches.length === 2) {
+		isZooming = true;
+		console.log('isZooming', isZooming);
+		initialPinchDistance = getPinchDistance(event);
+	}
 }
 
 const PINCH_ZOOM_DAMPING = 0.05; // Adjust this value to control zoom intensity (0.1 to 0.5 is a good range)
 
 function onTouchMove(event) {
-    console.log("onTouchMove", event);
-    if (isZooming && event.touches.length === 2) {
-        const currentPinchDistance = getPinchDistance(event);
-        const rawPinchRatio = initialPinchDistance / currentPinchDistance;
-        
-        // Apply damping to the pinch ratio
-        const dampedPinchRatio = 1 + (rawPinchRatio - 1) * PINCH_ZOOM_DAMPING;
-        console.log("dampedPinchRatio", dampedPinchRatio);
+	console.log('onTouchMove', event);
+	if (isZooming && event.touches.length === 2) {
+		const currentPinchDistance = getPinchDistance(event);
+		const rawPinchRatio = initialPinchDistance / currentPinchDistance;
 
-        targetState.fov = clampFOV(state.fov * dampedPinchRatio);
-        initialPinchDistance = currentPinchDistance;
-        console.log("currentPinchDistance", currentPinchDistance);
+		// Apply damping to the pinch ratio
+		const dampedPinchRatio = 1 + (rawPinchRatio - 1) * PINCH_ZOOM_DAMPING;
+		console.log('dampedPinchRatio', dampedPinchRatio);
 
-    } else if (event.touches.length === 1) {
-        // Handle single touch panning
-        const touch = event.touches[0];
-        onPointerMove({
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-            isPrimary: true
-        });
-    }
+		targetState.fov = clampFOV(state.fov * dampedPinchRatio);
+		initialPinchDistance = currentPinchDistance;
+		console.log('currentPinchDistance', currentPinchDistance);
+	} else if (event.touches.length === 1) {
+		// Handle single touch panning
+		const touch = event.touches[0];
+		onPointerMove({
+			clientX: touch.clientX,
+			clientY: touch.clientY,
+			isPrimary: true
+		});
+	}
 }
 
 function onTouchEnd(event) {
-    if (event.touches.length < 2) {
-        isZooming = false;
-    }
-    if (event.touches.length === 0) {
-        onPointerUp({ isPrimary: true });
-    }
+	if (event.touches.length < 2) {
+		isZooming = false;
+	}
+	if (event.touches.length === 0) {
+		onPointerUp({ isPrimary: true });
+	}
 }
 
 function getPinchDistance(event) {
-    const touch1 = event.touches[0];
-    const touch2 = event.touches[1];
-    return Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+	const touch1 = event.touches[0];
+	const touch2 = event.touches[1];
+	return Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
 }
-
 
 // VISIBLITY
 function handleVisibilityChange() {
-    isTabVisible = !document.hidden;
+	isTabVisible = !document.hidden;
 }
 
 function handleFocus() {
-    isTabVisible = true;
+	isTabVisible = true;
 }
 
 function handleBlur() {
-    isTabVisible = false;
+	isTabVisible = false;
 }
 
 function onWindowResize() {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    aspect = width / height;
-    camera.left = -aspect;
-    camera.right = aspect;
-    camera.top = 1;
-    camera.bottom = -1;
-    camera.updateProjectionMatrix();
-    renderer.setSize(width, height);
+	const width = window.innerWidth;
+	const height = window.innerHeight;
+	aspect = width / height;
+	camera.left = -aspect;
+	camera.right = aspect;
+	camera.top = 1;
+	camera.bottom = -1;
+	camera.updateProjectionMatrix();
+	renderer.setSize(width, height);
 
-    // Update the aspect ratio uniform in the shader
-    if (mesh && mesh.material && mesh.material.uniforms) {
-        mesh.material.uniforms.aspect.value = aspect;
-    }
+	// Update the aspect ratio uniform in the shader
+	if (mesh && mesh.material && mesh.material.uniforms) {
+		mesh.material.uniforms.aspect.value = aspect;
+	}
 }
 
 function animate() {
-    requestAnimationFrame(animate);
-    update();
+	requestAnimationFrame(animate);
+	update();
 }
 
 // Updated createShaderMaterial function
 function createShaderMaterial(texture) {
-    const initialFOVConfig = getCurrentFOVConfig();
-    return new THREE.ShaderMaterial({
-        uniforms: {
-            equirectangularMap: { value: texture },
-            lon: { value: state.lon },
-            lat: { value: state.lat },
-            fov: { value: state.fov },
-            aspect: { value: aspect },
-            projectionType: { value: projectionType }
-        },
-        vertexShader: vertexShader,
-        fragmentShader: fragmentShader,
-    });
+	const initialFOVConfig = getCurrentFOVConfig();
+	return new THREE.ShaderMaterial({
+		uniforms: {
+			equirectangularMap: { value: texture },
+			lon: { value: state.lon },
+			lat: { value: state.lat },
+			fov: { value: state.fov },
+			aspect: { value: aspect },
+			projectionType: { value: projectionType }
+		},
+		vertexShader: vertexShader,
+		fragmentShader: fragmentShader
+	});
 }
 
 // Updated switchProjection function
 function switchProjection(type, dom) {
-    projectionType = type;
-    if (mesh && mesh.material && mesh.material.uniforms) {
-        mesh.material.uniforms.projectionType.value = type;
-    }
+	projectionType = type;
+	if (mesh && mesh.material && mesh.material.uniforms) {
+		mesh.material.uniforms.projectionType.value = type;
+	}
 
-    // Clamp both targetState.fov and state.fov to the new range
-    targetState.fov = clampFOV(targetState.fov);
-    state.fov = clampFOV(state.fov);
-    dom.title = type === 0 ? 'Gnomonic Projection' : 'Stereographic Projection';
-    dom.textContent = type === 0 ? '📐 Gnomonic' : '🌐 Stereographic';
+	// Clamp both targetState.fov and state.fov to the new range
+	targetState.fov = clampFOV(targetState.fov);
+	state.fov = clampFOV(state.fov);
+	dom.title = type === 0 ? 'Gnomonic Projection' : 'Stereographic Projection';
+	dom.textContent = type === 0 ? '📐 Gnomonic' : '🌐 Stereographic';
 
-    //console.log(`Switched to ${type === 0 ? 'Gnomonic' : 'Stereographic'} projection. FOV clamped to:`, targetState.fov);
+	//console.log(`Switched to ${type === 0 ? 'Gnomonic' : 'Stereographic'} projection. FOV clamped to:`, targetState.fov);
 }
 
 function onPointerDown(event) {
-    if (event.isPrimary === false) return;
+	if (event.isPrimary === false) return;
 
-    isPointerDown = true;
-    isUserInteracting = true;
+	isPointerDown = true;
+	isUserInteracting = true;
 
-    pointerStartX = event.clientX;
-    pointerStartY = event.clientY;
-    lastPointerX = event.clientX;
-    lastPointerY = event.clientY;
+	pointerStartX = event.clientX;
+	pointerStartY = event.clientY;
+	lastPointerX = event.clientX;
+	lastPointerY = event.clientY;
 
-    onPointerDownLon = targetState.lon;
-    onPointerDownLat = targetState.lat;
+	onPointerDownLon = targetState.lon;
+	onPointerDownLat = targetState.lat;
 
-    // Capture the pointer to receive events outside of the element
-    event.target.setPointerCapture(event.pointerId);
+	// Capture the pointer to receive events outside of the element
+	event.target.setPointerCapture(event.pointerId);
 }
 
 function onPointerMove(event) {
-    if (event.isPrimary === false || !isPointerDown) return;
+	if (event.isPrimary === false || !isPointerDown) return;
 
-    const deltaX = event.clientX - lastPointerX;
-    const deltaY = event.clientY - lastPointerY;
+	const deltaX = event.clientX - lastPointerX;
+	const deltaY = event.clientY - lastPointerY;
 
-    targetState.lon = (pointerStartX - event.clientX) * 0.1 + onPointerDownLon;
-    targetState.lat = (event.clientY - pointerStartY) * 0.1 + onPointerDownLat;
+	targetState.lon = (pointerStartX - event.clientX) * 0.1 + onPointerDownLon;
+	targetState.lat = (event.clientY - pointerStartY) * 0.1 + onPointerDownLat;
 
-    // Calculate the sign (direction) of the Azimuth as (-1) or (+1)
-    state.azimuthSign = deltaX / Math.max(Math.abs(deltaX), 0.001);
-    if (state.azimuthSign == 0) state.azimuthSign = 1;
+	// Calculate the sign (direction) of the Azimuth as (-1) or (+1)
+	state.azimuthSign = deltaX / Math.max(Math.abs(deltaX), 0.001);
+	if (state.azimuthSign == 0) state.azimuthSign = 1;
 
-    lastPointerX = event.clientX;
-    lastPointerY = event.clientY;
+	lastPointerX = event.clientX;
+	lastPointerY = event.clientY;
 }
 
 function onPointerUp(event) {
-    if (event.isPrimary === false) return;
+	if (event.isPrimary === false) return;
 
-    isPointerDown = false;
-    isUserInteracting = false;
+	isPointerDown = false;
+	isUserInteracting = false;
 
-    // Only release pointer capture if the event target supports it
-    if (event.target && typeof event.target.releasePointerCapture === 'function') {
-        event.target.releasePointerCapture(event.pointerId);
-    }
+	// Only release pointer capture if the event target supports it
+	if (event.target && typeof event.target.releasePointerCapture === 'function') {
+		event.target.releasePointerCapture(event.pointerId);
+	}
 }
 
 // New function to get the current FOV configuration based on projection type
 function getCurrentFOVConfig() {
-    return projectionType === 0 ? config.fov_gnomonic : config.fov_stereographic;
+	return projectionType === 0 ? config.fov_gnomonic : config.fov_stereographic;
 }
 
 // New function to clamp FOV value
 function clampFOV(fov) {
-    const currentConfig = getCurrentFOVConfig();
-    return THREE.MathUtils.clamp(fov, currentConfig.min, currentConfig.max);
+	const currentConfig = getCurrentFOVConfig();
+	return THREE.MathUtils.clamp(fov, currentConfig.min, currentConfig.max);
 }
 
 // Updated onDocumentMouseWheel function
 function onDocumentMouseWheel(event) {
-    const elementUnderMouse = document.elementFromPoint(event.clientX, event.clientY);
-    const threeJSCanvas = document.querySelector('#container canvas');
+	const elementUnderMouse = document.elementFromPoint(event.clientX, event.clientY);
+	const threeJSCanvas = document.querySelector('#container canvas');
 
-    if (elementUnderMouse === threeJSCanvas) {
-        let scrollDirection = event.deltaY < 0 ? 0.95 : 1.05;
-        targetState.fov = clampFOV(targetState.fov * scrollDirection);
-        console.log("targetState.fov", targetState.fov)
-        //console.log("FOV:", targetState.fov);
-    }
+	if (elementUnderMouse === threeJSCanvas) {
+		let scrollDirection = event.deltaY < 0 ? 0.95 : 1.05;
+		targetState.fov = clampFOV(targetState.fov * scrollDirection);
+		console.log('targetState.fov', targetState.fov);
+		//console.log("FOV:", targetState.fov);
+	}
 }
-
 
 // Spherical project a location in space to look at based on angles
 function calculateLookAtTarget(theta, phi) {
-    let result = {};
-    let radius = 1000;
-    result.x = radius * Math.sin(phi) * Math.cos(theta);
-    result.y = radius * Math.cos(phi);
-    result.z = radius * Math.sin(phi) * Math.sin(theta);
-    return result;
+	let result = {};
+	let radius = 1000;
+	result.x = radius * Math.sin(phi) * Math.cos(theta);
+	result.y = radius * Math.cos(phi);
+	result.z = radius * Math.sin(phi) * Math.sin(theta);
+	return result;
 }
 
 // Updated update function
 function update() {
-    let now = Date.now(),
-        delta = (now - lastUpdate) / 1000; // Delta in Seconds
-    lastUpdate = now;
+	let now = Date.now(),
+		delta = (now - lastUpdate) / 1000; // Delta in Seconds
+	lastUpdate = now;
 
-    if (!isUserInteracting && config.viewRotation.autoRotate) {
-        targetState.lon = targetState.lon - (config.viewRotation.autoRotationRate * state.azimuthSign * delta);
-    }
+	if (!isUserInteracting && config.viewRotation.autoRotate) {
+		targetState.lon =
+			targetState.lon - config.viewRotation.autoRotationRate * state.azimuthSign * delta;
+	}
 
-    const latRange = 90;
+	const latRange = 90;
 
-    // Clamp latitude to range
-    targetState.lat = Math.max(-latRange, Math.min(latRange, targetState.lat));
+	// Clamp latitude to range
+	targetState.lat = Math.max(-latRange, Math.min(latRange, targetState.lat));
 
-    // Calculate target angle
-    targetState.phi = THREE.MathUtils.degToRad(90 - targetState.lat);
-    targetState.theta = THREE.MathUtils.degToRad(targetState.lon);
+	// Calculate target angle
+	targetState.phi = THREE.MathUtils.degToRad(90 - targetState.lat);
+	targetState.theta = THREE.MathUtils.degToRad(targetState.lon);
 
-    // Smooth interpolation
-    state.theta += (targetState.theta - state.theta) / (config.viewRotation.smoothness * delta);
-    state.phi += (targetState.phi - state.phi) / (config.viewRotation.smoothness * delta);
-    state.fov += (targetState.fov - state.fov) / (config.zoom.smoothing * delta);
+	// Smooth interpolation
+	state.theta += (targetState.theta - state.theta) / (config.viewRotation.smoothness * delta);
+	state.phi += (targetState.phi - state.phi) / (config.viewRotation.smoothness * delta);
+	state.fov += (targetState.fov - state.fov) / (config.zoom.smoothing * delta);
 
-    state.lon += (targetState.lon - state.lon) / (config.viewRotation.smoothness * delta);
-    state.lat += (targetState.lat - state.lat) / (config.viewRotation.smoothness * delta);
+	state.lon += (targetState.lon - state.lon) / (config.viewRotation.smoothness * delta);
+	state.lat += (targetState.lat - state.lat) / (config.viewRotation.smoothness * delta);
 
-    // Ensure FOV stays within the current projection's limits
-    state.fov = clampFOV(state.fov);
+	// Ensure FOV stays within the current projection's limits
+	state.fov = clampFOV(state.fov);
 
-    if (mesh && mesh.material && mesh.material.uniforms) {
-        mesh.material.uniforms.lon.value = THREE.MathUtils.degToRad(state.lon);
-        mesh.material.uniforms.lat.value = THREE.MathUtils.degToRad(state.lat);
-        mesh.material.uniforms.fov.value = state.fov;
-        mesh.material.uniforms.aspect.value = aspect;
-    }
+	if (mesh && mesh.material && mesh.material.uniforms) {
+		mesh.material.uniforms.lon.value = THREE.MathUtils.degToRad(state.lon);
+		mesh.material.uniforms.lat.value = THREE.MathUtils.degToRad(state.lat);
+		mesh.material.uniforms.fov.value = state.fov;
+		mesh.material.uniforms.aspect.value = aspect;
+	}
 
-    renderer.render(scene, camera);
+	renderer.render(scene, camera);
 }
 
 function setupDragAndDrop() {
-    const overlay = document.getElementById("drag-drop-overlay");
+	const overlay = document.getElementById('drag-drop-overlay');
 
-    document.addEventListener("dragenter", function (event) {
-        event.preventDefault();
-        showDropOverlay();
-    });
+	document.addEventListener('dragenter', function (event) {
+		event.preventDefault();
+		showDropOverlay();
+	});
 
-    document.addEventListener("dragover", function (event) {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "copy";
-    });
+	document.addEventListener('dragover', function (event) {
+		event.preventDefault();
+		event.dataTransfer.dropEffect = 'copy';
+	});
 
-    document.addEventListener("dragleave", function (event) {
-        event.preventDefault();
-        if (!event.relatedTarget || event.relatedTarget.nodeName === "HTML") {
-            hideDropOverlay();
-        }
-    });
+	document.addEventListener('dragleave', function (event) {
+		event.preventDefault();
+		if (!event.relatedTarget || event.relatedTarget.nodeName === 'HTML') {
+			hideDropOverlay();
+		}
+	});
 
-    document.addEventListener("drop", function (event) {
-        event.preventDefault();
-        hideDropOverlay();
-        console.log("File dropped");
-        const file = event.dataTransfer.files[0];
-        if (file && (file.type === 'image/jpeg' || file.type === 'image/png')) {
-            console.log("Valid image file dropped:", file.name);
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                console.log("File read successfully");
-                createImageBitmap(file).then(function (imageBitmap) {
-                    console.log("ImageBitmap created, dimensions:", imageBitmap.width, "x", imageBitmap.height);
+	document.addEventListener('drop', function (event) {
+		event.preventDefault();
+		hideDropOverlay();
+		console.log('File dropped');
+		const file = event.dataTransfer.files[0];
+		if (file && (file.type === 'image/jpeg' || file.type === 'image/png')) {
+			console.log('Valid image file dropped:', file.name);
+			const reader = new FileReader();
+			reader.onload = function (e) {
+				console.log('File read successfully');
+				createImageBitmap(file)
+					.then(function (imageBitmap) {
+						console.log(
+							'ImageBitmap created, dimensions:',
+							imageBitmap.width,
+							'x',
+							imageBitmap.height
+						);
 
-                    // Create a canvas and draw the image without flipping
-                    const canvas = document.createElement('canvas');
-                    canvas.width = imageBitmap.width;
-                    canvas.height = imageBitmap.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(imageBitmap, 0, 0);
+						// Create a canvas and draw the image without flipping
+						const canvas = document.createElement('canvas');
+						canvas.width = imageBitmap.width;
+						canvas.height = imageBitmap.height;
+						const ctx = canvas.getContext('2d');
+						ctx.drawImage(imageBitmap, 0, 0);
 
-                    // Create a texture from the canvas
-                    const texture = new THREE.CanvasTexture(canvas);
-                    texture.needsUpdate = true;
+						// Create a texture from the canvas
+						const texture = new THREE.CanvasTexture(canvas);
+						texture.needsUpdate = true;
 
-                    console.log("Texture created");
+						console.log('Texture created');
 
-                    // Update image info with the file name
-                    window.updateImageInfo(file.name);
+						// Update image info with the file name
+						window.updateImageInfo(file.name);
 
-                    // Load image and create material
-                    window.loadImageAndCreateMaterial(texture);
-                }).catch(function (error) {
-                    console.error("Error creating ImageBitmap:", error);
-                    alert('Error processing the image. Please try a different image file.');
-                });
-            };
-            reader.onerror = function (error) {
-                console.error("FileReader error:", error);
-                alert('Error reading the dropped file.');
-            };
-            reader.readAsArrayBuffer(file);
-            console.log("Started reading file");
-        } else {
-            console.error('Dropped file is not a supported image type:', file ? file.type : 'No file');
-            alert('Please drop a JPG or PNG image file.');
-        }
-    });
+						// Load image and create material
+						window.loadImageAndCreateMaterial(texture);
+					})
+					.catch(function (error) {
+						console.error('Error creating ImageBitmap:', error);
+						alert('Error processing the image. Please try a different image file.');
+					});
+			};
+			reader.onerror = function (error) {
+				console.error('FileReader error:', error);
+				alert('Error reading the dropped file.');
+			};
+			reader.readAsArrayBuffer(file);
+			console.log('Started reading file');
+		} else {
+			console.error('Dropped file is not a supported image type:', file ? file.type : 'No file');
+			alert('Please drop a JPG or PNG image file.');
+		}
+	});
 }
 
 function showDropOverlay() {
-    const overlay = document.getElementById("drag-drop-overlay");
-    overlay.style.display = "flex";
+	const overlay = document.getElementById('drag-drop-overlay');
+	overlay.style.display = 'flex';
 }
 
 function hideDropOverlay() {
-    const overlay = document.getElementById("drag-drop-overlay");
-    overlay.style.display = "none";
+	const overlay = document.getElementById('drag-drop-overlay');
+	overlay.style.display = 'none';
 }
 
 // Update the isValidTexture function to handle ImageBitmap
 function isValidTexture(texture) {
-    return (texture instanceof THREE.Texture || texture instanceof THREE.CanvasTexture) &&
-        texture.image &&
-        texture.image.width > 0 &&
-        texture.image.height > 0;
+	return (
+		(texture instanceof THREE.Texture || texture instanceof THREE.CanvasTexture) &&
+		texture.image &&
+		texture.image.width > 0 &&
+		texture.image.height > 0
+	);
 }
 
 function onFullscreenToggle() {
-    toggleFullscreen();
+	toggleFullscreen();
 }
 
-
 function showPanels(show) {
-    const panels = ['toolbar-panel', 'info-panel', 'hamburger-menu'];
-    panels.forEach(panelId => {
-        const panel = document.getElementById(panelId);
-        if (panel) {
-            panel.style.display = show ? '' : 'none';
-        }
-    });
-    // Library panel visibility is now handled in library.js
+	const panels = ['toolbar-panel', 'info-panel', 'hamburger-menu'];
+	panels.forEach((panelId) => {
+		const panel = document.getElementById(panelId);
+		if (panel) {
+			panel.style.display = show ? '' : 'none';
+		}
+	});
+	// Library panel visibility is now handled in library.js
 }
 
 // Updated toggleFullscreen function
 function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-        if (document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen();
-        } else if (document.documentElement.webkitRequestFullscreen) {
-            document.documentElement.webkitRequestFullscreen();
-        } else if (document.documentElement.msRequestFullscreen) {
-            document.documentElement.msRequestFullscreen();
-        }
-        showPanels(false);
-        window.closeLibraryPanel();
-    } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
-        } else if (document.msExitFullscreen) {
-            document.msExitFullscreen();
-        }
-        showPanels(true);
-    }
+	if (!document.fullscreenElement) {
+		if (document.documentElement.requestFullscreen) {
+			document.documentElement.requestFullscreen();
+		} else if (document.documentElement.webkitRequestFullscreen) {
+			document.documentElement.webkitRequestFullscreen();
+		} else if (document.documentElement.msRequestFullscreen) {
+			document.documentElement.msRequestFullscreen();
+		}
+		showPanels(false);
+		window.closeLibraryPanel();
+	} else {
+		if (document.exitFullscreen) {
+			document.exitFullscreen();
+		} else if (document.webkitExitFullscreen) {
+			document.webkitExitFullscreen();
+		} else if (document.msExitFullscreen) {
+			document.msExitFullscreen();
+		}
+		showPanels(true);
+	}
 }
 
 // Function to handle fullscreen change
 function handleFullscreenChange() {
-    if (!document.fullscreenElement && !document.webkitIsFullScreen && !document.mozFullScreen && !document.msFullscreenElement) {
-        showPanels(true);
-    }
+	if (
+		!document.fullscreenElement &&
+		!document.webkitIsFullScreen &&
+		!document.mozFullScreen &&
+		!document.msFullscreenElement
+	) {
+		showPanels(true);
+	}
 }
 
-
 function onKeyDown(event) {
-    if (activeKeys.hasOwnProperty(event.key) && !activeKeys[event.key]) {
-        activeKeys[event.key] = true;
+	if (activeKeys.hasOwnProperty(event.key) && !activeKeys[event.key]) {
+		activeKeys[event.key] = true;
 
-        const currentTime = Date.now();
-        const isDoubleTap = (currentTime - lastKeyPressTime) < DOUBLE_PRESS_DELAY;
-        lastKeyPressTime = currentTime;
+		const currentTime = Date.now();
+		const isDoubleTap = currentTime - lastKeyPressTime < DOUBLE_PRESS_DELAY;
+		lastKeyPressTime = currentTime;
 
-        if (event.key === '=' || event.key === '+') {
-            if (isDoubleTap) {
-                incrementalZoomIn();
-            } else if (!isZoomingIn) {
-                isZoomingIn = true;
-                zoomIn();
-                startContinuousZoom('in');
-            }
-        } else if (event.key === '-' || event.key === '_') {
-            if (isDoubleTap) {
-                incrementalZoomOut();
-            } else if (!isZoomingOut) {
-                isZoomingOut = true;
-                zoomOut();
-                startContinuousZoom('out');
-            }
-        } else {
-            if (isDoubleTap) {
-                incrementalPan(event.key);
-            } else {
-                startContinuousPan();
-            }
-        }
-    }
+		if (event.key === '=' || event.key === '+') {
+			if (isDoubleTap) {
+				incrementalZoomIn();
+			} else if (!isZoomingIn) {
+				isZoomingIn = true;
+				zoomIn();
+				startContinuousZoom('in');
+			}
+		} else if (event.key === '-' || event.key === '_') {
+			if (isDoubleTap) {
+				incrementalZoomOut();
+			} else if (!isZoomingOut) {
+				isZoomingOut = true;
+				zoomOut();
+				startContinuousZoom('out');
+			}
+		} else {
+			if (isDoubleTap) {
+				incrementalPan(event.key);
+			} else {
+				startContinuousPan();
+			}
+		}
+	}
 }
 
 function onKeyUp(event) {
-    if (activeKeys.hasOwnProperty(event.key)) {
-        activeKeys[event.key] = false;
+	if (activeKeys.hasOwnProperty(event.key)) {
+		activeKeys[event.key] = false;
 
-        if (event.key === '=' || event.key === '+' || event.key === '-' || event.key === '_') {
-            isZoomingIn = activeKeys['='] || activeKeys['+'];
-            isZoomingOut = activeKeys['-'] || activeKeys['_'];
-            if (!isZoomingIn && !isZoomingOut) {
-                stopContinuousZoom();
-            }
-        } else {
-            if (!activeKeys.ArrowUp && !activeKeys.ArrowDown && !activeKeys.ArrowLeft && !activeKeys.ArrowRight) {
-                stopContinuousPan();
-            } else {
-                startContinuousPan(); // Restart panning with remaining active keys
-            }
-        }
+		if (event.key === '=' || event.key === '+' || event.key === '-' || event.key === '_') {
+			isZoomingIn = activeKeys['='] || activeKeys['+'];
+			isZoomingOut = activeKeys['-'] || activeKeys['_'];
+			if (!isZoomingIn && !isZoomingOut) {
+				stopContinuousZoom();
+			}
+		} else {
+			if (
+				!activeKeys.ArrowUp &&
+				!activeKeys.ArrowDown &&
+				!activeKeys.ArrowLeft &&
+				!activeKeys.ArrowRight
+			) {
+				stopContinuousPan();
+			} else {
+				startContinuousPan(); // Restart panning with remaining active keys
+			}
+		}
 
+		// Update azimuthSign based on the difference between state.lon and targetState.lon
+		const lonDifference = targetState.lon - state.lon;
+		state.azimuthSign = -Math.sign(lonDifference);
 
-        // Update azimuthSign based on the difference between state.lon and targetState.lon
-        const lonDifference = targetState.lon - state.lon;
-        state.azimuthSign = -Math.sign(lonDifference);
-
-        // If there's no difference, maintain the current direction
-        if (state.azimuthSign === 0) {
-            state.azimuthSign = 1;
-        }
-
-    }
+		// If there's no difference, maintain the current direction
+		if (state.azimuthSign === 0) {
+			state.azimuthSign = 1;
+		}
+	}
 }
 
 function incrementalZoomIn() {
-    targetState.fov = clampFOV(targetState.fov - 10);
+	targetState.fov = clampFOV(targetState.fov - 10);
 }
 
 function incrementalZoomOut() {
-    targetState.fov = clampFOV(targetState.fov + 10);
+	targetState.fov = clampFOV(targetState.fov + 10);
 }
 
 function incrementalPan(key) {
-    switch (key) {
-        case 'ArrowLeft':
-            targetState.lon -= 5;
-            break;
-        case 'ArrowRight':
-            targetState.lon += 5;
-            break;
-        case 'ArrowUp':
-            targetState.lat = Math.min(targetState.lat + 5, 90);
-            break;
-        case 'ArrowDown':
-            targetState.lat = Math.max(targetState.lat - 5, -90);
-            break;
-    }
+	switch (key) {
+		case 'ArrowLeft':
+			targetState.lon -= 5;
+			break;
+		case 'ArrowRight':
+			targetState.lon += 5;
+			break;
+		case 'ArrowUp':
+			targetState.lat = Math.min(targetState.lat + 5, 90);
+			break;
+		case 'ArrowDown':
+			targetState.lat = Math.max(targetState.lat - 5, -90);
+			break;
+	}
 }
 
 function zoomIn() {
-    targetState.fov = clampFOV(targetState.fov - 5);
+	targetState.fov = clampFOV(targetState.fov - 5);
 }
 
 function zoomOut() {
-    targetState.fov = clampFOV(targetState.fov + 5);
+	targetState.fov = clampFOV(targetState.fov + 5);
 }
 
-
 function startContinuousZoom(direction) {
-    if (zoomInterval) clearInterval(zoomInterval);
-    zoomInterval = setInterval(() => {
-        if (direction === 'in') {
-            targetState.fov = clampFOV(targetState.fov - 4);
-        } else {
-            targetState.fov = clampFOV(targetState.fov + 4);
-        }
-    }, 100); // 10 times per second
+	if (zoomInterval) clearInterval(zoomInterval);
+	zoomInterval = setInterval(() => {
+		if (direction === 'in') {
+			targetState.fov = clampFOV(targetState.fov - 4);
+		} else {
+			targetState.fov = clampFOV(targetState.fov + 4);
+		}
+	}, 100); // 10 times per second
 }
 
 // Update the startContinuousPan function
 function startContinuousPan() {
-    if (panInterval) clearInterval(panInterval);
-    panInterval = setInterval(() => {
-        let deltaLon = 0;
-        let deltaLat = 0;
+	if (panInterval) clearInterval(panInterval);
+	panInterval = setInterval(() => {
+		let deltaLon = 0;
+		let deltaLat = 0;
 
-        if (activeKeys.ArrowLeft) deltaLon -= 1;
-        if (activeKeys.ArrowRight) deltaLon += 1;
-        if (activeKeys.ArrowUp) deltaLat += 1;
-        if (activeKeys.ArrowDown) deltaLat -= 1;
+		if (activeKeys.ArrowLeft) deltaLon -= 1;
+		if (activeKeys.ArrowRight) deltaLon += 1;
+		if (activeKeys.ArrowUp) deltaLat += 1;
+		if (activeKeys.ArrowDown) deltaLat -= 1;
 
-        targetState.lon += deltaLon;
-        targetState.lat = THREE.MathUtils.clamp(targetState.lat + deltaLat, -90, 90);
-    }, 100); // 10 times per second
+		targetState.lon += deltaLon;
+		targetState.lat = THREE.MathUtils.clamp(targetState.lat + deltaLat, -90, 90);
+	}, 100); // 10 times per second
 }
-
 
 function stopContinuousZoom() {
-    if (zoomInterval) {
-        clearInterval(zoomInterval);
-        zoomInterval = null;
-    }
+	if (zoomInterval) {
+		clearInterval(zoomInterval);
+		zoomInterval = null;
+	}
 }
 
-
 function stopContinuousPan() {
-    if (panInterval) {
-        clearInterval(panInterval);
-        panInterval = null;
-    }
+	if (panInterval) {
+		clearInterval(panInterval);
+		panInterval = null;
+	}
 }
 
 // Add these event listeners in your init() function

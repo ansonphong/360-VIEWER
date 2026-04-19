@@ -52,8 +52,7 @@ The viewer uses [Phosphor Icons](https://phosphoricons.com/) for all UI glyphs
 Phosphor Icons before the viewer initializes — either via CDN:
 
 ```html
-<link rel="stylesheet"
-      href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
 ```
 
 or via your own bundled copy. If Phosphor is missing you'll see empty boxes
@@ -88,16 +87,16 @@ Layer 3: Library UI (+25KB)          Sidebar, toolbar, info bar, templates, them
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="core/phong-360-viewer-core.js"></script>
-<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/styles.css" />
 
 <script>
-    const viewer = new Phong360ViewerCore({
-        containerId: 'viewer',
-        imageUrl: 'my-360-image.jpg',
-        config: {
-            viewRotation: { autoRotate: true }
-        }
-    });
+	const viewer = new Phong360ViewerCore({
+		containerId: 'viewer',
+		imageUrl: 'my-360-image.jpg',
+		config: {
+			viewRotation: { autoRotate: true }
+		}
+	});
 </script>
 ```
 
@@ -107,17 +106,17 @@ Layer 3: Library UI (+25KB)          Sidebar, toolbar, info bar, templates, them
 
 ```html
 <script src="extensions/phong-360-library-ui.js"></script>
-<link rel="stylesheet" href="css/phong-360-ui.css">
-<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="css/phong-360-ui.css" />
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
 
 <script>
-    const gallery = new Phong360LibraryUI({
-        containerId: 'viewer',
-        libraryUrl: 'library/library.json',
-        configUrl: '360-viewer.json',
-        baseUrl: 'library/',
-        theme: 'auto'
-    });
+	const gallery = new Phong360LibraryUI({
+		containerId: 'viewer',
+		libraryUrl: 'library/library.json',
+		configUrl: '360-viewer.json',
+		baseUrl: 'library/',
+		theme: 'auto'
+	});
 </script>
 ```
 
@@ -131,28 +130,28 @@ Everything is driven by `360-viewer.json`:
 
 ```json
 {
-  "context": {
-    "type": "profile",
-    "title": "Your Name",
-    "subtitle": "360 Photography",
-    "avatar": "assets/avatar.jpg",
-    "theme": "dark",
-    "accent": "#6366f1",
-    "panelWidth": 420,
-    "infoBar": "center",
-    "favicon": "🎨",
-    "links": [
-      {"url": "https://yoursite.com", "label": "Website"},
-      {"url": "https://instagram.com/you", "label": "Instagram"}
-    ]
-  },
-  "sections": {
-    "Landscapes": {
-      "title": "Landscapes",
-      "icon": "mountains",
-      "template": "grid"
-    }
-  }
+	"context": {
+		"type": "profile",
+		"title": "Your Name",
+		"subtitle": "360 Photography",
+		"avatar": "assets/avatar.jpg",
+		"theme": "dark",
+		"accent": "#6366f1",
+		"panelWidth": 420,
+		"infoBar": "center",
+		"favicon": "🎨",
+		"links": [
+			{ "url": "https://yoursite.com", "label": "Website" },
+			{ "url": "https://instagram.com/you", "label": "Instagram" }
+		]
+	},
+	"sections": {
+		"Landscapes": {
+			"title": "Landscapes",
+			"icon": "mountains",
+			"template": "grid"
+		}
+	}
 }
 ```
 
@@ -162,17 +161,17 @@ See the [Fork Guide](docs/FORK-GUIDE.md) for all configuration options.
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| **[CLAUDE.md](CLAUDE.md)** | Project context for Claude Code and AI agents |
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history with migration guides |
-| **[FORK-GUIDE.md](docs/FORK-GUIDE.md)** | Create your own 360 gallery website |
-| **[API.md](docs/API.md)** | Complete API reference for all 3 layers |
-| **[LIBRARY-FORMAT.md](docs/LIBRARY-FORMAT.md)** | Library format specification (v4.0) |
-| **[TEMPLATES.md](docs/TEMPLATES.md)** | Template system and renderers guide |
-| **[THEMING.md](docs/THEMING.md)** | Theming, CSS custom properties, accent colors |
-| **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Production deployment guide |
-| **[QUICKSTART.md](docs/QUICKSTART.md)** | Get started in 5 minutes |
+| Document                                        | Description                                   |
+| ----------------------------------------------- | --------------------------------------------- |
+| **[CLAUDE.md](CLAUDE.md)**                      | Project context for Claude Code and AI agents |
+| **[CHANGELOG.md](CHANGELOG.md)**                | Version history with migration guides         |
+| **[FORK-GUIDE.md](docs/FORK-GUIDE.md)**         | Create your own 360 gallery website           |
+| **[API.md](docs/API.md)**                       | Complete API reference for all 3 layers       |
+| **[LIBRARY-FORMAT.md](docs/LIBRARY-FORMAT.md)** | Library format specification (v4.0)           |
+| **[TEMPLATES.md](docs/TEMPLATES.md)**           | Template system and renderers guide           |
+| **[THEMING.md](docs/THEMING.md)**               | Theming, CSS custom properties, accent colors |
+| **[DEPLOYMENT.md](docs/DEPLOYMENT.md)**         | Production deployment guide                   |
+| **[QUICKSTART.md](docs/QUICKSTART.md)**         | Get started in 5 minutes                      |
 
 ---
 
@@ -180,29 +179,29 @@ See the [Fork Guide](docs/FORK-GUIDE.md) for all configuration options.
 
 Layer 3 includes a pluggable template engine with 9 built-in renderers:
 
-| Template | Description | Use Case |
-|----------|-------------|----------|
-| `grid` | Responsive thumbnail grid | Default browsing |
-| `feed` | Vertical list with large thumbnails | Recent/featured content |
-| `accordion` | Collapsible section with inner template | Category organization |
-| `hero` | Single large featured image | Featured/spotlight |
-| `list` | Compact rows with small thumbnails | Search results, dense lists |
-| `carousel` | Horizontal scrolling strip | Trending, related content |
-| `avatar-row` | Horizontal circular avatars | Creator highlights |
-| `avatar-grid` | Grid of avatar cards | Creator directory |
-| `empty` | Placeholder for empty sections | No-content state |
+| Template      | Description                             | Use Case                    |
+| ------------- | --------------------------------------- | --------------------------- |
+| `grid`        | Responsive thumbnail grid               | Default browsing            |
+| `feed`        | Vertical list with large thumbnails     | Recent/featured content     |
+| `accordion`   | Collapsible section with inner template | Category organization       |
+| `hero`        | Single large featured image             | Featured/spotlight          |
+| `list`        | Compact rows with small thumbnails      | Search results, dense lists |
+| `carousel`    | Horizontal scrolling strip              | Trending, related content   |
+| `avatar-row`  | Horizontal circular avatars             | Creator highlights          |
+| `avatar-grid` | Grid of avatar cards                    | Creator directory           |
+| `empty`       | Placeholder for empty sections          | No-content state            |
 
 ---
 
 ## Controls
 
-| Action | Mouse | Keyboard | Touch |
-|--------|-------|----------|-------|
-| **Look Around** | Click & Drag | WASD / Arrow Keys | Swipe |
-| **Zoom In** | Scroll Up | `+` or `=` | Pinch Out |
-| **Zoom Out** | Scroll Down | `-` or `_` | Pinch In |
-| **Fullscreen** | Double-click | - | Double-tap |
-| **Toggle Projection** | Button | `P` | Button |
+| Action                | Mouse        | Keyboard          | Touch      |
+| --------------------- | ------------ | ----------------- | ---------- |
+| **Look Around**       | Click & Drag | WASD / Arrow Keys | Swipe      |
+| **Zoom In**           | Scroll Up    | `+` or `=`        | Pinch Out  |
+| **Zoom Out**          | Scroll Down  | `-` or `_`        | Pinch In   |
+| **Fullscreen**        | Double-click | -                 | Double-tap |
+| **Toggle Projection** | Button       | `P`               | Button     |
 
 ---
 
@@ -253,18 +252,18 @@ git clone https://github.com/ansonphong/360-VIEWER.git
 
 ## Comparison
 
-| Feature | Phong 360 | Photo Sphere Viewer | Pannellum | Marzipano |
-|---------|-----------|---------------------|-----------|-----------|
-| **Core Size** | **30KB** | 180KB | 75KB | 95KB |
-| **Modular** | 3 Layers | No | No | No |
-| **Template Engine** | 9 renderers | No | No | No |
-| **Theme System** | Light/Dark/Auto | No | No | No |
-| **AI-Assisted Setup** | Claude Code skill | No | No | No |
-| **Deploy Templates** | PHP + Python | No | No | No |
-| **Build Required** | No | Yes | No | Partial |
-| **Framework Agnostic** | Yes | Partial | Yes | Partial |
-| **Adaptive Loading** | Yes | No | No | Partial |
-| **License** | MIT | MIT | MIT | Apache 2.0 |
+| Feature                | Phong 360         | Photo Sphere Viewer | Pannellum | Marzipano  |
+| ---------------------- | ----------------- | ------------------- | --------- | ---------- |
+| **Core Size**          | **30KB**          | 180KB               | 75KB      | 95KB       |
+| **Modular**            | 3 Layers          | No                  | No        | No         |
+| **Template Engine**    | 9 renderers       | No                  | No        | No         |
+| **Theme System**       | Light/Dark/Auto   | No                  | No        | No         |
+| **AI-Assisted Setup**  | Claude Code skill | No                  | No        | No         |
+| **Deploy Templates**   | PHP + Python      | No                  | No        | No         |
+| **Build Required**     | No                | Yes                 | No        | Partial    |
+| **Framework Agnostic** | Yes               | Partial             | Yes       | Partial    |
+| **Adaptive Loading**   | Yes               | No                  | No        | Partial    |
+| **License**            | MIT               | MIT                 | MIT       | Apache 2.0 |
 
 ---
 

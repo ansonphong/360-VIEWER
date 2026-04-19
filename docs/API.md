@@ -26,7 +26,7 @@ Complete API documentation for Phong 360 Viewer v4.0.
 ### Constructor
 
 ```javascript
-new Phong360ViewerCore(options)
+new Phong360ViewerCore(options);
 ```
 
 ### Options
@@ -96,11 +96,12 @@ core.loadImage('path/to/image.jpg', 4096, 2048);
 Switch between projection types.
 
 ```javascript
-core.switchProjection(0);  // Gnomonic
-core.switchProjection(1);  // Stereographic
+core.switchProjection(0); // Gnomonic
+core.switchProjection(1); // Stereographic
 ```
 
 **Parameters**:
+
 - `type` (number): 0 = Gnomonic, 1 = Stereographic
 
 Preference is saved to `localStorage` as `phong360.preferences.projection`.
@@ -129,13 +130,13 @@ core.destroy();
 
 ### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `projectionType` | number | Current projection (0=Gnomonic, 1=Stereographic) |
-| `state.lat` | number | Current latitude |
-| `state.lon` | number | Current longitude |
-| `state.fov` | number | Current field of view |
-| `animationFrameId` | number | Animation frame ID (truthy if animating) |
+| Property           | Type   | Description                                      |
+| ------------------ | ------ | ------------------------------------------------ |
+| `projectionType`   | number | Current projection (0=Gnomonic, 1=Stereographic) |
+| `state.lat`        | number | Current latitude                                 |
+| `state.lon`        | number | Current longitude                                |
+| `state.fov`        | number | Current field of view                            |
+| `animationFrameId` | number | Animation frame ID (truthy if animating)         |
 
 ---
 
@@ -148,7 +149,7 @@ core.destroy();
 ### Constructor
 
 ```javascript
-new Phong360MultiImage(options)
+new Phong360MultiImage(options);
 ```
 
 ### Options
@@ -213,7 +214,7 @@ Load image by ID or slug.
 
 ```javascript
 multi.loadImageById('sunset-001');
-multi.loadImageById('sunset-beach');  // Also works with slug
+multi.loadImageById('sunset-beach'); // Also works with slug
 ```
 
 ---
@@ -224,7 +225,7 @@ Load a specific image at a specific resolution.
 
 ```javascript
 const image = multi.findImageById('sunset-001');
-const res = image.resolutions.find(r => r.id === '8k');
+const res = image.resolutions.find((r) => r.id === '8k');
 multi.loadImageWithResolution(image, res);
 ```
 
@@ -266,7 +267,7 @@ Find image object by ID or slug.
 
 ```javascript
 const image = multi.findImageById('sunset-001');
-const image = multi.findImageById('sunset-beach');  // slug match
+const image = multi.findImageById('sunset-beach'); // slug match
 ```
 
 **Returns**: `Object|null`
@@ -308,6 +309,7 @@ Navigate to next or previous image.
 Automatically select best resolution based on device and bandwidth.
 
 **Selection logic** (in priority order):
+
 1. User preference saved in localStorage
 2. Network connection type (2G/3G/4G detection)
 3. Device pixel ratio (high-DPI displays get 8K)
@@ -322,7 +324,7 @@ Automatically select best resolution based on device and bandwidth.
 Format bytes to human-readable string.
 
 ```javascript
-multi.formatFileSize(3800000);  // "3.6 MB"
+multi.formatFileSize(3800000); // "3.6 MB"
 ```
 
 ---
@@ -341,11 +343,11 @@ Clear the saved resolution preference.
 
 ### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `currentImageId` | string | Current image ID |
-| `currentImageData` | Object | Current image object |
-| `currentResolution` | Object | Current resolution object |
+| Property                  | Type   | Description                 |
+| ------------------------- | ------ | --------------------------- |
+| `currentImageId`          | string | Current image ID            |
+| `currentImageData`        | Object | Current image object        |
+| `currentResolution`       | Object | Current resolution object   |
 | `userPreferredResolution` | string | Saved resolution preference |
 
 ---
@@ -361,7 +363,7 @@ Layer 3 creates Layer 1 and Layer 2 internally. You don't need to instantiate th
 ### Constructor
 
 ```javascript
-new Phong360LibraryUI(options)
+new Phong360LibraryUI(options);
 ```
 
 ### Options
@@ -395,26 +397,31 @@ new Phong360LibraryUI(options)
 
 The sidebar can be in one of two states: open or collapsed. The toggle button
 (top-right) reflects state:
+
 - Closed → hamburger icon (`ph-list`), `aria-expanded="false"`
 - Open → chevron-right icon (`ph-caret-right`), `aria-expanded="true"`
 
 **Initial state:**
+
 - Mobile (`window.innerWidth <= Phong360LibraryUI.MOBILE_BREAKPOINT`): closed.
 - Desktop: closed by default. Set `desktopOpenByDefault: true` to open on load
   instead.
 
 **Resize behavior:**
+
 - Desktop → mobile: always closes (the sidebar covers the canvas on mobile).
 - Mobile → desktop: re-opens IF `desktopOpenByDefault: true` AND the user
   hasn't manually collapsed it during this session. Manual collapse via the
   toggle button is remembered until the user manually re-opens.
 
 **Backdrop:**
+
 - Mobile: dim backdrop appears behind the sidebar; tap-to-close.
 - Desktop: no backdrop, the canvas beside the sidebar stays interactive (the
   user can pan the panorama with the panel open).
 
 **Class constant:**
+
 - `Phong360LibraryUI.MOBILE_BREAKPOINT = 768` — single source of truth for the
   desktop/mobile boundary. The CSS file mirrors this value in its `@media`
   queries; if you change one, change both.
@@ -427,36 +434,36 @@ Set callbacks after construction:
 const viewer = new Phong360LibraryUI({ containerId: 'viewer', libraryUrl: '...' });
 
 viewer.callbacks.onImageLoad = (imageData, resolution) => {
-    // Image finished loading in the 360 canvas
+	// Image finished loading in the 360 canvas
 };
 
 viewer.callbacks.onImageSelect = (imageData) => {
-    // User clicked an image in the sidebar
+	// User clicked an image in the sidebar
 };
 
 viewer.callbacks.onBadgeClick = (imageData, badge) => {
-    // User clicked a badge on a thumbnail
-    // badge: { emoji: '...', icon: '...', count: 42 }
+	// User clicked a badge on a thumbnail
+	// badge: { emoji: '...', icon: '...', count: 42 }
 };
 
 viewer.callbacks.onLibraryLoad = (libraryData) => {
-    // Library JSON loaded and parsed
+	// Library JSON loaded and parsed
 };
 
 viewer.callbacks.onContextReady = (context) => {
-    // Context header rendered; context: { type, title, subtitle, avatar, links, ... }
+	// Context header rendered; context: { type, title, subtitle, avatar, links, ... }
 };
 
 viewer.callbacks.onSectionToggle = (section, isExpanded) => {
-    // A collapsible section was toggled
+	// A collapsible section was toggled
 };
 
 viewer.callbacks.onLinkClick = (url, linkData) => {
-    // A context link was clicked (can preventDefault by setting this callback)
+	// A context link was clicked (can preventDefault by setting this callback)
 };
 
 viewer.callbacks.onThemeChange = (theme) => {
-    // Theme changed: 'light' or 'dark'
+	// Theme changed: 'light' or 'dark'
 };
 ```
 
@@ -502,8 +509,8 @@ Update badges on a specific image's thumbnails in the sidebar. Designed for Laye
 
 ```javascript
 viewer.updateBadges('abc123', [
-    { emoji: 'fire', count: 43 },
-    { emoji: 'heart', count: 19 }
+	{ emoji: 'fire', count: 43 },
+	{ emoji: 'heart', count: 19 }
 ]);
 ```
 
@@ -547,13 +554,13 @@ viewer.onImageClick(imageData);
 
 ### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `core` | Phong360ViewerCore | Underlying core viewer instance |
-| `multiViewer` | Phong360MultiImage | Underlying multi-image manager |
-| `templateEngine` | TemplateEngine | Template engine instance |
-| `libraryData` | Object | Parsed library data |
-| `callbacks` | Object | Callback registry |
+| Property         | Type               | Description                     |
+| ---------------- | ------------------ | ------------------------------- |
+| `core`           | Phong360ViewerCore | Underlying core viewer instance |
+| `multiViewer`    | Phong360MultiImage | Underlying multi-image manager  |
+| `templateEngine` | TemplateEngine     | Template engine instance        |
+| `libraryData`    | Object             | Parsed library data             |
+| `callbacks`      | Object             | Callback registry               |
 
 ---
 
@@ -586,11 +593,11 @@ Register a custom template renderer.
 
 ```javascript
 class MyRenderer extends BaseRenderer {
-    render() {
-        const el = document.createElement('div');
-        // Custom rendering logic
-        return el;
-    }
+	render() {
+		const el = document.createElement('div');
+		// Custom rendering logic
+		return el;
+	}
 }
 
 viewer.templateEngine.register('my-template', MyRenderer);
@@ -598,17 +605,17 @@ viewer.templateEngine.register('my-template', MyRenderer);
 
 ### Built-in Renderers
 
-| Name | Class | Description |
-|------|-------|-------------|
-| `grid` | GridRenderer | Responsive thumbnail grid |
-| `feed` | FeedRenderer | Vertical list with large thumbnails |
-| `accordion` | AccordionRenderer | Collapsible section with inner template |
-| `hero` | HeroRenderer | Single large featured image with overlay |
-| `list` | ListRenderer | Compact rows with small thumbnails |
-| `carousel` | CarouselRenderer | Horizontal scrolling strip |
-| `avatar-row` | AvatarRowRenderer | Horizontal circular avatars |
-| `avatar-grid` | AvatarGridRenderer | Grid of avatar cards |
-| `empty` | EmptyStateRenderer | Empty/placeholder state |
+| Name          | Class              | Description                              |
+| ------------- | ------------------ | ---------------------------------------- |
+| `grid`        | GridRenderer       | Responsive thumbnail grid                |
+| `feed`        | FeedRenderer       | Vertical list with large thumbnails      |
+| `accordion`   | AccordionRenderer  | Collapsible section with inner template  |
+| `hero`        | HeroRenderer       | Single large featured image with overlay |
+| `list`        | ListRenderer       | Compact rows with small thumbnails       |
+| `carousel`    | CarouselRenderer   | Horizontal scrolling strip               |
+| `avatar-row`  | AvatarRowRenderer  | Horizontal circular avatars              |
+| `avatar-grid` | AvatarGridRenderer | Grid of avatar cards                     |
+| `empty`       | EmptyStateRenderer | Empty/placeholder state                  |
 
 See [TEMPLATES.md](TEMPLATES.md) for detailed config options for each renderer.
 
@@ -620,39 +627,39 @@ All template renderers extend `BaseRenderer`. To create a custom renderer:
 
 ```javascript
 class MyRenderer extends BaseRenderer {
-    render() {
-        const el = document.createElement('div');
-        el.className = 'my-template';
+	render() {
+		const el = document.createElement('div');
+		el.className = 'my-template';
 
-        for (const image of (this.section.images || [])) {
-            // Use inherited helpers:
-            el.appendChild(this.createThumbnail(image));
-        }
+		for (const image of this.section.images || []) {
+			// Use inherited helpers:
+			el.appendChild(this.createThumbnail(image));
+		}
 
-        return el;
-    }
+		return el;
+	}
 }
 ```
 
 ### Inherited Methods
 
-| Method | Description |
-|--------|-------------|
-| `createSectionHeading()` | Creates a section heading element with icon, title, count, chevron |
-| `createThumbnail(image)` | Creates a thumbnail element with lazy-loading, badges, and click handler |
-| `_renderBadges(el, badges)` | Renders badge overlays on an element |
-| `_formatCount(n)` | Formats number (1000 -> "1.0K", 1000000 -> "1.0M") |
-| `_resolvePath(path)` | Resolves relative paths against baseUrl |
-| `_resolveIcon(iconStr)` | Converts icon name to Phosphor CSS class |
-| `_getBadgeIcon(icon)` | Returns emoji or Phosphor icon string |
+| Method                      | Description                                                              |
+| --------------------------- | ------------------------------------------------------------------------ |
+| `createSectionHeading()`    | Creates a section heading element with icon, title, count, chevron       |
+| `createThumbnail(image)`    | Creates a thumbnail element with lazy-loading, badges, and click handler |
+| `_renderBadges(el, badges)` | Renders badge overlays on an element                                     |
+| `_formatCount(n)`           | Formats number (1000 -> "1.0K", 1000000 -> "1.0M")                       |
+| `_resolvePath(path)`        | Resolves relative paths against baseUrl                                  |
+| `_resolveIcon(iconStr)`     | Converts icon name to Phosphor CSS class                                 |
+| `_getBadgeIcon(icon)`       | Returns emoji or Phosphor icon string                                    |
 
 ### Constructor Parameters
 
-| Parameter | Description |
-|-----------|-------------|
-| `this.section` | The section object being rendered |
-| `this.config` | Render config (includes `baseUrl`) |
-| `this.engine` | Reference to the parent Phong360LibraryUI instance |
+| Parameter      | Description                                        |
+| -------------- | -------------------------------------------------- |
+| `this.section` | The section object being rendered                  |
+| `this.config`  | Render config (includes `baseUrl`)                 |
+| `this.engine`  | Reference to the parent Phong360LibraryUI instance |
 
 ---
 
@@ -691,36 +698,36 @@ zoom: { smoothing: 6000, speed: 1.5 }
 
 ### Layer 2 Callbacks
 
-| Callback | Signature | Description |
-|----------|-----------|-------------|
-| `onImageLoad` | `(imageData, resolution)` | Image loaded in canvas |
-| `onImageError` | `(error)` | Image failed to load |
-| `onResolutionChange` | `(resolution)` | Resolution switched |
-| `onLoadStart` | `()` | Loading started |
-| `onLoadComplete` | `()` | Loading finished |
+| Callback             | Signature                 | Description            |
+| -------------------- | ------------------------- | ---------------------- |
+| `onImageLoad`        | `(imageData, resolution)` | Image loaded in canvas |
+| `onImageError`       | `(error)`                 | Image failed to load   |
+| `onResolutionChange` | `(resolution)`            | Resolution switched    |
+| `onLoadStart`        | `()`                      | Loading started        |
+| `onLoadComplete`     | `()`                      | Loading finished       |
 
 ### Layer 3 Callbacks
 
-| Callback | Signature | Description |
-|----------|-----------|-------------|
-| `onImageLoad` | `(imageData, resolution)` | Image loaded (from Layer 2) |
-| `onImageSelect` | `(imageData)` | User clicked an image |
-| `onBadgeClick` | `(imageData, badge)` | User clicked a badge |
-| `onLibraryLoad` | `(libraryData)` | Library data loaded |
-| `onContextReady` | `(context)` | Context header rendered |
-| `onSectionToggle` | `(section, isExpanded)` | Section toggled |
-| `onLinkClick` | `(url, linkData)` | Context link clicked |
-| `onThemeChange` | `(theme)` | Theme changed |
+| Callback          | Signature                 | Description                 |
+| ----------------- | ------------------------- | --------------------------- |
+| `onImageLoad`     | `(imageData, resolution)` | Image loaded (from Layer 2) |
+| `onImageSelect`   | `(imageData)`             | User clicked an image       |
+| `onBadgeClick`    | `(imageData, badge)`      | User clicked a badge        |
+| `onLibraryLoad`   | `(libraryData)`           | Library data loaded         |
+| `onContextReady`  | `(context)`               | Context header rendered     |
+| `onSectionToggle` | `(section, isExpanded)`   | Section toggled             |
+| `onLinkClick`     | `(url, linkData)`         | Context link clicked        |
+| `onThemeChange`   | `(theme)`                 | Theme changed               |
 
 ---
 
 ## localStorage Keys
 
-| Key | Type | Description |
-|-----|------|-------------|
-| `phong360.preferences.projection` | number | Last projection type (0 or 1) |
+| Key                               | Type   | Description                                |
+| --------------------------------- | ------ | ------------------------------------------ |
+| `phong360.preferences.projection` | number | Last projection type (0 or 1)              |
 | `phong360.preferences.resolution` | string | Preferred resolution ID ('8k', '4k', '2k') |
-| `phong360.preferences.autoRotate` | string | Auto-rotate enabled ('true' or 'false') |
+| `phong360.preferences.autoRotate` | string | Auto-rotate enabled ('true' or 'false')    |
 
 ### Clearing Preferences
 
@@ -734,14 +741,14 @@ localStorage.removeItem('phong360.preferences.autoRotate');
 
 ## Browser Compatibility
 
-| Browser | Minimum Version |
-|---------|----------------|
-| Chrome | 88+ |
-| Firefox | 85+ |
-| Safari | 14+ |
-| Edge | 88+ |
-| Mobile Safari | 14+ |
-| Chrome Android | 88+ |
+| Browser        | Minimum Version |
+| -------------- | --------------- |
+| Chrome         | 88+             |
+| Firefox        | 85+             |
+| Safari         | 14+             |
+| Edge           | 88+             |
+| Mobile Safari  | 14+             |
+| Chrome Android | 88+             |
 
 **Requirements**: WebGL, ES6 JavaScript, localStorage.
 
@@ -751,25 +758,26 @@ localStorage.removeItem('phong360.preferences.autoRotate');
 
 Layer 3 automatically detects social platform URLs and displays the appropriate Phosphor icon:
 
-| Domain | Icon |
-|--------|------|
-| instagram.com | instagram-logo |
-| youtube.com | youtube-logo |
-| twitter.com / x.com | twitter-logo / x-logo |
-| github.com | github-logo |
-| tiktok.com | tiktok-logo |
-| facebook.com | facebook-logo |
-| linkedin.com | linkedin-logo |
-| discord.com / discord.gg | discord-logo |
-| twitch.tv | twitch-logo |
-| reddit.com | reddit-logo |
-| pinterest.com | pinterest-logo |
-| threads.net | threads-logo |
-| (other) | link |
+| Domain                   | Icon                  |
+| ------------------------ | --------------------- |
+| instagram.com            | instagram-logo        |
+| youtube.com              | youtube-logo          |
+| twitter.com / x.com      | twitter-logo / x-logo |
+| github.com               | github-logo           |
+| tiktok.com               | tiktok-logo           |
+| facebook.com             | facebook-logo         |
+| linkedin.com             | linkedin-logo         |
+| discord.com / discord.gg | discord-logo          |
+| twitch.tv                | twitch-logo           |
+| reddit.com               | reddit-logo           |
+| pinterest.com            | pinterest-logo        |
+| threads.net              | threads-logo          |
+| (other)                  | link                  |
 
 ---
 
 **See also:**
+
 - [QUICKSTART.md](QUICKSTART.md) - Quick start guide
 - [LIBRARY-FORMAT.md](LIBRARY-FORMAT.md) - Library format specification
 - [TEMPLATES.md](TEMPLATES.md) - Template system guide

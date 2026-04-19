@@ -54,12 +54,12 @@ Built with WordPress in mind from day one:
 
 ### 4. ✅ **Smaller & Faster**
 
-| Viewer | Core Size | Build Required | Framework |
-|--------|-----------|----------------|-----------|
-| **Phong 360 Viewer** | **30KB** | ❌ No | ✅ None |
-| Photo Sphere Viewer | 180KB | ✅ Yes | Custom |
-| Pannellum | 75KB | ❌ No | None |
-| Marzipano | 95KB | ⚠️ Sometimes | Custom |
+| Viewer               | Core Size | Build Required | Framework |
+| -------------------- | --------- | -------------- | --------- |
+| **Phong 360 Viewer** | **30KB**  | ❌ No          | ✅ None   |
+| Photo Sphere Viewer  | 180KB     | ✅ Yes         | Custom    |
+| Pannellum            | 75KB      | ❌ No          | None      |
+| Marzipano            | 95KB      | ⚠️ Sometimes   | Custom    |
 
 ### 5. ✅ **Modern Best Practices**
 
@@ -90,23 +90,21 @@ const ui = new Phong360LibraryUI({ multi: multi });
 ```javascript
 // Clear, intuitive API
 const viewer = new Phong360ViewerCore({
-  containerId: 'my-viewer',
-  imageUrl: 'image.jpg',
-  config: {
-    viewRotation: { autoRotate: true },
-    fov: { init: 75 }
-  }
+	containerId: 'my-viewer',
+	imageUrl: 'image.jpg',
+	config: {
+		viewRotation: { autoRotate: true },
+		fov: { init: 75 }
+	}
 });
 
 // Chainable methods
-viewer.loadImage('new-image.jpg')
-      .switchProjection(1)
-      .setAutoRotate(true);
+viewer.loadImage('new-image.jpg').switchProjection(1).setAutoRotate(true);
 
 // Rich callbacks
 viewer.callbacks.onImageLoad = (data) => {
-  console.log('Loaded:', data.name);
-  console.log('Resolution:', data.resolution);
+	console.log('Loaded:', data.name);
+	console.log('Resolution:', data.resolution);
 };
 ```
 
@@ -126,7 +124,8 @@ viewer.callbacks.onImageLoad = (data) => {
 ### Photo Sphere Viewer
 
 **Pros**: Feature-rich, popular  
-**Cons**: 
+**Cons**:
+
 - 180KB (6x larger)
 - Requires build tools
 - Custom framework (harder to extend)
@@ -136,6 +135,7 @@ viewer.callbacks.onImageLoad = (data) => {
 
 **Pros**: Lightweight, no build required  
 **Cons**:
+
 - 75KB (2.5x larger)
 - Monolithic (can't use just core)
 - No multi-image management
@@ -146,6 +146,7 @@ viewer.callbacks.onImageLoad = (data) => {
 
 **Pros**: Professional, feature-rich  
 **Cons**:
+
 - 95KB (3x larger)
 - Complex API
 - Sometimes requires build
@@ -254,24 +255,28 @@ viewer.callbacks.onImageLoad = (data) => {
 ### Phase 6: Marketing 📢
 
 **Week 1: Soft Launch**
+
 - 🔲 Blog post: "Building a Modular 360° Viewer"
 - 🔲 Dev.to article with code examples
 - 🔲 Post on r/webdev
 - 🔲 Post on r/WordPress
 
 **Week 2: WordPress Focus**
+
 - 🔲 WordPress Tavern pitch
 - 🔲 Post on WP Watercooler
 - 🔲 WordPress subreddit showcase
 - 🔲 Advanced Custom Fields integration example
 
 **Week 3: Broader Reach**
+
 - 🔲 Product Hunt launch
 - 🔲 Hacker News "Show HN"
 - 🔲 JavaScript Weekly submission
 - 🔲 CSS-Tricks article pitch
 
 **Ongoing**
+
 - 🔲 Twitter/X updates
 - 🔲 LinkedIn posts
 - 🔲 Photography subreddits
@@ -333,6 +338,7 @@ viewer.callbacks.onImageLoad = (data) => {
 ## What Sets This Apart
 
 Most open-source projects fail because they:
+
 - ❌ Solve a problem no one has
 - ❌ Are too complex to set up
 - ❌ Have poor documentation
@@ -341,6 +347,7 @@ Most open-source projects fail because they:
 - ❌ Lack a growth strategy
 
 **Phong 360 Viewer succeeds because it:**
+
 - ✅ Solves a real need (360° images everywhere)
 - ✅ Works out of the box (no config required)
 - ✅ Has comprehensive docs (with examples)
@@ -378,24 +385,28 @@ Try it out! Give us feedback! Show us what you build!
 ## Timeline
 
 ### Q1 2025
+
 - ✅ Modular architecture complete
 - 🔲 NPM package published
 - 🔲 GitHub Pages demo live
 - 🔲 WordPress plugin submitted
 
 ### Q2 2025
+
 - 🔲 100+ GitHub stars
 - 🔲 Featured on major blog
 - 🔲 1,000+ NPM downloads/month
 - 🔲 5+ showcase sites
 
 ### Q3 2025
+
 - 🔲 500+ GitHub stars
 - 🔲 Framework wrappers available
 - 🔲 10,000+ NPM downloads/month
 - 🔲 Community contributions
 
 ### Q4 2025
+
 - 🔲 1,000+ GitHub stars
 - 🔲 Industry standard for 360° on WordPress
 - 🔲 50,000+ NPM downloads/month
@@ -414,4 +425,3 @@ Every decision—from the modular architecture to the WordPress integration guid
 ---
 
 **Next Steps**: See [WORDPRESS-INTEGRATION-PLAN.md](WORDPRESS-INTEGRATION-PLAN.md) for detailed WordPress integration guide.
-

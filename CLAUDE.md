@@ -15,18 +15,19 @@ Icons: Phosphor Icons via CDN (`ph ph-icon-name`)
 
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `core/phong-360-viewer-core.js` | Three.js r128 viewer, mouse/touch/keyboard controls, projections |
-| `extensions/phong-360-multi-image.js` | Multiple images, adaptive resolution, localStorage prefs |
-| `extensions/phong-360-library-ui.js` | Sidebar, toolbar, info bar, templates, themes, badges |
-| `css/phong-360-ui.css` | All UI styles with CSS custom properties |
-| `library/build_library.py` | Builds library.json from images + 360-viewer.json config |
-| `gallery-template/` | Starter kit for new gallery sites |
+| File                                  | Purpose                                                          |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| `core/phong-360-viewer-core.js`       | Three.js r128 viewer, mouse/touch/keyboard controls, projections |
+| `extensions/phong-360-multi-image.js` | Multiple images, adaptive resolution, localStorage prefs         |
+| `extensions/phong-360-library-ui.js`  | Sidebar, toolbar, info bar, templates, themes, badges            |
+| `css/phong-360-ui.css`                | All UI styles with CSS custom properties                         |
+| `library/build_library.py`            | Builds library.json from images + 360-viewer.json config         |
+| `gallery-template/`                   | Starter kit for new gallery sites                                |
 
 ## Config System
 
 Config flows through two paths:
+
 - **Constructor options**: `new Phong360LibraryUI({ panelWidth: 420, infoBar: 'center' })`
 - **Config file** (via `configUrl`): `360-viewer.json` loaded separately from `library.json`
 - **Context in library.json**: embedded by `build_library.py` from `360-viewer.json`
@@ -57,6 +58,7 @@ Priority: Constructor options > configUrl > library.json context > CSS defaults
 ## Gallery Site Pattern
 
 A gallery site (like 360-PHONG-COM) has this structure:
+
 ```
 my-gallery/
   index.html           # Host page (from gallery-template)
@@ -72,17 +74,19 @@ my-gallery/
 
 The host page is minimal. The engine handles everything (sidebar, toolbar, info bar, theming).
 Key constructor call:
+
 ```js
 viewer = new Phong360LibraryUI({
-    containerId: 'container',
-    libraryUrl: 'library/library.json',
-    configUrl: '360-viewer.json',    // Loaded separately from library
-    baseUrl: 'library/',
-    theme: 'auto'
+	containerId: 'container',
+	libraryUrl: 'library/library.json',
+	configUrl: '360-viewer.json', // Loaded separately from library
+	baseUrl: 'library/',
+	theme: 'auto'
 });
 ```
 
 The host page only adds:
+
 - `p360-help` event listener for a help/instructions modal
 - Drag-and-drop for user images
 - P key for projection switching
@@ -101,6 +105,7 @@ Build locally, commit results, push. The library.json includes context from 360-
 ## Engine Features (built-in, not host-page)
 
 These are all handled by the engine internally:
+
 - Sidebar with profile header, sections, thumbnails
 - Toolbar: resolution dropdown, projection toggle, theme toggle, help button
 - Info bar: glassmorphic bottom panel with prev/next navigation
@@ -114,6 +119,7 @@ These are all handled by the engine internally:
 ## Deploy Gotchas
 
 When deploying via GitHub webhook to a VPS:
+
 1. **git safe.directory**: Must be set for BOTH the main repo AND the 360-viewer submodule
 2. **.git ownership**: After `chown -R www-data:www-data`, restore `.git` dirs to deploy user
 3. **pull.ff only**: Configure for the deploy user to prevent merge commits
@@ -131,6 +137,7 @@ When deploying via GitHub webhook to a VPS:
 ## Docs
 
 Full documentation in `docs/`:
+
 - `FORK-GUIDE.md` - Create your own gallery (most useful for setup)
 - `API.md` - Complete API reference
 - `LIBRARY-FORMAT.md` - Library JSON spec

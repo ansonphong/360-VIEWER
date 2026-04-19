@@ -3,17 +3,20 @@
 ## Running the Library Builder
 
 ### macOS / Linux
+
 1. Double-click `build_library.sh`
 2. If it doesn't run, right-click → "Open With" → Terminal
 3. First time only: System may ask for permission - click "Open"
 
 **Alternative (Terminal)**:
+
 ```bash
 cd /Users/phong/Projects/Websites/360.phong.com
 ./build_library.sh
 ```
 
 ### Windows
+
 1. Double-click `build_library.bat`
 2. The script will automatically install dependencies if needed
 3. Watch the progress in the command window
@@ -21,6 +24,7 @@ cd /Users/phong/Projects/Websites/360.phong.com
 ## What It Does
 
 The script will:
+
 1. ✅ Check if Python and dependencies are installed
 2. 📂 Scan `library/` folder for images (`.jpg`, `.png`)
 3. 🖼️ Generate thumbnails in `library/_BUILD/thumbnails/`
@@ -36,6 +40,7 @@ python3 build_library.py --help
 ```
 
 ### Common Options:
+
 ```bash
 # Basic build
 python3 build_library.py
@@ -88,18 +93,24 @@ Library written to: library-legacy.json
 ## Troubleshooting
 
 ### "Python not found"
+
 Install Python 3:
+
 - macOS: `brew install python3` or download from python.org
 - Windows: Download from python.org
 
 ### "Permission denied"
+
 Make script executable:
+
 ```bash
 chmod +x build_library.sh
 ```
 
 ### "Pillow not found"
+
 Install dependencies:
+
 ```bash
 pip3 install Pillow tqdm
 ```
@@ -133,6 +144,7 @@ Or let the script install them automatically (it will prompt).
 ## Next Steps
 
 After building:
+
 1. Open `index.html` in a browser to test
 2. Or try `embed-example.html` to see integration examples
 3. Check `library.json` to see the generated structure
@@ -148,4 +160,3 @@ Progress bars will show you the status!
 ---
 
 **Need help?** Check [LIBRARY-FORMAT.md](LIBRARY-FORMAT.md) for format details or [README.md](README.md) for usage examples.
-
