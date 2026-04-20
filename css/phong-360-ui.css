@@ -1122,3 +1122,36 @@
 .p360-section {
 	animation: p360-slide-up 0.2s ease-out;
 }
+
+/* ============================================================
+   Brand pill — default renderer for toolbar-leading slot
+   Minimal sensible default; consumers override with their own
+   CSS or replace via setSlot('toolbar-leading', ...).
+   @since 4.2.0
+   ============================================================ */
+
+.p360-brand-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 12px;
+	border-radius: 999px;
+	color: var(--p360-text);
+	text-decoration: none;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1;
+}
+
+.p360-brand-pill-logo {
+	width: 20px;
+	height: 20px;
+	object-fit: contain;
+	flex-shrink: 0;
+}
+
+/* Slot wrapper — invisible by default, gives the engine a
+   stable handle for content-replacement. */
+.p360-slot {
+	display: contents;
+}

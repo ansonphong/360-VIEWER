@@ -895,6 +895,15 @@ class Phong360LibraryUI {
 	}
 
 	_buildToolbar() {
+		// toolbar-leading slot (since 4.2.0) — first child of toolbar.
+		// Contains brand pill (default) or consumer-registered factory output.
+		const leadingWrapper = document.createElement('div');
+		leadingWrapper.dataset.slot = 'toolbar-leading';
+		leadingWrapper.className = 'p360-slot';
+		this._toolbar.appendChild(leadingWrapper);
+		this._slotWrappers['toolbar-leading'] = leadingWrapper;
+		// Defer first render to _renderAllSlots() after context loads.
+
 		// Resolution dropdown
 		this._resWrapper = document.createElement('div');
 		this._resWrapper.className = 'p360-res-wrapper';
@@ -1199,6 +1208,15 @@ class Phong360LibraryUI {
 		if (this.callbacks.onLibraryLoad) {
 			this.callbacks.onLibraryLoad(data);
 		}
+		// Mark context as loaded BEFORE firing onContextReady. Until this
+		// flips, all _renderSlot calls (from setSlot/clearSlot/state changes)
+		// are deferred. Guarantees factories never see an empty context.
+		this._contextLoaded = true;
+		// Render all slots: wrappers built earlier during _buildSidebarDOM
+		// / _buildInfoBar are in the DOM — we now swap their inner content
+		// with context-aware defaults / registered factories.
+		this._renderAllSlots();
+
 		if (this._context && this.callbacks.onContextReady) {
 			this.callbacks.onContextReady(this._context);
 		}
@@ -1278,10 +1296,15 @@ class Phong360LibraryUI {
 			}
 		} else {
 			// discover or local
-			const title = document.createElement('h2');
-			title.className = 'p360-header-title';
-			title.textContent = context.title || (context.type === 'discover' ? 'Discover' : 'Library');
-			header.appendChild(title);
+			// Skip the legacy <h2> when context.suppressHeader is true.
+			// Independent of context.brand — third-party consumers can have
+			// a brand pill AND a distinct discover/local heading.
+			if (!context.suppressHeader) {
+				const title = document.createElement('h2');
+				title.className = 'p360-header-title';
+				title.textContent = context.title || (context.type === 'discover' ? 'Discover' : 'Library');
+				header.appendChild(title);
+			}
 
 			if (context.subtitle) {
 				const sub = document.createElement('p');
@@ -1970,6 +1993,73 @@ class Phong360LibraryUI {
 		}
 	}
 
+	/**
+	 * Default renderer for the toolbar-leading slot.
+	 * Reads context.brand = { logo, label, href } and produces a pill.
+	 * Returns null when context.brand is absent (slot stays empty).
+	 *
+	 * @param {Object} slotProps  { context }
+	 * @returns {HTMLElement|null}
+	 * @private
+	 * @since 4.2.0
+	 */
+	_renderBrandPillDefault(slotProps) {
+		const brand = slotProps.context.brand || null;
+		if (!brand || !brand.label) return null;
+
+		const tag = brand.href ? 'a' : 'span';
+		const el = document.createElement(tag);
+		el.className = 'p360-brand-pill';
+
+		// Heading semantics — pill becomes the primary heading ONLY when:
+		//   1. brand.label set (already guaranteed above)
+		//   2. context.suppressHeader === true (legacy <h2> being skipped)
+		//   3. context.type ∈ {discover, local} (the only types that emit
+		//      the legacy <h2>; profile has its own header layout)
+		const ctxType = slotProps.context.type;
+		const emitsLegacyH2 = (ctxType === 'discover' || ctxType === 'local');
+		if (slotProps.context.suppressHeader === true && emitsLegacyH2) {
+			el.setAttribute('role', 'heading');
+			el.setAttribute('aria-level', '1');
+		}
+
+		if (brand.href) {
+			el.href = brand.href;
+			el.setAttribute('aria-label', `Go to ${brand.label}`);
+		}
+
+		if (brand.logo) {
+			const img = document.createElement('img');
+			img.className = 'p360-brand-pill-logo';
+			img.src = brand.logo;
+			img.alt = '';
+			el.appendChild(img);
+		}
+
+		const label = document.createElement('span');
+		label.className = 'p360-brand-pill-label';
+		label.textContent = brand.label;
+		el.appendChild(label);
+
+		return el;
+	}
+
+	/**
+	 * Default renderer for the sidebar-toggle-icon slot.
+	 * State-aware: receives isOpen via slotProps.
+	 *
+	 * @param {Object} slotProps  { context, isOpen }
+	 * @returns {HTMLElement}
+	 * @private
+	 * @since 4.2.0
+	 */
+	_renderToggleIconDefault(slotProps) {
+		const i = document.createElement('i');
+		i.className = 'ph';
+		i.classList.add(slotProps.isOpen ? 'ph-caret-right' : 'ph-list');
+		return i;
+	}
+
 	// --------------------------------------------------------
 	// Public getters
 	// --------------------------------------------------------
@@ -1984,6 +2074,8 @@ class Phong360LibraryUI {
 			const headers = this._sidebar.querySelectorAll('.p360-header');
 			headers.forEach((h) => h.remove());
 			await this.loadLibrary();
+			// Refresh slot content with new context (since 4.2.0)
+			this._renderAllSlots();
 		}
 	}
 }
