@@ -1008,8 +1008,22 @@ class Phong360LibraryUI {
 			if (this.multiViewer) this.multiViewer.loadNextImage();
 		});
 
+		// info-bar-leading slot (since 4.2.0) — between prev arrow and title
+		const leadingWrapper = document.createElement('div');
+		leadingWrapper.dataset.slot = 'info-bar-leading';
+		leadingWrapper.className = 'p360-slot';
+		this._slotWrappers['info-bar-leading'] = leadingWrapper;
+
+		// info-bar-trailing slot (since 4.2.0) — between title and next arrow
+		const trailingWrapper = document.createElement('div');
+		trailingWrapper.dataset.slot = 'info-bar-trailing';
+		trailingWrapper.className = 'p360-slot';
+		this._slotWrappers['info-bar-trailing'] = trailingWrapper;
+
 		this._infoBar.appendChild(this._prevBtn);
+		this._infoBar.appendChild(leadingWrapper);
 		this._infoBar.appendChild(this._infoText);
+		this._infoBar.appendChild(trailingWrapper);
 		this._infoBar.appendChild(this._nextBtn);
 		document.body.appendChild(this._infoBar);
 	}
@@ -1482,12 +1496,17 @@ class Phong360LibraryUI {
 
 	_onImageLoaded(imageData, resolution) {
 		this._currentImageId = imageData.id;
+		this._currentImageData = imageData;
 		this._highlightImage(imageData.id);
 
 		// Update toolbar controls
 		this._updateResolutionSelector(imageData, resolution);
 		this._updateProjectionButton(this.core?.projectionType ?? 1);
 		this._updateInfoBar(imageData, resolution);
+
+		// Re-render info-bar slots with new imageData (since 4.2.0)
+		this._renderSlot('info-bar-leading');
+		this._renderSlot('info-bar-trailing');
 
 		if (this.callbacks.onImageLoad) {
 			this.callbacks.onImageLoad(imageData, resolution);
