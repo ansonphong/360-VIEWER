@@ -11,6 +11,58 @@
  */
 
 // ============================================================
+// SlotRegistry — keyed factory map for named UI slots
+// ============================================================
+
+/**
+ * SlotRegistry — keyed factory map for named UI slots.
+ *
+ * Slots are named insertion points the engine renders into during
+ * sidebar DOM construction. Consumers call viewer.setSlot(name, factory)
+ * to register a render function; the engine calls it at the right time
+ * and inserts the result.
+ *
+ * The registry validates names against the engine's frozen SLOT_NAMES
+ * list — registering an unknown slot throws so consumer typos surface
+ * loudly instead of silently no-oping.
+ *
+ * @since 4.2.0
+ */
+class SlotRegistry {
+	constructor(validNames) {
+		this._valid = new Set(validNames);
+		this._factories = new Map();
+	}
+
+	set(name, factory) {
+		if (!this._valid.has(name)) {
+			throw new Error(
+				`Phong360LibraryUI: unknown slot "${name}". ` +
+				`Valid: ${[...this._valid].join(', ')}`,
+			);
+		}
+		if (typeof factory !== 'function') {
+			throw new Error(
+				`Phong360LibraryUI: slot factory for "${name}" must be a function`,
+			);
+		}
+		this._factories.set(name, factory);
+	}
+
+	clear(name) {
+		this._factories.delete(name);
+	}
+
+	get(name) {
+		return this._factories.get(name) || null;
+	}
+
+	has(name) {
+		return this._factories.has(name);
+	}
+}
+
+// ============================================================
 // BaseRenderer — shared utilities for all template renderers
 // ============================================================
 
@@ -584,6 +636,19 @@ class Phong360LibraryUI {
 	static MOBILE_BREAKPOINT = 768;
 
 	/**
+	 * Names of all UI slots a consumer may register a factory for.
+	 * Frozen to prevent runtime mutation. Renaming any of these is a
+	 * breaking change.
+	 * @since 4.2.0
+	 */
+	static SLOT_NAMES = Object.freeze([
+		'toolbar-leading',
+		'info-bar-leading',
+		'info-bar-trailing',
+		'sidebar-toggle-icon',
+	]);
+
+	/**
 	 * @param {Object} options
 	 * @param {string} options.containerId - DOM element ID for the 360 viewer canvas
 	 * @param {string} [options.libraryUrl] - URL to fetch library.json
@@ -664,6 +729,16 @@ class Phong360LibraryUI {
 		this._toggle = null;
 		this._contentEl = null;
 		this._observer = null;
+
+		// Slot system (since 4.2.0)
+		this._slots = new SlotRegistry(Phong360LibraryUI.SLOT_NAMES);
+		// Slot factories receive loaded context. The sidebar DOM is built
+		// BEFORE loadLibrary() resolves (engine builds chrome up-front, then
+		// fetches the manifest). _contextLoaded gates slot rendering so
+		// factories never see an empty {} context — first paint waits for
+		// the library load to complete.
+		this._contextLoaded = false;
+		this._slotWrappers = {};
 
 		// Initialize
 		this.init();
