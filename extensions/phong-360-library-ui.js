@@ -1375,7 +1375,6 @@ class Phong360LibraryUI {
 				this.multiViewer.loadImageById(image.id);
 			}
 			this._highlightImage(image.id);
-			this._updateURL(image.slug || image.id);
 
 			if (this.callbacks.onImageSelect) {
 				this.callbacks.onImageSelect(image);
@@ -1395,6 +1394,8 @@ class Phong360LibraryUI {
 		if (this.callbacks.onImageLoad) {
 			this.callbacks.onImageLoad(imageData, resolution);
 		}
+
+		this._urlSyncWrite(imageData);
 	}
 
 	_highlightImage(imageId) {
@@ -1711,11 +1712,6 @@ class Phong360LibraryUI {
 		} else if (this._allImages.length > 0) {
 			this.multiViewer.loadFirstImage();
 		}
-	}
-
-	_updateURL(idOrSlug) {
-		const newURL = '?img=' + encodeURIComponent(idOrSlug);
-		window.history.pushState({}, '', newURL);
 	}
 
 	// --------------------------------------------------------
