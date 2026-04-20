@@ -111,7 +111,7 @@ These are all handled by the engine internally:
 - Info bar: glassmorphic bottom panel with prev/next navigation
 - Emoji favicon (canvas-rendered from config)
 - Panel width (CSS custom property from config)
-- Deep-linking via `?img=slug`
+- Deep-linking via configurable `urlSync` option (default `?img=<slug>`; `false` to disable; `{read, write}` for custom formats; fires on click/prev/next/autoload)
 - Sidebar stays open on desktop, closes on mobile when clicking an image
 - Double-click canvas for fullscreen
 - WASD + Arrow keys for panning

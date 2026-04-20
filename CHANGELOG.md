@@ -4,6 +4,20 @@ All notable changes to the Phong 360 Viewer are documented here.
 
 This project uses [Semantic Versioning](https://semver.org/). When updating the 360-viewer submodule, check this file for breaking changes and migration steps.
 
+## Unreleased
+
+### Added
+
+- **`urlSync` constructor option** on `Phong360LibraryUI`. Accepts `true` (default, legacy `?img=<slug>` behavior), `false` (disable both directions), or `{read?, write?}` for per-direction override. The `write` formatter receives the image object and may return a URL string (→ `pushState`), `{url, replace: true}` (→ `replaceState`), or `null`/`undefined` (skip). See `docs/API.md` and `README.md`.
+
+### Changed
+
+- **URL write hook moved from `onImageClick` to the unified `_onImageLoaded` path.** Previously only sidebar clicks updated the URL; now prev/next navigation and autoload also fire the write hook. Default URL format (`?img=<slug>`) is unchanged. Consumers that depended on prev/next NOT writing the URL can restore old behavior by passing `urlSync: { write: () => null }` and updating the URL from their own click handler, but this should only be required for edge cases.
+
+### Removed
+
+- Private method `_updateURL(idOrSlug)`. Underscore-prefixed internal API — out-of-tree consumers should migrate to `urlSync: { write: fn }`.
+
 ## [4.1.0] - 2026-02-09
 
 ### Added

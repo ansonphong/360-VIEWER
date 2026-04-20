@@ -384,6 +384,22 @@ new Phong360LibraryUI(options);
     autoloadId: string,             // Auto-load image by ID or slug after library loads
     filterCollection: string,       // Only render section matching this ID/slug
 
+    // Optional - Deep-link URL behavior
+    urlSync: true | false | Object, // Controls deep-link URL read/write on every
+                                    // image change (click, prev, next, autoload).
+                                    //   true  (default) — read ?img= on startup,
+                                    //                     write ?img=<slug> on change
+                                    //   false — viewer never touches the URL
+                                    //   { read?: fn, write?: fn } — per-direction override:
+                                    //     read(url: URL): string|null  — imageId/slug to autoload
+                                    //     write(image): string|{url,replace}|null
+                                    //       string   → history.pushState(string)
+                                    //       {url, replace:true} → history.replaceState(url)
+                                    //       null/undefined → skip this update
+                                    //   Pass read:null or write:null inside the object
+                                    //   to disable one direction while keeping the other
+                                    //   on its default.
+
     // Optional - Sidebar behavior
     desktopOpenByDefault: boolean,  // If true, sidebar opens automatically on
                                     // first load when window > MOBILE_BREAKPOINT

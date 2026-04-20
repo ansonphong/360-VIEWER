@@ -19,7 +19,7 @@
 - **JSON-Driven Config**: One `360-viewer.json` file controls everything — title, theme, accent color, panel width, favicon, social links. No code changes needed.
 - **Deploy Templates**: Ready-to-use webhook scripts (PHP and Python) with documented server setup and gotchas.
 - **Theme System**: Light/dark/auto modes with CSS custom properties and accent color support
-- **Deep-Linking**: URL parameter support (`?img=slug`) for sharing specific images
+- **Deep-Linking**: Configurable via the `urlSync` option. Default `true` keeps the legacy `?img=<slug>` read/write behavior. Pass `false` for embeds that must not touch the host URL, or `{read, write}` for custom strategies. See `docs/API.md`.
 - **Mobile Optimized**: Touch gestures, responsive sidebar, WASD + arrow key controls, double-click fullscreen
 - **Adaptive Loading**: Smart resolution selection (8K/4K/2K) based on device and bandwidth
 
