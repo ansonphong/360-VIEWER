@@ -1633,6 +1633,54 @@ class Phong360LibraryUI {
 	// Deep-linking / URL parameters
 	// --------------------------------------------------------
 
+	_urlSyncRead() {
+		const s = this.urlSync;
+		if (s === false) return null;
+
+		// Object form with explicit read:null disables read direction only.
+		if (s && typeof s === 'object' && s.read === null) return null;
+
+		const fn = (s && typeof s === 'object' && typeof s.read === 'function')
+			? s.read
+			: (url) => url.searchParams.get('img');
+
+		try {
+			return fn(new URL(window.location.href));
+		} catch (e) {
+			return null;
+		}
+	}
+
+	_urlSyncWrite(image) {
+		const s = this.urlSync;
+		if (s === false) return;
+
+		// Object form with explicit write:null disables write direction only.
+		if (s && typeof s === 'object' && s.write === null) return;
+
+		const fn = (s && typeof s === 'object' && typeof s.write === 'function')
+			? s.write
+			: (img) => '?img=' + encodeURIComponent(img.slug || img.id);
+
+		let out;
+		try {
+			out = fn(image);
+		} catch (e) {
+			return;
+		}
+		if (out == null) return;
+
+		const url = typeof out === 'string' ? out : (out && out.url);
+		if (!url) return;
+
+		const replace = typeof out === 'object' && out.replace === true;
+		if (replace) {
+			window.history.replaceState({}, '', url);
+		} else {
+			window.history.pushState({}, '', url);
+		}
+	}
+
 	_handleUrlParameters() {
 		const params = new URLSearchParams(window.location.search);
 		const imgParam = params.get('img');
