@@ -857,13 +857,20 @@ class Phong360LibraryUI {
 		// Toggle button
 		this._toggle = document.createElement('button');
 		this._toggle.className = 'p360-sidebar-toggle';
-		this._toggle.innerHTML = '<i class="ph ph-list"></i>';
 		this._toggle.title = 'Browse Library';
 		this._toggle.setAttribute('aria-controls', 'p360-sidebar');
 		this._toggle.addEventListener('click', (e) => {
 			e.stopPropagation();
 			this.toggleSidebar();
 		});
+		// sidebar-toggle-icon slot wrapper (since 4.2.0). Persistent
+		// across state changes so _updateToggleIcon → _renderSlot only
+		// swaps the inner <i>, never the wrapper.
+		const iconWrapper = document.createElement('span');
+		iconWrapper.dataset.slot = 'sidebar-toggle-icon';
+		iconWrapper.className = 'p360-slot';
+		this._toggle.appendChild(iconWrapper);
+		this._slotWrappers['sidebar-toggle-icon'] = iconWrapper;
 		document.body.appendChild(this._toggle);
 
 		// Backdrop
@@ -1620,17 +1627,23 @@ class Phong360LibraryUI {
 
 	_updateToggleIcon() {
 		if (!this._toggle) return;
+		// Button-level attributes (label/title/aria-expanded) — engine owns
+		// these because they reflect the button's semantic state, not the
+		// icon glyph.
 		if (this._sidebarOpen) {
-			this._toggle.innerHTML = '<i class="ph ph-caret-right"></i>';
 			this._toggle.title = 'Collapse panel';
 			this._toggle.setAttribute('aria-label', 'Collapse panel');
 			this._toggle.setAttribute('aria-expanded', 'true');
 		} else {
-			this._toggle.innerHTML = '<i class="ph ph-list"></i>';
 			this._toggle.title = 'Browse Library';
 			this._toggle.setAttribute('aria-label', 'Browse library');
 			this._toggle.setAttribute('aria-expanded', 'false');
 		}
+		// Icon glyph is owned by the sidebar-toggle-icon slot (since 4.2.0).
+		// _renderSlot reads this._sidebarOpen via _buildSlotProps. The
+		// default renderer paints immediately even before _contextLoaded
+		// (rule 3 of context-load gating) so the toggle is never blank.
+		this._renderSlot('sidebar-toggle-icon');
 	}
 
 	toggleSidebar() {
