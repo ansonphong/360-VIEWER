@@ -172,24 +172,34 @@
 		 * Get default configuration
 		 */
 		getDefaultConfig() {
+			// Touch-first devices get a wider default FOV for a more immersive feel on small screens.
+			const isMobile =
+				(typeof window !== 'undefined' &&
+					window.matchMedia &&
+					window.matchMedia('(hover: none) and (pointer: coarse)').matches) ||
+				(typeof window !== 'undefined' && window.innerWidth < 768);
+
+			const fovInit = isMobile ? 160 : 150;
+			const fovInitTarget = isMobile ? 120 : 100;
+
 			return {
 				fov: {
 					max: 300,
 					min: 45,
-					init: 100,
-					initTarget: 60
+					init: fovInit,
+					initTarget: fovInitTarget
 				},
 				fov_gnomonic: {
-					max: 130,
+					max: 160,
 					min: 45,
-					init: 100,
-					initTarget: 60
+					init: fovInit,
+					initTarget: fovInitTarget
 				},
 				fov_stereographic: {
 					max: 330,
 					min: 45,
-					init: 100,
-					initTarget: 60
+					init: fovInit,
+					initTarget: fovInitTarget
 				},
 				zoom: {
 					increment: 2,
