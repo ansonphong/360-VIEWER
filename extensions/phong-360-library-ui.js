@@ -1682,8 +1682,7 @@ class Phong360LibraryUI {
 	}
 
 	_handleUrlParameters() {
-		const params = new URLSearchParams(window.location.search);
-		const imgParam = params.get('img');
+		const imgParam = this._urlSyncRead();
 
 		// Priority: constructor autoloadId > context.autoload > URL ?img= > first image
 		const autoload = this.autoloadId || (this._context && this._context.autoload);
