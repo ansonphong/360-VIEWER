@@ -611,6 +611,11 @@ class Phong360LibraryUI {
 		this.libraryUrl = options.libraryUrl || null;
 		this.libraryData = options.libraryData || null;
 		this.autoloadId = options.autoloadId || null;
+		// urlSync: true (default) | false | { read?: fn, write?: fn }
+		// Controls deep-link URL behavior. Fires on every image change
+		// (click, prev, next, autoload). Default preserves the legacy
+		// `?img=<slug>` read/write pair for every existing consumer.
+		this.urlSync = options.urlSync !== undefined ? options.urlSync : true;
 		this.filterCollection = options.filterCollection || null;
 		this.baseUrl = options.baseUrl || '';
 		this.configUrl = options.configUrl || null;
