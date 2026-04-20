@@ -1790,6 +1790,187 @@ class Phong360LibraryUI {
 	}
 
 	// --------------------------------------------------------
+	// Slot API (since 4.2.0)
+	// --------------------------------------------------------
+
+	/**
+	 * Register a factory function to produce content for a named slot.
+	 * The factory is called when the engine renders that slot's region
+	 * (during _buildSidebarDOM and on subsequent re-renders).
+	 *
+	 * @param {string} name     One of Phong360LibraryUI.SLOT_NAMES
+	 * @param {Function} factory  (slotProps) => HTMLElement | null
+	 *                            Return null to fall back to engine default.
+	 * @throws {Error} if name is not a known slot, or factory is not a function
+	 * @since 4.2.0
+	 */
+	setSlot(name, factory) {
+		this._slots.set(name, factory);
+		// Re-render immediately ONLY if the library has loaded. Before
+		// load, the sidebar DOM exists but context is empty — we defer
+		// first paint to _renderAllSlots() after loadLibrary() sets
+		// _contextLoaded. Consumers that register before load get their
+		// first render for free at load completion.
+		if (this._sidebar && this._contextLoaded) {
+			this._renderSlot(name);
+		}
+	}
+
+	/**
+	 * Remove a registered slot factory and revert to engine default.
+	 *
+	 * @param {string} name  One of Phong360LibraryUI.SLOT_NAMES
+	 * @since 4.2.0
+	 */
+	clearSlot(name) {
+		this._slots.clear(name);
+		if (this._sidebar && this._contextLoaded) {
+			this._renderSlot(name);
+		}
+	}
+
+	/**
+	 * Render the engine's default content for a slot, with the current
+	 * slotProps (or an override). Lets consumer factories COMPOSE the
+	 * default with custom content rather than only REPLACE it.
+	 *
+	 * Returns a fresh DOM node each call (no shared instances), or null
+	 * if the slot has no engine default.
+	 *
+	 * @param {string} name         One of Phong360LibraryUI.SLOT_NAMES
+	 * @param {Object} [slotProps]  Optional; defaults to engine's current
+	 *                              slotProps for that slot
+	 * @returns {HTMLElement|null}
+	 * @throws {Error} if name is not a known slot
+	 * @since 4.2.0
+	 */
+	renderDefault(name, slotProps) {
+		if (!Phong360LibraryUI.SLOT_NAMES.includes(name)) {
+			throw new Error(
+				`Phong360LibraryUI.renderDefault: unknown slot "${name}"`,
+			);
+		}
+		const props = slotProps || this._buildSlotProps(name);
+		return this._defaultSlotContent(name, props);
+	}
+
+	/**
+	 * Render a single slot's content into its wrapper element.
+	 * Called internally during _buildSidebarDOM, on setSlot/clearSlot,
+	 * and on slot-specific state changes (toggle open/close, image change).
+	 *
+	 * @param {string} name  One of Phong360LibraryUI.SLOT_NAMES
+	 * @private
+	 */
+	_renderSlot(name) {
+		const wrapper = this._slotWrappers && this._slotWrappers[name];
+		if (!wrapper) return; // slot not yet built
+
+		// Context-load gating (see master plan "Context-load gating rule"):
+		//   - factory registered + context not loaded → defer
+		//   - no factory + context-dependent default + context not loaded → defer
+		//   - no factory + context-independent default → render immediately
+		const factoryRegistered = this._slots.has(name);
+		const defaultReadsContext = (name === 'toolbar-leading'); // brand pill reads context.brand
+		if (!this._contextLoaded && (factoryRegistered || defaultReadsContext)) {
+			return;
+		}
+
+		// Clear existing slot content
+		while (wrapper.firstChild) wrapper.removeChild(wrapper.firstChild);
+
+		const slotProps = this._buildSlotProps(name);
+		const factory = this._slots.get(name);
+		let node = null;
+
+		if (factory) {
+			try {
+				node = factory(slotProps);
+			} catch (err) {
+				console.warn(
+					`[Phong360LibraryUI] slot "${name}" factory threw, ` +
+					`falling back to default:`, err,
+				);
+				node = null;
+			}
+			// Validate return value: must be a Node or null/undefined.
+			// Strings, numbers, arrays, plain objects, Promises etc. are
+			// rejected with a warning and treated as null. Contains third-
+			// party bugs to a single warn instead of a thrown appendChild.
+			if (node != null && !(node instanceof Node)) {
+				console.warn(
+					`[Phong360LibraryUI] slot "${name}" factory returned ` +
+					`non-Node value (got ${typeof node}); ` +
+					`falling back to default`, node,
+				);
+				node = null;
+			}
+		}
+
+		// Engine defaults — if no factory or factory returned null
+		if (!node) {
+			node = this._defaultSlotContent(name, slotProps);
+		}
+
+		if (node) wrapper.appendChild(node);
+	}
+
+	/**
+	 * Build the props object passed to a slot's factory and to the
+	 * engine's own default renderer.
+	 *
+	 * @param {string} name
+	 * @returns {Object}
+	 * @private
+	 * @since 4.2.0
+	 */
+	_buildSlotProps(name) {
+		const props = { context: this._context || {} };
+		if (name === 'sidebar-toggle-icon') {
+			props.isOpen = !!this._sidebarOpen;
+		}
+		if (name === 'info-bar-leading' || name === 'info-bar-trailing') {
+			props.imageData = this._currentImageData || null;
+		}
+		return props;
+	}
+
+	/**
+	 * Render the engine's built-in default for a slot. Returns null
+	 * if the slot has no default content.
+	 *
+	 * @param {string} name
+	 * @param {Object} slotProps
+	 * @returns {HTMLElement|null}
+	 * @private
+	 * @since 4.2.0
+	 */
+	_defaultSlotContent(name, slotProps) {
+		if (name === 'toolbar-leading') {
+			return this._renderBrandPillDefault(slotProps);
+		}
+		if (name === 'sidebar-toggle-icon') {
+			return this._renderToggleIconDefault(slotProps);
+		}
+		// info-bar-leading, info-bar-trailing have no default
+		return null;
+	}
+
+	/**
+	 * Re-render every registered slot. Called from loadLibrary()
+	 * after data is processed (so context-dependent defaults pick up
+	 * the new context) and from reloadLibrary() after the reload completes.
+	 *
+	 * @private
+	 * @since 4.2.0
+	 */
+	_renderAllSlots() {
+		for (const name of Phong360LibraryUI.SLOT_NAMES) {
+			this._renderSlot(name);
+		}
+	}
+
+	// --------------------------------------------------------
 	// Public getters
 	// --------------------------------------------------------
 
