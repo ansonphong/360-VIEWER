@@ -5,7 +5,7 @@
  * Supports v4.0 library.json format with context, sections, badges,
  * theme management, accent colors, and deep-linking.
  *
- * @version 4.1.0
+ * @version 4.2.0
  * @author Phong
  * @license MIT
  */
@@ -723,6 +723,18 @@ class Phong360LibraryUI {
 		this._wasDesktop = null;
 		this._currentImageId = null;
 
+		// Model filter state (see plans/meta/2026-04-19-gallery-model-metadata/ §7.4)
+		this._modelFilterState = {
+			architectures: new Set(),
+			models: new Set(),
+			includeCustom: false,
+			includeUnknown: false
+		};
+		this._modelFilterContainer = null;
+		this._headerEl = null;
+		this._hashchangeBound = false;
+		this._infoDetails = null;
+
 		// DOM references
 		this._sidebar = null;
 		this._backdrop = null;
@@ -1058,6 +1070,14 @@ class Phong360LibraryUI {
 			this._prevBtn.disabled = idx <= 0;
 			this._nextBtn.disabled = idx === -1 || idx >= this._allImages.length - 1;
 		}
+
+		// Model / LoRAs / Full settings block (design §7.5)
+		if (!this._infoDetails) {
+			this._infoDetails = document.createElement('div');
+			this._infoDetails.className = 'p360-info-details';
+			this._infoBar.appendChild(this._infoDetails);
+		}
+		this._renderInfoDetails(imageData);
 	}
 
 	_updateResolutionSelector(imageData, currentResolution) {
@@ -1221,6 +1241,9 @@ class Phong360LibraryUI {
 
 		this._applyPanelConfig();
 
+		// Build the model filter block before sections render (appears above them)
+		this._buildModelFilter(data.facets && data.facets.model);
+
 		// Render (sections first since it clears innerHTML, then context prepends header)
 		this._renderSections(this._sections);
 		this._renderContext(this._context);
@@ -1337,6 +1360,7 @@ class Phong360LibraryUI {
 
 		// Insert header inside scrollable content area
 		this._contentEl.insertBefore(header, this._contentEl.firstChild);
+		this._headerEl = header;
 	}
 
 	_domainFromUrl(url) {
@@ -1354,31 +1378,383 @@ class Phong360LibraryUI {
 	_renderSections(sections) {
 		this._contentEl.innerHTML = '';
 
-		const filtered = this.filterCollection
+		const collScoped = this.filterCollection
 			? sections.filter((s) => s.id === this.filterCollection || s.slug === this.filterCollection)
 			: sections;
 
-		if (filtered.length === 0) {
+		const filtered = this._applyModelFilterToSections(collScoped);
+
+		const allEmpty = filtered.length === 0 || filtered.every(
+			(s) => !(s.images && s.images.length) && !(s.items && s.items.length)
+		);
+
+		if (allEmpty) {
 			const emptySection = {
 				template: 'empty',
 				title: 'No images found',
 				icon: 'image',
-				message: 'This gallery is empty.'
+				message: this._isModelFilterActive()
+					? 'No images match the selected models.'
+					: 'This gallery is empty.'
 			};
 			const el = this.templateEngine.render(emptySection, { baseUrl: this.baseUrl });
 			this._contentEl.appendChild(el);
+		} else {
+			for (const section of filtered) {
+				const sectionEl = this.renderSection(section);
+				if (sectionEl) {
+					this._contentEl.appendChild(sectionEl);
+				}
+			}
+			// Start observing lazy images
+			this._observeImages();
+		}
+
+		// Re-attach (in correct order — header first, then filter block) the
+		// elements that lived in _contentEl before innerHTML='' wiped them.
+		if (this._headerEl) {
+			this._contentEl.insertBefore(this._headerEl, this._contentEl.firstChild);
+		}
+		if (this._modelFilterContainer) {
+			const anchor = this._headerEl ? this._headerEl.nextSibling : this._contentEl.firstChild;
+			this._contentEl.insertBefore(this._modelFilterContainer, anchor);
+		}
+	}
+
+	_isModelFilterActive() {
+		const s = this._modelFilterState;
+		return s.architectures.size > 0 || s.models.size > 0 || s.includeCustom || s.includeUnknown;
+	}
+
+	_applyModelFilterToSections(sections) {
+		if (!this._isModelFilterActive()) return sections;
+		const s = this._modelFilterState;
+		return sections.map((section) => {
+			const images = Array.isArray(section.images) ? section.images : null;
+			if (!images) return section;
+			const kept = images.filter((item) => {
+				const m = item.model;
+				if (m == null) return s.includeUnknown;
+				if (m.isCustom) return s.includeCustom || (m.id && s.models.has(m.id));
+				if (m.id && s.models.has(m.id)) return true;
+				if (m.architecture && s.architectures.has(m.architecture)) return true;
+				return false;
+			});
+			return { ...section, images: kept };
+		});
+	}
+
+	_applyModelFilter() {
+		this._renderSections(this._sections);
+		this._writeHash();
+	}
+
+	_buildModelFilter(facets) {
+		if (this._modelFilterContainer && this._modelFilterContainer.parentNode) {
+			this._modelFilterContainer.parentNode.removeChild(this._modelFilterContainer);
+		}
+		this._modelFilterContainer = null;
+		if (!facets) return;
+
+		const archs = Array.isArray(facets.architectures) ? facets.architectures : [];
+		const models = Array.isArray(facets.models) ? facets.models : [];
+		const customCount = facets.customCount || 0;
+		const unknownCount = facets.unknownCount || 0;
+		if (archs.length === 0 && models.length === 0 && customCount === 0 && unknownCount === 0) {
 			return;
 		}
 
-		for (const section of filtered) {
-			const sectionEl = this.renderSection(section);
-			if (sectionEl) {
-				this._contentEl.appendChild(sectionEl);
-			}
+		const wrap = document.createElement('div');
+		wrap.className = 'p360-model-filter';
+
+		const heading = document.createElement('div');
+		heading.className = 'p360-model-filter-heading';
+		heading.textContent = 'Model';
+		wrap.appendChild(heading);
+
+		const modelsByArch = {};
+		for (const m of models) {
+			const a = m.architecture || '__';
+			(modelsByArch[a] = modelsByArch[a] || []).push(m);
 		}
 
-		// Start observing lazy images
-		this._observeImages();
+		for (const arch of archs) {
+			const archRow = document.createElement('div');
+			archRow.className = 'p360-model-filter-arch';
+
+			const archLabel = document.createElement('label');
+			const archCb = document.createElement('input');
+			archCb.type = 'checkbox';
+			archCb.dataset.archId = arch.id;
+			archCb.addEventListener('change', () => {
+				if (archCb.checked) this._modelFilterState.architectures.add(arch.id);
+				else this._modelFilterState.architectures.delete(arch.id);
+				this._applyModelFilter();
+			});
+			archLabel.appendChild(archCb);
+			archLabel.appendChild(document.createTextNode(` ${arch.label || arch.id} (${arch.count})`));
+			archRow.appendChild(archLabel);
+
+			const archModels = modelsByArch[arch.id] || [];
+			if (archModels.length) {
+				const subList = document.createElement('div');
+				subList.className = 'p360-model-filter-sublist';
+				for (const m of archModels) {
+					const modLabel = document.createElement('label');
+					const modCb = document.createElement('input');
+					modCb.type = 'checkbox';
+					modCb.dataset.modelId = m.id;
+					modCb.addEventListener('change', () => {
+						if (modCb.checked) this._modelFilterState.models.add(m.id);
+						else this._modelFilterState.models.delete(m.id);
+						this._applyModelFilter();
+					});
+					modLabel.appendChild(modCb);
+					modLabel.appendChild(document.createTextNode(` ${m.displayName || m.id} (${m.count})`));
+					subList.appendChild(modLabel);
+				}
+				archRow.appendChild(subList);
+			}
+			wrap.appendChild(archRow);
+		}
+
+		if (customCount > 0) {
+			const row = document.createElement('div');
+			row.className = 'p360-model-filter-bucket';
+			const lbl = document.createElement('label');
+			const cb = document.createElement('input');
+			cb.type = 'checkbox';
+			cb.dataset.bucket = 'custom';
+			cb.addEventListener('change', () => {
+				this._modelFilterState.includeCustom = cb.checked;
+				this._applyModelFilter();
+			});
+			lbl.appendChild(cb);
+			lbl.appendChild(document.createTextNode(` Other / Custom (${customCount})`));
+			row.appendChild(lbl);
+			wrap.appendChild(row);
+		}
+
+		if (unknownCount > 0) {
+			const row = document.createElement('div');
+			row.className = 'p360-model-filter-bucket';
+			const lbl = document.createElement('label');
+			const cb = document.createElement('input');
+			cb.type = 'checkbox';
+			cb.dataset.bucket = 'unknown';
+			cb.addEventListener('change', () => {
+				this._modelFilterState.includeUnknown = cb.checked;
+				this._applyModelFilter();
+			});
+			lbl.appendChild(cb);
+			lbl.appendChild(document.createTextNode(` Unknown (${unknownCount})`));
+			row.appendChild(lbl);
+			wrap.appendChild(row);
+		}
+
+		if (this._contentEl && this._contentEl.firstChild) {
+			this._contentEl.insertBefore(wrap, this._contentEl.firstChild);
+		} else if (this._contentEl) {
+			this._contentEl.appendChild(wrap);
+		}
+		this._modelFilterContainer = wrap;
+
+		// Restore from URL on first build, then listen for back/forward
+		this._readHash();
+		this._syncFilterUIFromState();
+		if (!this._hashchangeBound) {
+			window.addEventListener('hashchange', () => {
+				this._readHash();
+				this._syncFilterUIFromState();
+				this._renderSections(this._sections);
+			});
+			this._hashchangeBound = true;
+		}
+	}
+
+	_writeHash() {
+		const s = this._modelFilterState;
+		const parts = [];
+		if (s.architectures.size > 0) {
+			parts.push('arch=' + [...s.architectures].join(','));
+		}
+		const modelVals = [...s.models];
+		if (s.includeCustom) modelVals.push('custom');
+		if (s.includeUnknown) modelVals.push('unknown');
+		if (modelVals.length > 0) {
+			parts.push('model=' + modelVals.join(','));
+		}
+		const hash = parts.length ? '#' + parts.join('&') : '';
+		const url = window.location.pathname + window.location.search + hash;
+		try { history.replaceState(null, '', url); } catch (_) { /* file:// may reject */ }
+	}
+
+	_readHash() {
+		const raw = (window.location.hash || '').replace(/^#/, '');
+		const s = this._modelFilterState;
+		s.architectures.clear();
+		s.models.clear();
+		s.includeCustom = false;
+		s.includeUnknown = false;
+		if (!raw) return false;
+		for (const pair of raw.split('&')) {
+			const eq = pair.indexOf('=');
+			if (eq < 0) continue;
+			const key = pair.slice(0, eq);
+			const val = decodeURIComponent(pair.slice(eq + 1));
+			if (!val) continue;
+			const items = val.split(',').filter(Boolean);
+			if (key === 'arch') {
+				for (const a of items) s.architectures.add(a);
+			} else if (key === 'model') {
+				for (const m of items) {
+					if (m === 'custom') s.includeCustom = true;
+					else if (m === 'unknown') s.includeUnknown = true;
+					else s.models.add(m);
+				}
+			}
+		}
+		return true;
+	}
+
+	_syncFilterUIFromState() {
+		if (!this._modelFilterContainer) return;
+		const s = this._modelFilterState;
+		const archCbs = this._modelFilterContainer.querySelectorAll('input[data-arch-id]');
+		archCbs.forEach((cb) => { cb.checked = s.architectures.has(cb.dataset.archId); });
+		const modCbs = this._modelFilterContainer.querySelectorAll('input[data-model-id]');
+		modCbs.forEach((cb) => { cb.checked = s.models.has(cb.dataset.modelId); });
+		const customCb = this._modelFilterContainer.querySelector('input[data-bucket="custom"]');
+		if (customCb) customCb.checked = s.includeCustom;
+		const unknownCb = this._modelFilterContainer.querySelector('input[data-bucket="unknown"]');
+		if (unknownCb) unknownCb.checked = s.includeUnknown;
+	}
+
+	_renderInfoDetails(imageData) {
+		if (!this._infoDetails) return;
+		this._infoDetails.innerHTML = '';
+
+		if (imageData.model) {
+			const row = document.createElement('div');
+			row.className = 'p360-info-model';
+			const lbl = document.createElement('span');
+			lbl.className = 'p360-info-label';
+			lbl.textContent = 'Model';
+			row.appendChild(lbl);
+
+			if (imageData.model.architecture) {
+				const arch = document.createElement('button');
+				arch.type = 'button';
+				arch.className = 'p360-info-badge';
+				arch.textContent = imageData.model.architecture;
+				arch.addEventListener('click', () => {
+					this._modelFilterState.architectures.clear();
+					this._modelFilterState.architectures.add(imageData.model.architecture);
+					this._modelFilterState.models.clear();
+					this._modelFilterState.includeCustom = false;
+					this._modelFilterState.includeUnknown = false;
+					this._syncFilterUIFromState();
+					this._writeHash();
+					this._renderSections(this._sections);
+				});
+				row.appendChild(arch);
+			}
+			if (imageData.model.id) {
+				const mod = document.createElement('button');
+				mod.type = 'button';
+				mod.className = 'p360-info-badge';
+				mod.textContent = imageData.model.displayName || imageData.model.id;
+				mod.addEventListener('click', () => {
+					this._modelFilterState.architectures.clear();
+					this._modelFilterState.models.clear();
+					this._modelFilterState.models.add(imageData.model.id);
+					this._modelFilterState.includeCustom = false;
+					this._modelFilterState.includeUnknown = false;
+					this._syncFilterUIFromState();
+					this._writeHash();
+					this._renderSections(this._sections);
+				});
+				row.appendChild(mod);
+			}
+			this._infoDetails.appendChild(row);
+		}
+
+		if (Array.isArray(imageData.loras) && imageData.loras.length > 0) {
+			const row = document.createElement('div');
+			row.className = 'p360-info-loras';
+			const lbl = document.createElement('span');
+			lbl.className = 'p360-info-label';
+			lbl.textContent = 'LoRAs';
+			row.appendChild(lbl);
+			const ul = document.createElement('ul');
+			for (const lora of imageData.loras) {
+				const li = document.createElement('li');
+				const strength = (typeof lora.strength === 'number') ? lora.strength.toFixed(2) : lora.strength;
+				li.textContent = `${lora.displayName} (${strength})`;
+				ul.appendChild(li);
+			}
+			row.appendChild(ul);
+			this._infoDetails.appendChild(row);
+		}
+
+		if (imageData.hasConfig && imageData.id) {
+			const details = document.createElement('details');
+			details.className = 'p360-info-fullsettings';
+			const summary = document.createElement('summary');
+			summary.textContent = 'Full settings';
+			details.appendChild(summary);
+
+			const body = document.createElement('div');
+			body.className = 'p360-info-fullsettings-body';
+			body.textContent = 'Loading…';
+			details.appendChild(body);
+
+			let loaded = false;
+			details.addEventListener('toggle', async () => {
+				if (!details.open || loaded) return;
+				loaded = true;
+				try {
+					const resp = await fetch(`/api/v1/images/${encodeURIComponent(imageData.id)}/config`);
+					if (resp.status === 404) {
+						body.textContent = 'No config available.';
+						return;
+					}
+					if (!resp.ok) {
+						body.textContent = `Failed to load (${resp.status}).`;
+						return;
+					}
+					const cfg = await resp.json();
+					body.innerHTML = '';
+					const dl = document.createElement('dl');
+					this._renderConfigAsDl(cfg, dl, '');
+					body.appendChild(dl);
+				} catch (err) {
+					body.textContent = 'Failed to load config.';
+				}
+			});
+			this._infoDetails.appendChild(details);
+		}
+	}
+
+	_renderConfigAsDl(obj, dl, prefix) {
+		if (obj == null || typeof obj !== 'object') {
+			const dd = document.createElement('dd');
+			dd.textContent = String(obj);
+			dl.appendChild(dd);
+			return;
+		}
+		for (const [k, v] of Object.entries(obj)) {
+			const dt = document.createElement('dt');
+			dt.textContent = prefix ? `${prefix}.${k}` : k;
+			dl.appendChild(dt);
+			if (v && typeof v === 'object' && !Array.isArray(v)) {
+				this._renderConfigAsDl(v, dl, prefix ? `${prefix}.${k}` : k);
+			} else {
+				const dd = document.createElement('dd');
+				dd.textContent = Array.isArray(v) ? JSON.stringify(v) : String(v);
+				dl.appendChild(dd);
+			}
+		}
 	}
 
 	renderSection(section) {
