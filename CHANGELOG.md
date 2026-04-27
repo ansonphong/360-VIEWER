@@ -4,6 +4,55 @@ All notable changes to the Phong 360 Viewer are documented here.
 
 This project uses [Semantic Versioning](https://semver.org/). When updating the 360-viewer submodule, check this file for breaking changes and migration steps.
 
+## [4.2.0] — 2026-04-20
+
+### Added — Slot System
+
+A new named-slot extension surface for chrome composition (toolbar,
+info-bar, sidebar-toggle). Lets consumers customize UI without
+mutating engine-owned DOM.
+
+- **`viewer.setSlot(name, factory)`** — register a render function for a named slot
+- **`viewer.clearSlot(name)`** — revert a slot to engine default
+- **`viewer.renderDefault(name, slotProps?)`** — render the engine default
+  inside a custom factory (composition pattern)
+- **`Phong360LibraryUI.SLOT_NAMES`** — frozen array of valid slot names
+- **`context.brand = { logo, label, href }`** — config-driven default for the
+  `toolbar-leading` slot. Engine renders a `.p360-brand-pill` element from this
+  data automatically. Consumers can still override via `setSlot`.
+
+#### Slot inventory v1 (4 slots)
+
+| Slot | Default | Position | slotProps |
+|---|---|---|---|
+| `toolbar-leading` | brand pill from `context.brand` (or empty) | First child of `.p360-toolbar` | `{ context }` |
+| `info-bar-leading` | empty | Between prev arrow and title in `.p360-info-bar` | `{ context, imageData }` |
+| `info-bar-trailing` | empty | Between title and next arrow in `.p360-info-bar` | `{ context, imageData }` |
+| `sidebar-toggle-icon` | state-aware `ph-list` (closed) / `ph-caret-right` (open) | Inside `.p360-sidebar-toggle` | `{ context, isOpen }` |
+
+#### Behavior change (opt-in, via `context.suppressHeader`)
+
+When `context.suppressHeader === true` AND `context.type` is `discover` or
+`local`, the engine skips emitting the legacy `<h2 class="p360-header-title">`
+inside `.p360-header`. Intended for consumers whose `toolbar-leading` slot
+already carries the page heading. Independent of `context.brand` —
+setting `brand` alone does NOT trigger header suppression. Consumers without
+`suppressHeader` see the legacy header rendering unchanged.
+
+### Changed
+
+- `_updateToggleIcon()` no longer rewrites `this._toggle.innerHTML` directly;
+  it delegates icon rendering to `_renderSlot('sidebar-toggle-icon')`. Button
+  attributes (title, aria-label, aria-expanded) are still owned by the engine.
+  **Observable behavior for consumers: unchanged** unless they register a
+  custom `sidebar-toggle-icon` slot factory.
+
+### Added (docs)
+
+- `docs/API.md` "Slots" section
+- `docs/LIBRARY-FORMAT.md` `context.brand` and `context.suppressHeader` fields
+- `tests/slot-system.html` manual visual smoke test
+
 ## Unreleased
 
 ### Added
