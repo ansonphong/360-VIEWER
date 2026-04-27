@@ -1411,9 +1411,12 @@
 			window.removeEventListener('focus', this.boundHandlers.handleFocus);
 			window.removeEventListener('blur', this.boundHandlers.handleBlur);
 
-			// Remove loading overlay
-			if (this.loadingOverlay && this.loadingOverlay.parentNode) {
-				this.loadingOverlay.parentNode.removeChild(this.loadingOverlay);
+			// Remove loading overlay only if the engine created it. Host-provided
+			// overlays (where _ownsOverlay is false) are left in place.
+			if (this.loadingOverlay) {
+				if (this._ownsOverlay && this.loadingOverlay.parentNode) {
+					this.loadingOverlay.parentNode.removeChild(this.loadingOverlay);
+				}
 				this.loadingOverlay = null;
 			}
 
