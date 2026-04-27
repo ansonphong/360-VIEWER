@@ -343,43 +343,62 @@
 		 * Create loading overlay with spinner
 		 */
 		createLoadingOverlay() {
-			// Get or create loading overlay
-			this.loadingOverlay = document.getElementById('loading-overlay');
+			const bg = this.config.loading.backgroundColor;
+			const fadeOut = this.config.loading.fadeOutDuration;
 
-			if (!this.loadingOverlay) {
-				// Create it if it doesn't exist
-				this.loadingOverlay = document.createElement('div');
-				this.loadingOverlay.id = 'loading-overlay';
-				this.loadingOverlay.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: #000;
-                    z-index: 10;
-                    display: none;
-                    justify-content: center;
-                    align-items: center;
-                    flex-direction: column;
-                    transition: opacity 200ms ease-in-out;
-                `;
-
-				// Create spinner
-				const spinner = document.createElement('div');
-				spinner.className = 'spinner';
-				spinner.style.cssText = `
-                    border: 4px solid rgba(255, 255, 255, 0.1);
-                    border-top: 4px solid rgba(255, 255, 255, 0.8);
-                    border-radius: 50%;
-                    width: 50px;
-                    height: 50px;
-                    animation: spin 1s linear infinite;
-                `;
-
-				this.loadingOverlay.appendChild(spinner);
-				document.body.appendChild(this.loadingOverlay);
+			// Ensure spinner keyframes exist exactly once globally — engine is fully
+			// self-contained, no host CSS needed.
+			if (!document.getElementById('phong-360-spinner-keyframes')) {
+				const kf = document.createElement('style');
+				kf.id = 'phong-360-spinner-keyframes';
+				kf.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+				document.head.appendChild(kf);
 			}
+
+			// Container-scoped lookup. NEVER use document.getElementById here — multiple
+			// viewers on the same page would collide on a global id.
+			this.loadingOverlay = this.container.querySelector('#loading-overlay');
+
+			if (this.loadingOverlay) {
+				// Host page pre-created the overlay inside our container.
+				// Override transition + bg inline so engine config wins over host CSS.
+				this.loadingOverlay.style.transition = `opacity ${fadeOut}ms ease-out`;
+				this.loadingOverlay.style.backgroundColor = bg;
+				this._ownsOverlay = false;
+				return;
+			}
+
+			// No host overlay: create our own INSIDE the container (not document.body),
+			// so each viewer instance has its own.
+			this.loadingOverlay = document.createElement('div');
+			this.loadingOverlay.id = 'loading-overlay';
+			this.loadingOverlay.style.cssText = `
+				position: absolute;
+				inset: 0;
+				background: ${bg};
+				z-index: 10;
+				display: none;
+				justify-content: center;
+				align-items: center;
+				flex-direction: column;
+				transition: opacity ${fadeOut}ms ease-out;
+				pointer-events: none;
+			`;
+
+			const spinner = document.createElement('div');
+			spinner.className = 'spinner';
+			spinner.style.cssText = `
+				border: 4px solid rgba(255, 255, 255, 0.1);
+				border-top: 4px solid rgba(255, 255, 255, 0.8);
+				border-radius: 50%;
+				width: 50px;
+				height: 50px;
+				animation: spin 1s linear infinite;
+			`;
+
+			this.loadingOverlay.appendChild(spinner);
+			this.container.appendChild(this.loadingOverlay);
+			this._ownsOverlay = true;
 		}
 
 		/**
