@@ -1155,3 +1155,116 @@
 .p360-slot {
 	display: contents;
 }
+
+/* ============================================================
+   Model Filter — pill toggles
+   ============================================================ */
+
+.p360-model-filter {
+	padding: 12px 16px 16px;
+	border-bottom: 1px solid var(--p360-border);
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.p360-model-filter-heading {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--p360-text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.6px;
+	margin-bottom: 2px;
+}
+
+.p360-model-filter-arch {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.p360-model-filter-sublist {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding-left: 10px;
+	margin-top: 2px;
+	border-left: 1px solid var(--p360-border);
+}
+
+.p360-model-filter label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0;
+	padding: 5px 11px;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1;
+	color: var(--p360-text-muted);
+	background: var(--p360-hover-bg);
+	border: 1px solid var(--p360-border);
+	border-radius: 999px;
+	cursor: pointer;
+	user-select: none;
+	white-space: nowrap;
+	transition:
+		color var(--p360-transition),
+		background var(--p360-transition),
+		border-color var(--p360-transition);
+}
+
+.p360-model-filter-arch > label {
+	font-size: 12px;
+	font-weight: 600;
+	padding: 6px 13px;
+	align-self: flex-start;
+}
+
+.p360-model-filter label:hover {
+	color: var(--p360-text);
+	border-color: var(--p360-border-strong);
+	background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='light'] .p360-model-filter label:hover {
+	background: rgba(0, 0, 0, 0.06);
+}
+
+.p360-model-filter label:has(input:checked) {
+	color: var(--p360-accent-hover);
+	background: var(--p360-accent-active);
+	border-color: var(--p360-accent-border);
+}
+
+.p360-model-filter label:has(input:checked):hover {
+	background: rgba(225, 62, 19, 0.32);
+}
+
+.p360-model-filter input[type='checkbox'] {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+.p360-model-filter input[type='checkbox']:focus-visible + * {
+	/* Fallback when sibling text is in same label — apply ring to label */
+}
+
+.p360-model-filter label:focus-within {
+	outline: 2px solid var(--p360-accent);
+	outline-offset: 2px;
+}
+
+.p360-model-filter-bucket {
+	display: flex;
+}
+
+.p360-model-filter-bucket > label {
+	align-self: flex-start;
+}
