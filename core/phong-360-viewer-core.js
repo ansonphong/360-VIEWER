@@ -232,8 +232,8 @@
 				},
 				loading: {
 					backgroundColor: '#000', // Drives canvas inline bg, overlay bg, scene.background, and renderer clear color (parsed via THREE.Color).
-					fadeInDuration: 400, // ms; overlay fade-IN before NEW image loads (subsequent loads only). 0 = instant snap.
-					fadeOutDuration: 400 // ms; overlay fade-OUT after first painted frame. 0 = instant.
+					fadeInDuration: 500, // ms; overlay fade-IN before NEW image loads (subsequent loads only). 0 = instant snap.
+					fadeOutDuration: 500 // ms; overlay fade-OUT after first painted frame. 0 = instant.
 				}
 			};
 		}
