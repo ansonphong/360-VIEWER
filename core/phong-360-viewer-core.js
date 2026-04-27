@@ -626,9 +626,20 @@
 				textureLoaded: !!texture.image
 			});
 
-			// Update mesh
+			// Dispose previous material AND its texture at swap time. Doing this here
+			// (rather than before fetch in loadImage) keeps the old panorama renderable
+			// through the entire fade-in and network window — so a failed load can fade
+			// back out and reveal the previous image, and an in-flight fade-in still has
+			// valid pixels to mask.
 			if (this.mesh.material) {
-				console.log('[Phong360ViewerCore] Disposing old material');
+				console.log('[Phong360ViewerCore] Disposing old material + texture');
+				const oldUniforms = this.mesh.material.uniforms;
+				if (oldUniforms && oldUniforms.equirectangularMap && oldUniforms.equirectangularMap.value) {
+					const oldTexture = oldUniforms.equirectangularMap.value;
+					if (oldTexture !== texture) {
+						oldTexture.dispose();
+					}
+				}
 				this.mesh.material.dispose();
 			}
 			this.mesh.material = material;
