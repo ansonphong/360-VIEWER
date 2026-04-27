@@ -1419,6 +1419,13 @@ class Phong360LibraryUI {
 			// Start observing lazy images
 			this._observeImages();
 		}
+
+		// Notify consumers (e.g. gallery-integration's teaser-row injector)
+		// that section DOM has just been rebuilt. `filtered` is the array
+		// that was actually rendered — already model-filtered.
+		if (this.callbacks && typeof this.callbacks.onSectionsRendered === 'function') {
+			this.callbacks.onSectionsRendered(filtered, this._isModelFilterActive());
+		}
 	}
 
 	_isModelFilterActive() {
