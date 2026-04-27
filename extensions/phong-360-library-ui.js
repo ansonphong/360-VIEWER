@@ -1376,7 +1376,17 @@ class Phong360LibraryUI {
 	// --------------------------------------------------------
 
 	_renderSections(sections) {
-		this._contentEl.innerHTML = '';
+		// Selective clear — preserve persistent UI (header + filter bar) and
+		// only remove section/empty-state children. The old code wiped
+		// innerHTML and re-attached _headerEl + _modelFilterContainer, which
+		// destroyed the .p360-filter-bar wrapper introduced for the new
+		// dropdown layout. The bar is now a permanent child of _contentEl.
+		const keep = new Set(
+			[this._headerEl, this._filterBarEl].filter(Boolean)
+		);
+		Array.from(this._contentEl.children).forEach((child) => {
+			if (!keep.has(child)) this._contentEl.removeChild(child);
+		});
 
 		const collScoped = this.filterCollection
 			? sections.filter((s) => s.id === this.filterCollection || s.slug === this.filterCollection)
@@ -1408,16 +1418,6 @@ class Phong360LibraryUI {
 			}
 			// Start observing lazy images
 			this._observeImages();
-		}
-
-		// Re-attach (in correct order — header first, then filter block) the
-		// elements that lived in _contentEl before innerHTML='' wiped them.
-		if (this._headerEl) {
-			this._contentEl.insertBefore(this._headerEl, this._contentEl.firstChild);
-		}
-		if (this._modelFilterContainer) {
-			const anchor = this._headerEl ? this._headerEl.nextSibling : this._contentEl.firstChild;
-			this._contentEl.insertBefore(this._modelFilterContainer, anchor);
 		}
 	}
 
@@ -1658,8 +1658,10 @@ class Phong360LibraryUI {
 	}
 
 	_buildFilterBar() {
-		if (this._filterBarEl) return;
+		if (this._filterBarEl && this._filterBarEl.parentNode === this._contentEl) return;
 		if (!this._contentEl) return;
+		// If a stale reference exists but the node was detached, drop it so we rebuild.
+		this._filterBarEl = null;
 
 		const bar = document.createElement('div');
 		bar.className = 'p360-filter-bar';

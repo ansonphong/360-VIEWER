@@ -138,7 +138,7 @@
 	width: 44px;
 	height: 44px;
 	border: var(--p360-toggle-btn-border);
-	border-radius: 8px;
+	border-radius: 999px;
 	background: var(--p360-toggle-btn-bg);
 	color: rgba(255, 255, 255, 0.8);
 	font-size: 20px;
