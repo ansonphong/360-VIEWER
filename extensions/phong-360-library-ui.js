@@ -1447,6 +1447,11 @@ class Phong360LibraryUI {
 	_applyModelFilter() {
 		this._renderSections(this._sections);
 		this._writeHash();
+		this._renderActivePills();
+		this._updateFilterCountBadge();
+		if (this._filterClearBtn) {
+			this._filterClearBtn.style.display = this._isModelFilterActive() ? '' : 'none';
+		}
 	}
 
 	_buildModelFilter(facets) {
