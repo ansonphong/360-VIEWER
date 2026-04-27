@@ -164,6 +164,15 @@
 			this.animationFrameId = null;
 			this.isTabVisible = true;
 
+			// Latest-wins load token: every loadImage() call increments this.
+			// Stale completions (token mismatch) discard their loaded texture and bail.
+			this._loadToken = 0;
+
+			// Ownership flag for the loading overlay. True when the engine created it
+			// itself (and may remove it on destroy). False when a host page provided
+			// the element — in that case destroy() leaves it alone.
+			this._ownsOverlay = false;
+
 			// Initialize
 			this.init();
 		}
@@ -220,6 +229,11 @@
 				},
 				controls: {
 					enableZoom: true // Mouse wheel + pinch zoom. Set false to let page scroll over canvas.
+				},
+				loading: {
+					backgroundColor: '#000', // Drives canvas inline bg, overlay bg, scene.background, and renderer clear color (parsed via THREE.Color).
+					fadeInDuration: 400, // ms; overlay fade-IN before NEW image loads (subsequent loads only). 0 = instant snap.
+					fadeOutDuration: 400 // ms; overlay fade-OUT after first painted frame. 0 = instant.
 				}
 			};
 		}
