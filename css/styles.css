@@ -204,7 +204,12 @@ canvas {
 	z-index: -1;
 }
 
-/* Loading Overlay */
+/* Loading Overlay
+   Note: transition + background are set inline by Phong360ViewerCore from
+   config.loading.fadeOutDuration / config.loading.backgroundColor. The CSS
+   below is a fallback for any host pages that pre-create the overlay before
+   the engine boots; engine-created overlays use position: absolute scoped to
+   the viewer container, not these fixed-position fallbacks. */
 #loading-overlay {
 	position: fixed;
 	top: 0;
@@ -217,7 +222,6 @@ canvas {
 	justify-content: center;
 	align-items: center;
 	flex-direction: column;
-	transition: opacity 200ms ease-in-out;
 }
 
 #loading-overlay .spinner {
