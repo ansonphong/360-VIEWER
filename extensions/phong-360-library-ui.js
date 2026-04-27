@@ -1734,7 +1734,11 @@ class Phong360LibraryUI {
 			document.addEventListener('click', (e) => {
 				if (!this._filterDropdown) return;
 				if (this._filterDropdown.dataset.state !== 'open') return;
-				if (bar.contains(e.target)) return;
+				// Only clicks INSIDE the dropdown panel itself keep it open.
+				// Trigger toggles via its own handler (stopPropagation), so
+				// clicks anywhere else — including pills, the bar's
+				// background, sections, header — close the dropdown.
+				if (this._filterDropdown.contains(e.target)) return;
 				this._filterDropdown.dataset.state = 'closed';
 				this._filterTrigger.setAttribute('aria-expanded', 'false');
 			});
