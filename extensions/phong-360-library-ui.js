@@ -944,44 +944,6 @@ class Phong360LibraryUI {
 		this._resWrapper.appendChild(this._resDropdown);
 		this._toolbar.appendChild(this._resWrapper);
 
-		// Filter (model) dropdown — hidden until facets arrive
-		this._filterWrapper = document.createElement('div');
-		this._filterWrapper.className = 'p360-filter-wrapper';
-		this._filterWrapper.style.display = 'none';
-
-		this._filterBtn = document.createElement('button');
-		this._filterBtn.className = 'p360-toolbar-btn p360-filter-btn';
-		this._filterBtn.title = 'Filter by model';
-		this._filterBtn.setAttribute('aria-haspopup', 'menu');
-		this._filterBtn.setAttribute('aria-expanded', 'false');
-		this._filterBtn.innerHTML =
-			'<i class="ph ph-funnel-simple"></i>' +
-			'<span class="p360-filter-btn-badge" data-count="0"></span>';
-		this._filterCountBadge = this._filterBtn.querySelector('.p360-filter-btn-badge');
-		this._filterBtn.addEventListener('click', (e) => {
-			e.stopPropagation();
-			const isOpen = this._filterDropdown.dataset.state === 'open';
-			if (isOpen) {
-				this._filterDropdown.dataset.state = 'closed';
-				this._filterBtn.setAttribute('aria-expanded', 'false');
-			} else {
-				this._filterDropdown.dataset.state = 'open';
-				this._filterBtn.setAttribute('aria-expanded', 'true');
-				if (this._resDropdown) this._resDropdown.classList.remove('open');
-				this._syncFilterUIFromState();
-			}
-		});
-
-		this._filterDropdown = document.createElement('div');
-		this._filterDropdown.className = 'p360-filter-dropdown';
-		this._filterDropdown.dataset.state = 'closed';
-		this._filterDropdown.setAttribute('role', 'menu');
-		this._filterDropdown.addEventListener('click', (e) => e.stopPropagation());
-
-		this._filterWrapper.appendChild(this._filterBtn);
-		this._filterWrapper.appendChild(this._filterDropdown);
-		this._toolbar.appendChild(this._filterWrapper);
-
 		// Projection toggle button
 		this._projectionBtn = document.createElement('button');
 		this._projectionBtn.className = 'p360-toolbar-btn';
@@ -1023,17 +985,6 @@ class Phong360LibraryUI {
 		// Close resolution dropdown on outside click
 		document.addEventListener('click', () => {
 			if (this._resDropdown) this._resDropdown.classList.remove('open');
-			if (this._filterDropdown && this._filterDropdown.dataset.state === 'open') {
-				this._filterDropdown.dataset.state = 'closed';
-				if (this._filterBtn) this._filterBtn.setAttribute('aria-expanded', 'false');
-			}
-		});
-		document.addEventListener('keydown', (e) => {
-			if (e.key !== 'Escape') return;
-			if (this._filterDropdown && this._filterDropdown.dataset.state === 'open') {
-				this._filterDropdown.dataset.state = 'closed';
-				if (this._filterBtn) this._filterBtn.setAttribute('aria-expanded', 'false');
-			}
 		});
 	}
 
@@ -1499,12 +1450,12 @@ class Phong360LibraryUI {
 	}
 
 	_buildModelFilter(facets) {
-		// Reset dropdown contents and pill bar; toolbar button visibility
-		// follows facet availability.
+		// Build the filter bar (self-contained: trigger + dropdown + pills)
+		// inside _contentEl so the gallery's toolbar relocation can't touch it.
+		this._buildFilterBar();
 		if (this._filterDropdown) this._filterDropdown.innerHTML = '';
 		this._modelFilterContainer = null;
-		if (this._filterWrapper) this._filterWrapper.style.display = 'none';
-		this._buildActivePillsBar();
+		if (this._filterBarEl) this._filterBarEl.style.display = 'none';
 		if (this._activePillsEl) this._activePillsEl.innerHTML = '';
 
 		if (!facets || !this._filterDropdown) return;
@@ -1627,7 +1578,7 @@ class Phong360LibraryUI {
 
 		this._filterDropdown.appendChild(wrap);
 		this._modelFilterContainer = wrap;
-		if (this._filterWrapper) this._filterWrapper.style.display = '';
+		if (this._filterBarEl) this._filterBarEl.style.display = '';
 
 		// Restore from URL on first build, then listen for back/forward
 		this._readHash();
@@ -1706,12 +1657,30 @@ class Phong360LibraryUI {
 		}
 	}
 
-	_buildActivePillsBar() {
-		if (this._activePillsEl && this._activePillsEl.parentNode === this._contentEl) return;
+	_buildFilterBar() {
+		if (this._filterBarEl) return;
 		if (!this._contentEl) return;
+
 		const bar = document.createElement('div');
-		bar.className = 'p360-active-filters';
-		bar.addEventListener('click', (e) => {
+		bar.className = 'p360-filter-bar';
+		bar.style.display = 'none';
+
+		const trigger = document.createElement('button');
+		trigger.type = 'button';
+		trigger.className = 'p360-filter-trigger';
+		trigger.setAttribute('aria-haspopup', 'menu');
+		trigger.setAttribute('aria-expanded', 'false');
+		trigger.innerHTML =
+			'<i class="ph ph-funnel-simple"></i>' +
+			'<span class="p360-filter-trigger-label">Filter</span>' +
+			'<span class="p360-filter-trigger-count" data-count="0"></span>' +
+			'<i class="ph ph-caret-down p360-filter-trigger-caret"></i>';
+		this._filterTrigger = trigger;
+		this._filterCountBadge = trigger.querySelector('.p360-filter-trigger-count');
+
+		const pills = document.createElement('div');
+		pills.className = 'p360-active-filters';
+		pills.addEventListener('click', (e) => {
 			const pill = e.target.closest('.p360-active-pill');
 			if (!pill) return;
 			const kind = pill.dataset.kind;
@@ -1724,12 +1693,53 @@ class Phong360LibraryUI {
 			this._syncFilterUIFromState();
 			this._applyModelFilter();
 		});
+		this._activePillsEl = pills;
+
+		const dropdown = document.createElement('div');
+		dropdown.className = 'p360-filter-dropdown';
+		dropdown.dataset.state = 'closed';
+		dropdown.setAttribute('role', 'menu');
+		dropdown.addEventListener('click', (e) => e.stopPropagation());
+		this._filterDropdown = dropdown;
+
+		trigger.addEventListener('click', (e) => {
+			e.stopPropagation();
+			const isOpen = dropdown.dataset.state === 'open';
+			dropdown.dataset.state = isOpen ? 'closed' : 'open';
+			trigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+			if (!isOpen) this._syncFilterUIFromState();
+		});
+
+		bar.appendChild(trigger);
+		bar.appendChild(pills);
+		bar.appendChild(dropdown);
+
+		// Insert as the first child of _contentEl so it sits above all sections
 		if (this._contentEl.firstChild) {
 			this._contentEl.insertBefore(bar, this._contentEl.firstChild);
 		} else {
 			this._contentEl.appendChild(bar);
 		}
-		this._activePillsEl = bar;
+		this._filterBarEl = bar;
+
+		// Outside click + ESC close the dropdown
+		if (!this._filterOutsideBound) {
+			document.addEventListener('click', (e) => {
+				if (!this._filterDropdown) return;
+				if (this._filterDropdown.dataset.state !== 'open') return;
+				if (bar.contains(e.target)) return;
+				this._filterDropdown.dataset.state = 'closed';
+				this._filterTrigger.setAttribute('aria-expanded', 'false');
+			});
+			document.addEventListener('keydown', (e) => {
+				if (e.key !== 'Escape') return;
+				if (!this._filterDropdown) return;
+				if (this._filterDropdown.dataset.state !== 'open') return;
+				this._filterDropdown.dataset.state = 'closed';
+				this._filterTrigger.setAttribute('aria-expanded', 'false');
+			});
+			this._filterOutsideBound = true;
+		}
 	}
 
 	_renderActivePills() {

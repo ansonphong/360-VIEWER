@@ -1180,50 +1180,101 @@
 }
 
 /* ============================================================
-   Filter dropdown (toolbar) + active pill chip bar
+   Filter Bar — sits at top of sidebar content (above sections)
+   Contains: trigger button + active pill chips + dropdown panel
    ============================================================ */
 
-.p360-filter-wrapper {
+.p360-filter-bar {
 	position: relative;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--p360-border);
 }
 
-.p360-filter-btn {
-	position: relative;
+.p360-filter-trigger {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px 6px 11px;
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1;
+	color: var(--p360-text);
+	background: var(--p360-hover-bg);
+	border: 1px solid var(--p360-border-strong);
+	border-radius: 999px;
+	cursor: pointer;
+	user-select: none;
+	transition: background var(--p360-transition), border-color var(--p360-transition), color var(--p360-transition);
 }
 
-.p360-filter-btn-badge {
-	position: absolute;
-	top: 3px;
-	right: 3px;
-	min-width: 16px;
-	height: 16px;
-	padding: 0 4px;
+.p360-filter-trigger:hover {
+	background: rgba(255, 255, 255, 0.10);
+	border-color: var(--p360-text-muted);
+}
+
+[data-theme='light'] .p360-filter-trigger:hover {
+	background: rgba(0, 0, 0, 0.08);
+}
+
+.p360-filter-trigger[aria-expanded='true'] {
+	color: var(--p360-accent-hover);
+	background: var(--p360-accent-active);
+	border-color: var(--p360-accent-border);
+}
+
+.p360-filter-trigger > i.ph {
+	font-size: 14px;
+	line-height: 1;
+}
+
+.p360-filter-trigger-caret {
+	transition: transform var(--p360-transition);
+	opacity: 0.7;
+}
+
+.p360-filter-trigger[aria-expanded='true'] .p360-filter-trigger-caret {
+	transform: rotate(180deg);
+}
+
+.p360-filter-trigger-count {
+	display: none;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
 	border-radius: 999px;
 	background: var(--p360-accent);
 	color: #fff;
 	font-size: 10px;
 	font-weight: 700;
-	line-height: 16px;
+	line-height: 18px;
 	text-align: center;
-	display: none;
-	box-shadow: 0 0 0 2px var(--p360-bg);
 }
 
-.p360-filter-btn-badge[data-count]:not([data-count='0']) {
+.p360-filter-trigger-count[data-count]:not([data-count='0']) {
 	display: inline-block;
 }
 
-.p360-filter-btn[aria-expanded='true'] {
-	color: var(--p360-accent);
-	border-color: var(--p360-accent-border);
+/* Active pills sit inline within the bar (display: contents lifts them
+   into the bar's flex layout); when there are none the wrapper hides. */
+.p360-active-filters {
+	display: contents;
 }
 
+.p360-active-filters:empty {
+	display: none;
+}
+
+/* Dropdown panel — anchored under the bar, full sidebar width */
 .p360-filter-dropdown {
 	position: absolute;
-	top: calc(100% + 6px);
-	right: 0;
-	min-width: 280px;
-	max-width: 360px;
+	top: calc(100% - 1px);
+	left: 12px;
+	right: 12px;
 	max-height: 60vh;
 	overflow-y: auto;
 	background: var(--p360-bg-elevated);
@@ -1232,7 +1283,7 @@
 	box-shadow: var(--p360-shadow);
 	padding: 12px 14px;
 	z-index: 300;
-	transform: translateY(8px);
+	transform: translateY(-6px);
 	opacity: 0;
 	pointer-events: none;
 	transition: transform 150ms ease, opacity 150ms ease;
@@ -1242,19 +1293,6 @@
 	transform: translateY(0);
 	opacity: 1;
 	pointer-events: auto;
-}
-
-/* Active filter pills bar — sits at top of sidebar content */
-.p360-active-filters {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 6px;
-	padding: 10px 16px;
-	border-bottom: 1px solid var(--p360-border);
-}
-
-.p360-active-filters:empty {
-	display: none;
 }
 
 .p360-active-pill {
