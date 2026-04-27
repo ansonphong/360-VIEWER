@@ -162,6 +162,7 @@ See the [Fork Guide](docs/FORK-GUIDE.md) for all configuration options.
 Pass overrides through `new Phong360ViewerCore({ config: { ... } })`. Notable toggles:
 
 - `controls.enableZoom` *(default `true`)* — set to `false` to disable mouse-wheel and pinch zoom so the host page scrolls normally over the canvas. Drag-to-pan and keyboard pan still work.
+- `controls.enablePan` *(default `true`)* — set to `false` to disable mouse drag, single-finger touch drag, and keyboard arrow/WASD pan. Pinch-zoom and auto-rotate are unaffected. Useful for mobile hero viewers where a single-finger vertical drag should scroll the page rather than rotate the panorama.
 - `loading.backgroundColor` *(default `'#000'`)* — drives canvas inline bg, overlay bg, `scene.background`, and `renderer.setClearColor`. All four stay in sync.
 - `loading.fadeInDuration` *(default `500` ms)* — overlay fade-in before a new image swaps in (subsequent `loadImage()` calls only). Set to `0` to snap straight to the new image.
 - `loading.fadeOutDuration` *(default `500` ms)* — overlay fade-out once the new image has painted. Set to `0` for instant reveal.

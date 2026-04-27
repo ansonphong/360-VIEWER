@@ -228,7 +228,8 @@
 					scrollZoom: 1.0 // Mouse wheel zoom multiplier
 				},
 				controls: {
-					enableZoom: true // Mouse wheel + pinch zoom. Set false to let page scroll over canvas.
+					enableZoom: true, // Mouse wheel + pinch zoom. Set false to let page scroll over canvas.
+					enablePan: true // Mouse drag, single-finger touch drag, keyboard arrow/WASD. Set false to let single-touch bubble (page scroll) and ignore drag/keys. Pinch zoom still works (gated separately by enableZoom). Auto-rotate is unaffected.
 				},
 				loading: {
 					backgroundColor: '#000', // Drives canvas inline bg, overlay bg, scene.background, and renderer clear color (parsed via THREE.Color).
@@ -774,6 +775,8 @@
 		// ============================================================================
 
 		onPointerDown(event) {
+			// Pan disabled — let pointer events bubble so touch can scroll the page.
+			if (!this.config.controls.enablePan) return;
 			this.isPointerDown = true;
 			this.isUserInteracting = true;
 			this.pointerStartX = event.clientX;
@@ -843,24 +846,28 @@
 				case 'ArrowLeft':
 				case 'a':
 				case 'A':
+					if (!this.config.controls.enablePan) break;
 					this.activeKeys.panLeft = true;
 					this.startContinuousPan();
 					break;
 				case 'ArrowRight':
 				case 'd':
 				case 'D':
+					if (!this.config.controls.enablePan) break;
 					this.activeKeys.panRight = true;
 					this.startContinuousPan();
 					break;
 				case 'ArrowUp':
 				case 'w':
 				case 'W':
+					if (!this.config.controls.enablePan) break;
 					this.activeKeys.panUp = true;
 					this.startContinuousPan();
 					break;
 				case 'ArrowDown':
 				case 's':
 				case 'S':
+					if (!this.config.controls.enablePan) break;
 					this.activeKeys.panDown = true;
 					this.startContinuousPan();
 					break;
@@ -977,6 +984,8 @@
 
 			// Handle single-finger drag (mobile-specific direct manipulation)
 			if (event.touches.length === 1) {
+				// Pan disabled — let single-touch bubble so the page can scroll over the canvas.
+				if (!this.config.controls.enablePan) return;
 				const touch = event.touches[0];
 				this.isTouchDragging = true;
 				this.isUserInteracting = true;
