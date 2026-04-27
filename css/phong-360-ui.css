@@ -1198,7 +1198,9 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	padding: 6px 10px 6px 11px;
+	height: 30px;
+	box-sizing: border-box;
+	padding: 0 11px;
 	font: inherit;
 	font-size: 12px;
 	font-weight: 600;
@@ -1253,6 +1255,7 @@
 	font-weight: 700;
 	line-height: 18px;
 	text-align: center;
+	flex-shrink: 0;
 }
 
 .p360-filter-trigger-count[data-count]:not([data-count='0']) {
@@ -1299,9 +1302,11 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
-	padding: 4px 6px 4px 10px;
+	height: 30px;
+	box-sizing: border-box;
+	padding: 0 4px 0 11px;
 	font-size: 12px;
-	font-weight: 500;
+	font-weight: 600;
 	line-height: 1;
 	color: var(--p360-accent-hover);
 	background: var(--p360-accent-active);
