@@ -241,7 +241,6 @@
 	flex: 1;
 	overflow-y: auto;
 	overflow-x: hidden;
-	padding: 8px 0;
 	scrollbar-width: thin;
 	scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
