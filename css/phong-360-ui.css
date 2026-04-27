@@ -1157,24 +1157,159 @@
 }
 
 /* ============================================================
-   Model Filter — pill toggles
+   Filter dropdown (toolbar) + active pill chip bar
+   ============================================================ */
+
+.p360-filter-wrapper {
+	position: relative;
+}
+
+.p360-filter-btn {
+	position: relative;
+}
+
+.p360-filter-btn-badge {
+	position: absolute;
+	top: 3px;
+	right: 3px;
+	min-width: 16px;
+	height: 16px;
+	padding: 0 4px;
+	border-radius: 999px;
+	background: var(--p360-accent);
+	color: #fff;
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 16px;
+	text-align: center;
+	display: none;
+	box-shadow: 0 0 0 2px var(--p360-bg);
+}
+
+.p360-filter-btn-badge[data-count]:not([data-count='0']) {
+	display: inline-block;
+}
+
+.p360-filter-btn[aria-expanded='true'] {
+	color: var(--p360-accent);
+	border-color: var(--p360-accent-border);
+}
+
+.p360-filter-dropdown {
+	position: absolute;
+	top: calc(100% + 6px);
+	right: 0;
+	min-width: 280px;
+	max-width: 360px;
+	max-height: 60vh;
+	overflow-y: auto;
+	background: var(--p360-bg-elevated);
+	border: 1px solid var(--p360-border-strong);
+	border-radius: 12px;
+	box-shadow: var(--p360-shadow);
+	padding: 12px 14px;
+	z-index: 300;
+	transform: translateY(8px);
+	opacity: 0;
+	pointer-events: none;
+	transition: transform 150ms ease, opacity 150ms ease;
+}
+
+.p360-filter-dropdown[data-state='open'] {
+	transform: translateY(0);
+	opacity: 1;
+	pointer-events: auto;
+}
+
+/* Active filter pills bar — sits at top of sidebar content */
+.p360-active-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--p360-border);
+}
+
+.p360-active-filters:empty {
+	display: none;
+}
+
+.p360-active-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 6px 4px 10px;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1;
+	color: var(--p360-accent-hover);
+	background: var(--p360-accent-active);
+	border: 1px solid var(--p360-accent-border);
+	border-radius: 999px;
+	cursor: pointer;
+	font-family: inherit;
+	transition: background var(--p360-transition), color var(--p360-transition);
+}
+
+.p360-active-pill:hover {
+	background: rgba(225, 62, 19, 0.32);
+	color: #fff;
+}
+
+.p360-active-pill-x {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	border-radius: 999px;
+	opacity: 0.7;
+	font-size: 11px;
+}
+
+.p360-active-pill:hover .p360-active-pill-x {
+	opacity: 1;
+	background: rgba(255, 255, 255, 0.12);
+}
+
+/* ============================================================
+   Model Filter — pill toggles (inside filter dropdown)
    ============================================================ */
 
 .p360-model-filter {
-	padding: 12px 16px 16px;
-	border-bottom: 1px solid var(--p360-border);
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
 }
 
 .p360-model-filter-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 	font-size: 11px;
 	font-weight: 600;
 	color: var(--p360-text-muted);
 	text-transform: uppercase;
 	letter-spacing: 0.6px;
 	margin-bottom: 2px;
+}
+
+.p360-model-filter-clear {
+	background: transparent;
+	border: none;
+	color: var(--p360-accent-hover);
+	font: inherit;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.4px;
+	cursor: pointer;
+	padding: 2px 4px;
+	border-radius: 4px;
+	transition: background var(--p360-transition);
+}
+
+.p360-model-filter-clear:hover {
+	background: var(--p360-hover-bg);
 }
 
 .p360-model-filter-arch {

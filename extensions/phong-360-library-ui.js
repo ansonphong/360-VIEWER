@@ -944,6 +944,44 @@ class Phong360LibraryUI {
 		this._resWrapper.appendChild(this._resDropdown);
 		this._toolbar.appendChild(this._resWrapper);
 
+		// Filter (model) dropdown — hidden until facets arrive
+		this._filterWrapper = document.createElement('div');
+		this._filterWrapper.className = 'p360-filter-wrapper';
+		this._filterWrapper.style.display = 'none';
+
+		this._filterBtn = document.createElement('button');
+		this._filterBtn.className = 'p360-toolbar-btn p360-filter-btn';
+		this._filterBtn.title = 'Filter by model';
+		this._filterBtn.setAttribute('aria-haspopup', 'menu');
+		this._filterBtn.setAttribute('aria-expanded', 'false');
+		this._filterBtn.innerHTML =
+			'<i class="ph ph-funnel-simple"></i>' +
+			'<span class="p360-filter-btn-badge" data-count="0"></span>';
+		this._filterCountBadge = this._filterBtn.querySelector('.p360-filter-btn-badge');
+		this._filterBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			const isOpen = this._filterDropdown.dataset.state === 'open';
+			if (isOpen) {
+				this._filterDropdown.dataset.state = 'closed';
+				this._filterBtn.setAttribute('aria-expanded', 'false');
+			} else {
+				this._filterDropdown.dataset.state = 'open';
+				this._filterBtn.setAttribute('aria-expanded', 'true');
+				if (this._resDropdown) this._resDropdown.classList.remove('open');
+				this._syncFilterUIFromState();
+			}
+		});
+
+		this._filterDropdown = document.createElement('div');
+		this._filterDropdown.className = 'p360-filter-dropdown';
+		this._filterDropdown.dataset.state = 'closed';
+		this._filterDropdown.setAttribute('role', 'menu');
+		this._filterDropdown.addEventListener('click', (e) => e.stopPropagation());
+
+		this._filterWrapper.appendChild(this._filterBtn);
+		this._filterWrapper.appendChild(this._filterDropdown);
+		this._toolbar.appendChild(this._filterWrapper);
+
 		// Projection toggle button
 		this._projectionBtn = document.createElement('button');
 		this._projectionBtn.className = 'p360-toolbar-btn';
@@ -985,6 +1023,17 @@ class Phong360LibraryUI {
 		// Close resolution dropdown on outside click
 		document.addEventListener('click', () => {
 			if (this._resDropdown) this._resDropdown.classList.remove('open');
+			if (this._filterDropdown && this._filterDropdown.dataset.state === 'open') {
+				this._filterDropdown.dataset.state = 'closed';
+				if (this._filterBtn) this._filterBtn.setAttribute('aria-expanded', 'false');
+			}
+		});
+		document.addEventListener('keydown', (e) => {
+			if (e.key !== 'Escape') return;
+			if (this._filterDropdown && this._filterDropdown.dataset.state === 'open') {
+				this._filterDropdown.dataset.state = 'closed';
+				if (this._filterBtn) this._filterBtn.setAttribute('aria-expanded', 'false');
+			}
 		});
 	}
 
@@ -1450,11 +1499,15 @@ class Phong360LibraryUI {
 	}
 
 	_buildModelFilter(facets) {
-		if (this._modelFilterContainer && this._modelFilterContainer.parentNode) {
-			this._modelFilterContainer.parentNode.removeChild(this._modelFilterContainer);
-		}
+		// Reset dropdown contents and pill bar; toolbar button visibility
+		// follows facet availability.
+		if (this._filterDropdown) this._filterDropdown.innerHTML = '';
 		this._modelFilterContainer = null;
-		if (!facets) return;
+		if (this._filterWrapper) this._filterWrapper.style.display = 'none';
+		this._buildActivePillsBar();
+		if (this._activePillsEl) this._activePillsEl.innerHTML = '';
+
+		if (!facets || !this._filterDropdown) return;
 
 		const archs = Array.isArray(facets.architectures) ? facets.architectures : [];
 		const models = Array.isArray(facets.models) ? facets.models : [];
@@ -1464,12 +1517,32 @@ class Phong360LibraryUI {
 			return;
 		}
 
+		// Cache facets so _renderActivePills can resolve display labels
+		this._modelFacets = { archs, models, customCount, unknownCount };
+
 		const wrap = document.createElement('div');
 		wrap.className = 'p360-model-filter';
 
 		const heading = document.createElement('div');
 		heading.className = 'p360-model-filter-heading';
-		heading.textContent = 'Model';
+		const headingLabel = document.createElement('span');
+		headingLabel.textContent = 'Model';
+		heading.appendChild(headingLabel);
+		const clearBtn = document.createElement('button');
+		clearBtn.type = 'button';
+		clearBtn.className = 'p360-model-filter-clear';
+		clearBtn.textContent = 'Clear all';
+		clearBtn.addEventListener('click', () => {
+			const s = this._modelFilterState;
+			s.architectures.clear();
+			s.models.clear();
+			s.includeCustom = false;
+			s.includeUnknown = false;
+			this._syncFilterUIFromState();
+			this._applyModelFilter();
+		});
+		heading.appendChild(clearBtn);
+		this._filterClearBtn = clearBtn;
 		wrap.appendChild(heading);
 
 		const modelsByArch = {};
@@ -1552,12 +1625,9 @@ class Phong360LibraryUI {
 			wrap.appendChild(row);
 		}
 
-		if (this._contentEl && this._contentEl.firstChild) {
-			this._contentEl.insertBefore(wrap, this._contentEl.firstChild);
-		} else if (this._contentEl) {
-			this._contentEl.appendChild(wrap);
-		}
+		this._filterDropdown.appendChild(wrap);
 		this._modelFilterContainer = wrap;
+		if (this._filterWrapper) this._filterWrapper.style.display = '';
 
 		// Restore from URL on first build, then listen for back/forward
 		this._readHash();
@@ -1618,16 +1688,95 @@ class Phong360LibraryUI {
 	}
 
 	_syncFilterUIFromState() {
-		if (!this._modelFilterContainer) return;
 		const s = this._modelFilterState;
-		const archCbs = this._modelFilterContainer.querySelectorAll('input[data-arch-id]');
-		archCbs.forEach((cb) => { cb.checked = s.architectures.has(cb.dataset.archId); });
-		const modCbs = this._modelFilterContainer.querySelectorAll('input[data-model-id]');
-		modCbs.forEach((cb) => { cb.checked = s.models.has(cb.dataset.modelId); });
-		const customCb = this._modelFilterContainer.querySelector('input[data-bucket="custom"]');
-		if (customCb) customCb.checked = s.includeCustom;
-		const unknownCb = this._modelFilterContainer.querySelector('input[data-bucket="unknown"]');
-		if (unknownCb) unknownCb.checked = s.includeUnknown;
+		if (this._modelFilterContainer) {
+			const archCbs = this._modelFilterContainer.querySelectorAll('input[data-arch-id]');
+			archCbs.forEach((cb) => { cb.checked = s.architectures.has(cb.dataset.archId); });
+			const modCbs = this._modelFilterContainer.querySelectorAll('input[data-model-id]');
+			modCbs.forEach((cb) => { cb.checked = s.models.has(cb.dataset.modelId); });
+			const customCb = this._modelFilterContainer.querySelector('input[data-bucket="custom"]');
+			if (customCb) customCb.checked = s.includeCustom;
+			const unknownCb = this._modelFilterContainer.querySelector('input[data-bucket="unknown"]');
+			if (unknownCb) unknownCb.checked = s.includeUnknown;
+		}
+		this._renderActivePills();
+		this._updateFilterCountBadge();
+		if (this._filterClearBtn) {
+			this._filterClearBtn.style.display = this._isModelFilterActive() ? '' : 'none';
+		}
+	}
+
+	_buildActivePillsBar() {
+		if (this._activePillsEl && this._activePillsEl.parentNode === this._contentEl) return;
+		if (!this._contentEl) return;
+		const bar = document.createElement('div');
+		bar.className = 'p360-active-filters';
+		bar.addEventListener('click', (e) => {
+			const pill = e.target.closest('.p360-active-pill');
+			if (!pill) return;
+			const kind = pill.dataset.kind;
+			const id = pill.dataset.id;
+			const s = this._modelFilterState;
+			if (kind === 'arch') s.architectures.delete(id);
+			else if (kind === 'model') s.models.delete(id);
+			else if (kind === 'bucket' && id === 'custom') s.includeCustom = false;
+			else if (kind === 'bucket' && id === 'unknown') s.includeUnknown = false;
+			this._syncFilterUIFromState();
+			this._applyModelFilter();
+		});
+		if (this._contentEl.firstChild) {
+			this._contentEl.insertBefore(bar, this._contentEl.firstChild);
+		} else {
+			this._contentEl.appendChild(bar);
+		}
+		this._activePillsEl = bar;
+	}
+
+	_renderActivePills() {
+		if (!this._activePillsEl) return;
+		this._activePillsEl.innerHTML = '';
+		const s = this._modelFilterState;
+		const facets = this._modelFacets || { archs: [], models: [] };
+		const archById = new Map(facets.archs.map((a) => [a.id, a]));
+		const modelById = new Map(facets.models.map((m) => [m.id, m]));
+
+		const make = (kind, id, label) => {
+			const btn = document.createElement('button');
+			btn.type = 'button';
+			btn.className = 'p360-active-pill';
+			btn.dataset.kind = kind;
+			btn.dataset.id = id;
+			btn.title = `Remove ${label} filter`;
+			const lbl = document.createElement('span');
+			lbl.className = 'p360-active-pill-label';
+			lbl.textContent = label;
+			const x = document.createElement('span');
+			x.className = 'p360-active-pill-x';
+			x.innerHTML = '<i class="ph ph-x"></i>';
+			btn.appendChild(lbl);
+			btn.appendChild(x);
+			this._activePillsEl.appendChild(btn);
+		};
+
+		s.architectures.forEach((id) => {
+			const a = archById.get(id);
+			make('arch', id, a ? (a.label || a.id) : id);
+		});
+		s.models.forEach((id) => {
+			const m = modelById.get(id);
+			make('model', id, m ? (m.displayName || m.id) : id);
+		});
+		if (s.includeCustom) make('bucket', 'custom', 'Other / Custom');
+		if (s.includeUnknown) make('bucket', 'unknown', 'Unknown');
+	}
+
+	_updateFilterCountBadge() {
+		if (!this._filterCountBadge) return;
+		const s = this._modelFilterState;
+		const count = s.architectures.size + s.models.size +
+			(s.includeCustom ? 1 : 0) + (s.includeUnknown ? 1 : 0);
+		this._filterCountBadge.dataset.count = String(count);
+		this._filterCountBadge.textContent = count > 0 ? String(count) : '';
 	}
 
 	_renderInfoDetails(imageData) {
