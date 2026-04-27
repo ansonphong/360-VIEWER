@@ -414,15 +414,56 @@
 		/**
 		 * Hide loading spinner
 		 */
+		/**
+		 * Fade the loading overlay OUT.
+		 * @returns {Promise<void>} Resolves when fade-out completes (overlay reaches opacity 0).
+		 */
 		hideLoading() {
-			if (this.loadingOverlay) {
-				this.loadingOverlay.style.opacity = '0';
+			if (!this.loadingOverlay) return Promise.resolve();
+			const duration = this.config.loading.fadeOutDuration;
+			const overlay = this.loadingOverlay;
+			// Re-assert transition inline in case it was overwritten elsewhere.
+			overlay.style.transition = `opacity ${duration}ms ease-out`;
+			overlay.style.opacity = '0';
+			return new Promise((resolve) => {
 				setTimeout(() => {
 					if (this.loadingOverlay) {
 						this.loadingOverlay.style.display = 'none';
 					}
-				}, 200);
-			}
+					resolve();
+				}, Math.max(duration, 0));
+			});
+		}
+
+		/**
+		 * Fade the loading overlay IN from transparent to opaque.
+		 * Used for subsequent loadImage() calls; first load's overlay is already opaque.
+		 * @returns {Promise<void>} Resolves when fade-in completes.
+		 */
+		fadeInLoading() {
+			if (!this.loadingOverlay) return Promise.resolve();
+			const duration = this.config.loading.fadeInDuration;
+			const overlay = this.loadingOverlay;
+
+			overlay.style.transition = `opacity ${duration}ms ease-in`;
+			overlay.style.display = 'flex';
+			overlay.style.opacity = '0';
+
+			return new Promise((resolve) => {
+				// Two rAFs: one to commit display:flex+opacity:0, one to flip opacity to 1
+				// so the CSS transition actually fires. Setting display+opacity in the
+				// same task with no paint between collapses the transition.
+				requestAnimationFrame(() => {
+					requestAnimationFrame(() => {
+						overlay.style.opacity = '1';
+						if (duration <= 0) {
+							resolve();
+						} else {
+							setTimeout(resolve, duration);
+						}
+					});
+				});
+			});
 		}
 
 		/**
