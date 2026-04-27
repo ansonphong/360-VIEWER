@@ -516,22 +516,31 @@
 		 * @param {number} height - Image height
 		 */
 		async loadImage(url, width = 4096, height = 2048) {
-			// Prevent concurrent loads
-			if (this.isLoading) {
-				console.log('[Phong360ViewerCore] Already loading, ignoring request');
-				return;
-			}
-
+			// Latest-wins concurrency: each call gets a unique token. Stale completions
+			// (token mismatch) discard their loaded texture and bail.
+			const token = ++this._loadToken;
+			const wasLoading = this.isLoading;
 			this.isLoading = true;
-			console.log('[Phong360ViewerCore] Loading image:', url);
 
-			// Show loading overlay (always - whether first load or switching)
-			this.showLoading();
+			console.log('[Phong360ViewerCore] Loading image:', url, '(token', token + ')');
 
-			// If not first load, dispose old texture
-			if (!this.isFirstLoad) {
-				this.disposeCurrentTexture();
+			// Decide on fade-in:
+			//   - First load: overlay was set up opaque by setupScene + showLoading; no fade-in.
+			//   - Already loading (rapid click): a prior fade-in is in flight or done; don't re-fade.
+			//   - Otherwise: fade overlay IN before texture swap.
+			let fadeInPromise;
+			if (this.isFirstLoad) {
+				this.showLoading();
+				fadeInPromise = Promise.resolve();
+			} else if (wasLoading) {
+				fadeInPromise = Promise.resolve();
+			} else {
+				fadeInPromise = this.fadeInLoading();
 			}
+
+			// IMPORTANT: do NOT call disposeCurrentTexture() here. The old texture must
+			// remain valid through the fade-in + network window. applyTexture() disposes
+			// the old texture at swap time.
 
 			const loader = new THREE.TextureLoader();
 
@@ -539,33 +548,67 @@
 				loader.load(
 					url,
 					(texture) => {
-						console.log('[Phong360ViewerCore] Texture loaded successfully:', url);
-						console.log(
-							'[Phong360ViewerCore] Texture dimensions:',
-							texture.image.width,
-							'x',
-							texture.image.height
-						);
+						// Stale check #1: a newer loadImage call superseded this one.
+						if (token !== this._loadToken) {
+							texture.dispose();
+							console.log('[Phong360ViewerCore] Stale load (token', token + '), discarding');
+							return;
+						}
 
-						this.applyTexture(texture);
-						console.log('[Phong360ViewerCore] Material applied to mesh');
+						console.log('[Phong360ViewerCore] Texture loaded:', url, '(token', token + ')');
 
-						// Hide loading overlay after a brief moment to ensure render
-						setTimeout(() => {
-							this.hideLoading();
-							this.isLoading = false;
-							this.isFirstLoad = false;
-						}, 200);
+						fadeInPromise.then(() => {
+							// Stale check #2: a newer load may have started while we awaited fade-in.
+							if (token !== this._loadToken) {
+								texture.dispose();
+								return;
+							}
 
-						resolve(texture);
+							this.applyTexture(texture); // disposes old material+texture at swap
+
+							// Double rAF: first commits the material change, second runs after
+							// the renderer has actually painted with it.
+							requestAnimationFrame(() => {
+								requestAnimationFrame(() => {
+									if (token !== this._loadToken) return;
+
+									this.hideLoading().then(() => {
+										if (token !== this._loadToken) return;
+										this.isLoading = false;
+										this.isFirstLoad = false;
+
+										if (this.container) {
+											this.container.dispatchEvent(
+												new CustomEvent('phong-360-loaded', {
+													bubbles: true,
+													detail: { url }
+												})
+											);
+										}
+									});
+
+									resolve(texture);
+								});
+							});
+						});
 					},
 					(progress) => {
 						// Optional: track loading progress
 					},
 					(error) => {
+						if (token !== this._loadToken) {
+							return;
+						}
 						console.error('[Phong360ViewerCore] Error loading image:', url, error);
-						this.hideLoading();
-						this.isLoading = false;
+
+						fadeInPromise.then(() => {
+							if (token !== this._loadToken) return;
+							this.hideLoading().then(() => {
+								if (token !== this._loadToken) return;
+								this.isLoading = false;
+							});
+						});
+
 						reject(error);
 					}
 				);
