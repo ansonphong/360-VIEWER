@@ -300,9 +300,11 @@
 		 * Setup Three.js scene
 		 */
 		setupScene() {
+			const clearColor = new THREE.Color(this.config.loading.backgroundColor);
+
 			// Scene
 			this.scene = new THREE.Scene();
-			this.scene.background = new THREE.Color(0x000000); // Set scene background to black
+			this.scene.background = clearColor;
 
 			// Camera
 			this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
@@ -310,10 +312,19 @@
 
 			// Renderer
 			this.renderer = new THREE.WebGLRenderer({ alpha: false, antialias: true });
-			this.renderer.setClearColor(0x000000, 1); // Set black background
+			this.renderer.setClearColor(clearColor, 1);
 			this.renderer.setPixelRatio(window.devicePixelRatio);
 			this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+
+			// Inline canvas backing color: belt-and-suspenders defense in case the GL
+			// drawing buffer is in a transient state during the very first composite.
+			this.renderer.domElement.style.backgroundColor = this.config.loading.backgroundColor;
+
 			this.container.appendChild(this.renderer.domElement);
+
+			// Synchronous first clear — guarantees the GL buffer is the configured color
+			// BEFORE the browser's next paint, regardless of when animate() first fires.
+			this.renderer.clear();
 
 			// Full-screen quad
 			const geometry = new THREE.PlaneGeometry(2, 2);
@@ -997,9 +1008,12 @@
 
 			this.update();
 
-			// Only render if mesh has material
 			if (this.mesh && this.mesh.material) {
 				this.renderer.render(this.scene, this.camera);
+			} else {
+				// No material yet — still clear the GL buffer so it stays the configured
+				// background color, never the GPU's uninitialized state.
+				this.renderer.clear();
 			}
 		}
 
