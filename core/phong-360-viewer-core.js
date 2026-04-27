@@ -217,6 +217,9 @@
 					mouse: 1.0, // Mouse drag multiplier (1.0 = true 1:1 tracking)
 					pinchZoom: 0.8, // Pinch zoom responsiveness
 					scrollZoom: 1.0 // Mouse wheel zoom multiplier
+				},
+				controls: {
+					enableZoom: true // Mouse wheel + pinch zoom. Set false to let page scroll over canvas.
 				}
 			};
 		}
@@ -679,6 +682,9 @@
 		}
 
 		onDocumentMouseWheel(event) {
+			// Zoom disabled — let the wheel event bubble so the page scrolls normally.
+			if (!this.config.controls.enableZoom) return;
+
 			// Check if mouse is over the canvas first
 			const elementUnderMouse = document.elementFromPoint(event.clientX, event.clientY);
 			const canvas = this.container.querySelector('canvas');
@@ -846,7 +852,7 @@
 
 		onTouchMove(event) {
 			// Handle pinch zoom (2 fingers) - DIRECT FOV manipulation like Google Maps
-			if (event.touches.length === 2 && this.isTouching) {
+			if (event.touches.length === 2 && this.isTouching && this.config.controls.enableZoom) {
 				event.preventDefault();
 				const currentDistance = this.getPinchDistance(event);
 				const initialDistance = this.lastTouchDistance;

@@ -157,6 +157,12 @@ Everything is driven by `360-viewer.json`:
 
 See the [Fork Guide](docs/FORK-GUIDE.md) for all configuration options.
 
+### Engine config (Phong360ViewerCore)
+
+Pass overrides through `new Phong360ViewerCore({ config: { ... } })`. Notable toggles:
+
+- `controls.enableZoom` *(default `true`)* — set to `false` to disable mouse-wheel and pinch zoom so the host page scrolls normally over the canvas. Drag-to-pan and keyboard pan still work.
+
 ---
 
 ## Documentation

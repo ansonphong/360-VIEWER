@@ -9,6 +9,7 @@ This project uses [Semantic Versioning](https://semver.org/). When updating the 
 ### Added
 
 - **`urlSync` constructor option** on `Phong360LibraryUI`. Accepts `true` (default, legacy `?img=<slug>` behavior), `false` (disable both directions), or `{read?, write?}` for per-direction override. The `write` formatter receives the image object and may return a URL string (→ `pushState`), `{url, replace: true}` (→ `replaceState`), or `null`/`undefined` (skip). See `docs/API.md` and `README.md`.
+- **`controls.enableZoom` config option** on `Phong360ViewerCore` (default `true`). When set to `false`, the mouse wheel and two-finger pinch no longer zoom the panorama — wheel events bubble up so the host page scrolls normally over the canvas. Drag-to-pan, keyboard pan, and auto-rotate are unaffected. Useful for embedded hero viewers where the canvas shouldn't trap page scrolling. Pass via `new Phong360ViewerCore({ config: { controls: { enableZoom: false } } })`.
 
 ### Changed
 
