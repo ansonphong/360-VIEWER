@@ -166,6 +166,7 @@ Pass overrides through `new Phong360ViewerCore({ config: { ... } })`. Notable to
 - `loading.backgroundColor` *(default `'#000'`)* — drives canvas inline bg, overlay bg, `scene.background`, and `renderer.setClearColor`. All four stay in sync.
 - `loading.fadeInDuration` *(default `500` ms)* — overlay fade-in before a new image swaps in (subsequent `loadImage()` calls only). Set to `0` to snap straight to the new image.
 - `loading.fadeOutDuration` *(default `500` ms)* — overlay fade-out once the new image has painted. Set to `0` for instant reveal.
+- `loading.showSpinner` *(default `true`)* — set to `false` to suppress the spinning indicator inside the engine-created loading overlay. The overlay itself still exists and drives fade-through-black transitions. No-op when the host provides its own overlay (host owns inner content). Useful for marketing/hero viewers where a UI spinner breaks the cinematic effect.
 
 The container element dispatches a bubbling `phong-360-loaded` CustomEvent (`detail: { url }`) **after the overlay fade-out completes** — i.e., once the new panorama is fully visible. Useful for synchronizing host-page UI (captions, auto-rotate, analytics).
 

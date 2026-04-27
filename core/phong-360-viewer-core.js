@@ -234,7 +234,8 @@
 				loading: {
 					backgroundColor: '#000', // Drives canvas inline bg, overlay bg, scene.background, and renderer clear color (parsed via THREE.Color).
 					fadeInDuration: 500, // ms; overlay fade-IN before NEW image loads (subsequent loads only). 0 = instant snap.
-					fadeOutDuration: 500 // ms; overlay fade-OUT after first painted frame. 0 = instant.
+					fadeOutDuration: 500, // ms; overlay fade-OUT after first painted frame. 0 = instant.
+					showSpinner: true // When false, suppress the spinning indicator inside the engine-created loading overlay. The overlay itself still exists and drives fade-through-black transitions. No-op for host-provided overlays (host owns inner content). Useful for marketing/hero viewers where a UI spinner breaks the cinematic effect.
 				}
 			};
 		}
@@ -386,18 +387,20 @@
 				pointer-events: none;
 			`;
 
-			const spinner = document.createElement('div');
-			spinner.className = 'spinner';
-			spinner.style.cssText = `
-				border: 4px solid rgba(255, 255, 255, 0.1);
-				border-top: 4px solid rgba(255, 255, 255, 0.8);
-				border-radius: 50%;
-				width: 50px;
-				height: 50px;
-				animation: spin 1s linear infinite;
-			`;
+			if (this.config.loading.showSpinner) {
+				const spinner = document.createElement('div');
+				spinner.className = 'spinner';
+				spinner.style.cssText = `
+					border: 4px solid rgba(255, 255, 255, 0.1);
+					border-top: 4px solid rgba(255, 255, 255, 0.8);
+					border-radius: 50%;
+					width: 50px;
+					height: 50px;
+					animation: spin 1s linear infinite;
+				`;
+				this.loadingOverlay.appendChild(spinner);
+			}
 
-			this.loadingOverlay.appendChild(spinner);
 			this.container.appendChild(this.loadingOverlay);
 			this._ownsOverlay = true;
 		}
