@@ -108,18 +108,52 @@ class BaseRenderer {
 		const wrapper = document.createElement('div');
 		wrapper.className = 'p360-thumbnail';
 		wrapper.dataset.imageId = image.id;
+		wrapper.dataset.status = image.status || 'ready';
+		if (image.primaryCollectionId !== undefined && image.primaryCollectionId !== null) {
+			wrapper.dataset.primaryCollectionId = image.primaryCollectionId;
+		}
 
-		const img = document.createElement('img');
 		const thumbPath = image.thumbnail?.path || image.thumbnail;
-		if (thumbPath) {
+		const isReady = !image._drifted && (!image.status || image.status === 'ready') && thumbPath;
+		if (isReady) {
+			const img = document.createElement('img');
 			// Lazy loading via IntersectionObserver
 			// Don't prepend baseUrl to absolute paths
 			const isAbsolute = thumbPath.startsWith('/') || thumbPath.startsWith('http');
 			img.dataset.src = isAbsolute ? thumbPath : this.config.baseUrl + thumbPath;
 			img.alt = image.title || image.name || '';
+			wrapper.appendChild(img);
+		} else {
+			wrapper.classList.add('p360-thumbnail--placeholder');
+			if (image._drifted) wrapper.classList.add('p360-thumbnail--drifted');
+			if (image.status === 'processing') wrapper.classList.add('p360-thumbnail--processing');
+			if (image.status === 'error') wrapper.classList.add('p360-thumbnail--error');
+			const placeholder = document.createElement('div');
+			placeholder.className = 'p360-placeholder-tile';
+			const icon = document.createElement('div');
+			icon.className = 'p360-placeholder-icon';
+			if (image._drifted) {
+				icon.textContent = '!';
+			} else if (image.status === 'processing') {
+				icon.className += ' p360-placeholder-spinner';
+			} else if (image.status === 'error') {
+				icon.textContent = '!';
+			}
+			const caption = document.createElement('div');
+			caption.className = 'p360-placeholder-caption';
+			if (image._drifted) {
+				caption.textContent = 'Recovering...';
+			} else if (image.status === 'processing') {
+				caption.textContent = 'Processing...';
+			} else if (image.status === 'error') {
+				caption.textContent = 'Failed - tap for options';
+			} else {
+				caption.textContent = 'Unavailable';
+			}
+			placeholder.appendChild(icon);
+			placeholder.appendChild(caption);
+			wrapper.appendChild(placeholder);
 		}
-
-		wrapper.appendChild(img);
 
 		// Render badges if present
 		const badges = image.badges || [];
@@ -129,7 +163,9 @@ class BaseRenderer {
 
 		wrapper.addEventListener('click', (e) => {
 			e.stopPropagation();
-			this.engine.onImageClick(image);
+			if (!image._drifted && (!image.status || image.status === 'ready')) {
+				this.engine.onImageClick(image);
+			}
 		});
 
 		return wrapper;
@@ -722,6 +758,20 @@ class Phong360LibraryUI {
 		this._userCollapsedOnDesktop = false;
 		this._wasDesktop = null;
 		this._currentImageId = null;
+		this._currentImageData = null;
+
+		// Owner-mode state (gallery management). Layer 4 dispatches
+		// p360-owner-mode and p360-owner-action handles API writes; Layer 3
+		// owns the DOM affordances and local optimistic mutations.
+		this._ownerState = {
+			enabled: false,
+			userId: null,
+			username: null,
+			selectedImages: new Set(),
+			dragInFlight: false,
+			truncated: false
+		};
+		this._ownerMenus = new Set();
 
 		// Model filter state (see plans/meta/2026-04-19-gallery-model-metadata/ §7.4)
 		this._modelFilterState = {
@@ -754,6 +804,7 @@ class Phong360LibraryUI {
 
 		// Initialize
 		this.init();
+		this._bindOwnerModeEvents();
 	}
 
 	async init() {
@@ -1202,21 +1253,29 @@ class Phong360LibraryUI {
 		}
 	}
 
+	_isViewerLoadableImage(image) {
+		if (!image) return false;
+		if (image._drifted) return false;
+		if (image.status && image.status !== 'ready') return false;
+		return Array.isArray(image.resolutions) && image.resolutions.length > 0;
+	}
+
 	_processLibraryData(data) {
 		this.libraryData = data;
 		this._context = data.context || null;
 		this._sections = data.sections || [];
+		this._ownerState.truncated = !!(data.truncated || (data.meta && data.meta.truncated));
 		this._allImages = [];
 
 		// Flatten all images from all sections
 		for (const section of this._sections) {
 			if (section.images) {
-				this._allImages.push(...section.images);
+				this._allImages.push(...section.images.filter((img) => this._isViewerLoadableImage(img)));
 			}
 			if (section.items) {
 				// items can also contain images (avatar sections)
 				for (const item of section.items) {
-					if (item.resolutions) this._allImages.push(item);
+					if (this._isViewerLoadableImage(item)) this._allImages.push(item);
 				}
 			}
 		}
@@ -1247,6 +1306,7 @@ class Phong360LibraryUI {
 		// Render (sections first since it clears innerHTML, then context prepends header)
 		this._renderSections(this._sections);
 		this._renderContext(this._context);
+		this._syncOwnerDecorations();
 
 		// Callbacks
 		if (this.callbacks.onLibraryLoad) {
@@ -1395,7 +1455,7 @@ class Phong360LibraryUI {
 		const filtered = this._applyModelFilterToSections(collScoped);
 
 		const allEmpty = filtered.length === 0 || filtered.every(
-			(s) => !(s.images && s.images.length) && !(s.items && s.items.length)
+			(s) => !s.keepEmpty && !(s.images && s.images.length) && !(s.items && s.items.length)
 		);
 
 		if (allEmpty) {
@@ -1426,6 +1486,7 @@ class Phong360LibraryUI {
 		if (this.callbacks && typeof this.callbacks.onSectionsRendered === 'function') {
 			this.callbacks.onSectionsRendered(filtered, this._isModelFilterActive());
 		}
+		this._syncOwnerDecorations();
 	}
 
 	_isModelFilterActive() {
@@ -2091,6 +2152,490 @@ class Phong360LibraryUI {
 
 		const listItem = this._contentEl.querySelector(`.p360-list-item[data-image-id="${imageId}"]`);
 		if (listItem) listItem.classList.add('p360-list-item--selected');
+	}
+
+	// --------------------------------------------------------
+	// Owner-mode gallery management
+	// --------------------------------------------------------
+
+	setLibrary(data) { this._processLibraryData(data); }
+	loadLibraryData(data) { this.setLibrary(data); }
+
+	_bindOwnerModeEvents() {
+		document.addEventListener('p360-owner-mode', (event) => {
+			const detail = event.detail || {};
+			if (detail.enabled) this._enableOwnerMode(detail);
+			else this._disableOwnerMode();
+		});
+		document.addEventListener('p360-library-replace', (event) => {
+			if (event.detail) this.setLibrary(event.detail);
+		});
+		document.addEventListener('p360-rollback', (event) => {
+			const snap = event.detail || {};
+			if (snap.kind === 'reorder') this.reorderImages(snap.collectionId, snap.imageIds || []);
+			if (snap.kind === 'move') {
+				this.moveImageToSection(
+					snap.imageId,
+					snap.fromCollectionId,
+					snap.fromIndex == null ? 1 : snap.fromIndex + 1
+				);
+			}
+		});
+		document.addEventListener('p360-toast', (event) => {
+			const detail = event.detail || {};
+			this.showToast(detail.message || '', detail.level || 'info');
+		});
+	}
+
+	_enableOwnerMode(detail) {
+		this._ownerState.enabled = true;
+		this._ownerState.userId = detail.userId || null;
+		this._ownerState.username = detail.username || null;
+		this._sidebar?.classList.add('p360-sidebar--owner');
+		this._syncOwnerDecorations();
+	}
+
+	_disableOwnerMode() {
+		this._ownerState.enabled = false;
+		this._ownerState.userId = null;
+		this._ownerState.username = null;
+		this._ownerState.selectedImages.clear();
+		this._closeOwnerMenus();
+		this._sidebar?.classList.remove('p360-sidebar--owner', 'p360-drag-in-flight');
+		this._syncOwnerDecorations();
+	}
+
+	_syncOwnerDecorations() {
+		if (!this._contentEl) return;
+		const enabled = !!this._ownerState.enabled;
+		this._sidebar?.classList.toggle('p360-sidebar--owner', enabled);
+		if (!enabled) {
+			this._contentEl.querySelectorAll('[data-owner-ui="true"]').forEach((el) => el.remove());
+			this._contentEl.querySelectorAll('[draggable="true"]').forEach((el) => el.removeAttribute('draggable'));
+			return;
+		}
+		this._injectOwnerCollectionMenus();
+		this._injectOwnerThumbnailMenus();
+		this._injectOwnerAddCollection();
+	}
+
+	_injectOwnerAddCollection() {
+		if (this._contentEl.querySelector('.p360-owner-add-collection')) return;
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'p360-owner-add-collection';
+		btn.dataset.ownerUi = 'true';
+		btn.textContent = '+ New Collection';
+		btn.addEventListener('click', () => {
+			const name = window.prompt('Collection name');
+			if (!name || !name.trim()) return;
+			this._dispatchOwnerAction('create-collection', null, { name: name.trim() });
+		});
+		const other = this._contentEl.querySelector('.p360-section[data-section-id="uncategorized"]');
+		if (other) this._contentEl.insertBefore(btn, other);
+		else this._contentEl.appendChild(btn);
+	}
+
+	_injectOwnerCollectionMenus() {
+		this._contentEl.querySelectorAll('.p360-section[data-section-id]').forEach((sectionEl) => {
+			const section = this._sectionById(sectionEl.dataset.sectionId);
+			const isOther = !section || section.isOther || section.collectionId == null || section.id === 'uncategorized';
+			const heading = sectionEl.querySelector(':scope > .p360-section-heading');
+			if (!heading) return;
+			sectionEl.dataset.collectionId = section && section.collectionId != null ? section.collectionId : '';
+			if (isOther) return;
+			if (!heading.querySelector('.p360-owner-section-menu')) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'p360-owner-section-menu';
+				btn.dataset.ownerUi = 'true';
+				btn.setAttribute('aria-label', 'Collection actions');
+				btn.textContent = '...';
+				btn.addEventListener('mousedown', (e) => e.stopPropagation());
+				btn.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+				btn.addEventListener('click', (e) => {
+					e.stopPropagation();
+					this._openCollectionMenu(btn, section);
+				});
+				heading.appendChild(btn);
+			}
+			heading.draggable = !this._ownerState.truncated;
+			heading.setAttribute('aria-disabled', this._ownerState.truncated ? 'true' : 'false');
+			heading.title = this._ownerState.truncated
+				? 'Reorder is disabled while older images are hidden - coming in v2.'
+				: '';
+			if (!heading.dataset.ownerDragBound) {
+				heading.dataset.ownerDragBound = 'true';
+				heading.addEventListener('dragstart', (e) => this._onSectionDragStart(e, section));
+				heading.addEventListener('dragover', (e) => this._onSectionDragOver(e));
+				heading.addEventListener('drop', (e) => this._onSectionDrop(e, section));
+			}
+		});
+	}
+
+	_injectOwnerThumbnailMenus() {
+		this._contentEl.querySelectorAll('.p360-section[data-section-id]').forEach((sectionEl) => {
+			const section = this._sectionById(sectionEl.dataset.sectionId);
+			const isOther = !section || section.isOther || section.collectionId == null || section.id === 'uncategorized';
+			sectionEl.querySelectorAll('.p360-thumbnail[data-image-id]').forEach((thumb) => {
+				const image = this._findImageInSectionsDeep(thumb.dataset.imageId);
+				if (!image) return;
+				if (!thumb.querySelector('.p360-owner-thumb-menu')) {
+					const btn = document.createElement('button');
+					btn.type = 'button';
+					btn.className = 'p360-owner-thumb-menu';
+					btn.dataset.ownerUi = 'true';
+					btn.setAttribute('aria-label', 'Image actions');
+					btn.textContent = '...';
+					btn.addEventListener('click', (e) => {
+						e.stopPropagation();
+						this._openThumbnailMenu(btn, image, section);
+					});
+					thumb.appendChild(btn);
+				}
+				if (!isOther && !thumb.querySelector('.p360-owner-drag-handle')) {
+					const handle = document.createElement('span');
+					handle.className = 'p360-owner-drag-handle';
+					handle.dataset.ownerUi = 'true';
+					handle.setAttribute('aria-hidden', 'true');
+					thumb.appendChild(handle);
+				}
+				thumb.draggable = !this._ownerState.dragInFlight && !this._ownerState.truncated;
+				if (!thumb.dataset.ownerDragBound) {
+					thumb.dataset.ownerDragBound = 'true';
+					thumb.addEventListener('dragstart', (e) => this._onThumbDragStart(e, image, section));
+					thumb.addEventListener('dragover', (e) => this._onThumbDragOver(e));
+					thumb.addEventListener('drop', (e) => this._onThumbDrop(e, image, section));
+				}
+			});
+		});
+	}
+
+	_openCollectionMenu(anchor, section) {
+		this._closeOwnerMenus();
+		const menu = this._makeOwnerMenu(anchor);
+		this._addOwnerMenuButton(menu, 'Rename', () => {
+			const name = window.prompt('Collection name', section.title || '');
+			if (name && name.trim()) this._dispatchOwnerAction('rename', null, {
+				collectionId: section.collectionId,
+				name: name.trim()
+			});
+		});
+		this._addOwnerMenuButton(menu, section.isPublished === false ? 'Publish' : 'Unpublish', () => {
+			this._dispatchOwnerAction('publish-toggle', null, {
+				collectionId: section.collectionId,
+				publish: section.isPublished === false
+			});
+		});
+		this._addOwnerMenuButton(menu, 'Delete', () => {
+			if (window.confirm('Images will move to Other. Delete this collection?')) {
+				this._dispatchOwnerAction('delete-collection', null, { collectionId: section.collectionId });
+			}
+		}, true);
+	}
+
+	_openThumbnailMenu(anchor, image, section) {
+		this._closeOwnerMenus();
+		const menu = this._makeOwnerMenu(anchor);
+		this._addOwnerMenuButton(menu, 'Move to Collection', () => {
+			const target = window.prompt('Target collection id (leave blank for Other)', image.primaryCollectionId || '');
+			this._dispatchOwnerAction('move', image.id, {
+				imageId: image.id,
+				fromCollectionId: section && section.collectionId != null ? section.collectionId : null,
+				targetCollectionId: target ? target.trim() : null,
+				position: 1
+			});
+		});
+		if (section && section.collectionId != null) {
+			this._addOwnerMenuButton(menu, 'Set as Cover', () => {
+				this._dispatchOwnerAction('set-cover', image.id, {
+					imageId: image.id,
+					collectionId: section.collectionId
+				});
+			});
+		}
+		this._addOwnerMenuButton(menu, 'Delete Image', () => {
+			if (window.confirm('Delete this image?')) {
+				this._dispatchOwnerAction('delete-image', image.id, { imageId: image.id });
+			}
+		}, true);
+	}
+
+	_makeOwnerMenu(anchor) {
+		const menu = document.createElement('div');
+		menu.className = 'p360-owner-menu';
+		menu.dataset.ownerUi = 'true';
+		anchor.parentElement.appendChild(menu);
+		this._ownerMenus.add(menu);
+		return menu;
+	}
+
+	_addOwnerMenuButton(menu, label, handler, danger = false) {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = danger ? 'p360-owner-menu-item p360-owner-menu-item--danger' : 'p360-owner-menu-item';
+		btn.textContent = label;
+		btn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			this._closeOwnerMenus();
+			handler();
+		});
+		menu.appendChild(btn);
+	}
+
+	_closeOwnerMenus() {
+		this._ownerMenus.forEach((m) => m.remove());
+		this._ownerMenus.clear();
+	}
+
+	_dispatchOwnerAction(action, imageId, ctx) {
+		document.dispatchEvent(new CustomEvent('p360-owner-action', {
+			detail: { action, imageId, ctx: ctx || {} }
+		}));
+	}
+
+	_onThumbDragStart(event, image, section) {
+		if (this._ownerState.dragInFlight || this._ownerState.truncated) {
+			event.preventDefault();
+			return;
+		}
+		event.dataTransfer.effectAllowed = 'move';
+		event.dataTransfer.setData('application/json', JSON.stringify({
+			type: 'image',
+			imageId: image.id,
+			fromCollectionId: section && section.collectionId != null ? section.collectionId : null
+		}));
+	}
+
+	_onThumbDragOver(event) {
+		if (!this._ownerState.dragInFlight) event.preventDefault();
+	}
+
+	_onThumbDrop(event, targetImage, section) {
+		event.preventDefault();
+		const data = this._readDragData(event);
+		if (!data || data.type !== 'image') return;
+		const collectionId = section && section.collectionId != null ? section.collectionId : null;
+		if (collectionId == null || data.fromCollectionId !== collectionId) return;
+		const ids = this.getSectionImageIds(collectionId);
+		const from = ids.indexOf(data.imageId);
+		const to = ids.indexOf(targetImage.id);
+		if (from < 0 || to < 0 || from === to) return;
+		ids.splice(from, 1);
+		ids.splice(to, 0, data.imageId);
+		this._dispatchOwnerAction('reorder', data.imageId, { collectionId, imageIds: ids });
+	}
+
+	_onSectionDragStart(event, section) {
+		if (this._ownerState.truncated || this._ownerState.dragInFlight || !section || section.collectionId == null) {
+			event.preventDefault();
+			return;
+		}
+		event.dataTransfer.effectAllowed = 'move';
+		event.dataTransfer.setData('application/json', JSON.stringify({
+			type: 'section',
+			collectionId: section.collectionId
+		}));
+	}
+
+	_onSectionDragOver(event) {
+		if (!this._ownerState.dragInFlight) event.preventDefault();
+	}
+
+	_onSectionDrop(event, section) {
+		event.preventDefault();
+		const data = this._readDragData(event);
+		if (!data || !section) return;
+		if (data.type === 'image') {
+			const targetCollectionId = section.collectionId != null ? section.collectionId : null;
+			this._dispatchOwnerAction('move', data.imageId, {
+				imageId: data.imageId,
+				fromCollectionId: data.fromCollectionId == null ? null : data.fromCollectionId,
+				targetCollectionId,
+				position: 1
+			});
+			return;
+		}
+		if (data.type === 'section' && section.collectionId != null) {
+			const ids = this._sections.filter((s) => s.collectionId != null).map((s) => s.collectionId);
+			const from = ids.indexOf(data.collectionId);
+			const to = ids.indexOf(section.collectionId);
+			if (from < 0 || to < 0 || from === to) return;
+			ids.splice(from, 1);
+			ids.splice(to, 0, data.collectionId);
+			this._dispatchOwnerAction('reorder-collections', null, { collectionIds: ids });
+		}
+	}
+
+	_readDragData(event) {
+		try { return JSON.parse(event.dataTransfer.getData('application/json') || 'null'); }
+		catch (_) { return null; }
+	}
+
+	_sectionById(sectionId) {
+		return this._sections.find((s) => s.id === sectionId || s.collectionId === sectionId) || null;
+	}
+
+	_findImageInSectionsDeep(imageId) {
+		for (const section of this._sections) {
+			for (const image of (section.images || [])) {
+				if (image.id === imageId) return image;
+			}
+		}
+		return null;
+	}
+
+	_refreshOwnerLibraryData() {
+		this.libraryData = { ...(this.libraryData || {}), sections: this._sections };
+		this._allImages = [];
+		for (const section of this._sections) {
+			if (Array.isArray(section.images)) {
+				this._allImages.push(...section.images.filter((img) => this._isViewerLoadableImage(img)));
+			}
+		}
+		if (this.multiViewer) this.multiViewer.setImages(this._allImages);
+		this._renderSections(this._sections);
+		if (this._currentImageId) this._highlightImage(this._currentImageId);
+	}
+
+	getSectionImageIds(collectionId) {
+		const section = this._sections.find((s) => s.collectionId === collectionId || s.id === collectionId);
+		return section ? (section.images || []).map((img) => img.id) : [];
+	}
+
+	moveImageToSection(imageId, targetSectionId, position = 1) {
+		let image = null;
+		for (const section of this._sections) {
+			const idx = (section.images || []).findIndex((img) => img.id === imageId);
+			if (idx >= 0) {
+				image = section.images.splice(idx, 1)[0];
+				break;
+			}
+		}
+		if (!image) return;
+		image.primaryCollectionId = targetSectionId == null ? null : targetSectionId;
+		let target = this._sections.find((s) => s.collectionId === targetSectionId || s.id === targetSectionId);
+		if (!target && targetSectionId == null) {
+			target = this._sections.find((s) => s.id === 'uncategorized');
+			if (!target) {
+				target = { id: 'uncategorized', collectionId: null, title: 'Other', template: 'grid', images: [], isOther: true };
+				this._sections.push(target);
+			}
+		}
+		if (!target) return;
+		if (!Array.isArray(target.images)) target.images = [];
+		const pos = Math.max(0, Math.min(position - 1, target.images.length));
+		target.images.splice(pos, 0, image);
+		this._refreshOwnerLibraryData();
+	}
+
+	reorderImages(sectionId, imageIds) {
+		const section = this._sections.find((s) => s.collectionId === sectionId || s.id === sectionId);
+		if (!section || !Array.isArray(section.images)) return;
+		const byId = new Map(section.images.map((img) => [img.id, img]));
+		const ordered = [];
+		imageIds.forEach((id) => { if (byId.has(id)) ordered.push(byId.get(id)); });
+		section.images.forEach((img) => { if (!imageIds.includes(img.id)) ordered.push(img); });
+		section.images = ordered;
+		this._refreshOwnerLibraryData();
+	}
+
+	addSection(collection) {
+		const id = collection.id || collection.collectionId;
+		if (!id || this._sections.some((s) => s.collectionId === id || s.id === id)) return;
+		const otherIndex = this._sections.findIndex((s) => s.id === 'uncategorized');
+		const section = {
+			id,
+			collectionId: id,
+			title: collection.name || collection.title || 'Untitled',
+			description: collection.description || null,
+			isPublished: collection.is_published ?? collection.isPublished ?? true,
+			template: 'grid',
+			collapsible: true,
+			collapsed: false,
+			badge: 0,
+			images: [],
+			keepEmpty: true
+		};
+		if (otherIndex >= 0) this._sections.splice(otherIndex, 0, section);
+		else this._sections.push(section);
+		this._refreshOwnerLibraryData();
+	}
+
+	removeSection(collectionId) {
+		const idx = this._sections.findIndex((s) => s.collectionId === collectionId || s.id === collectionId);
+		if (idx < 0) return;
+		const removed = this._sections.splice(idx, 1)[0];
+		let other = this._sections.find((s) => s.id === 'uncategorized');
+		if (!other) {
+			other = { id: 'uncategorized', collectionId: null, title: 'Other', template: 'grid', images: [], isOther: true };
+			this._sections.push(other);
+		}
+		for (const image of (removed.images || [])) {
+			image.primaryCollectionId = null;
+			other.images.unshift(image);
+		}
+		this._refreshOwnerLibraryData();
+	}
+
+	renameSection(collectionId, newName) {
+		const section = this._sections.find((s) => s.collectionId === collectionId || s.id === collectionId);
+		if (!section) return;
+		section.title = newName;
+		this._refreshOwnerLibraryData();
+	}
+
+	removeImage(imageId) {
+		for (const section of this._sections) {
+			if (!Array.isArray(section.images)) continue;
+			section.images = section.images.filter((img) => img.id !== imageId);
+		}
+		this._refreshOwnerLibraryData();
+	}
+
+	updateImage(imageId, patch) {
+		const body = patch && patch.image ? patch.image : patch;
+		const image = this._findImageInSectionsDeep(imageId);
+		if (!image || !body) return;
+		Object.assign(image, body);
+		if (body.primary_collection_id !== undefined) image.primaryCollectionId = body.primary_collection_id;
+		if (body.is_published !== undefined) image.isPublished = body.is_published;
+		this._refreshOwnerLibraryData();
+	}
+
+	selectImage(imageId) {
+		this._ownerState.selectedImages.add(imageId);
+		this._contentEl?.querySelector(`[data-image-id="${CSS.escape(imageId)}"]`)?.classList.add('p360-thumbnail--selected-owner');
+	}
+	deselectImage(imageId) {
+		this._ownerState.selectedImages.delete(imageId);
+		this._contentEl?.querySelector(`[data-image-id="${CSS.escape(imageId)}"]`)?.classList.remove('p360-thumbnail--selected-owner');
+	}
+	clearSelection() {
+		this._ownerState.selectedImages.clear();
+		this._contentEl?.querySelectorAll('.p360-thumbnail--selected-owner').forEach((el) => {
+			el.classList.remove('p360-thumbnail--selected-owner');
+		});
+	}
+	getSelectedImages() { return Array.from(this._ownerState.selectedImages); }
+	isSelected(imageId) { return this._ownerState.selectedImages.has(imageId); }
+	setDragInFlight(flag) {
+		this._ownerState.dragInFlight = !!flag;
+		this._sidebar?.classList.toggle('p360-drag-in-flight', this._ownerState.dragInFlight);
+	}
+	showToast(message, level = 'info') {
+		if (!message) return;
+		let root = document.querySelector('.p360-toast-root');
+		if (!root) {
+			root = document.createElement('div');
+			root.className = 'p360-toast-root';
+			document.body.appendChild(root);
+		}
+		const toast = document.createElement('div');
+		toast.className = `p360-toast p360-toast--${level}`;
+		toast.textContent = message;
+		root.appendChild(toast);
+		setTimeout(() => toast.remove(), 4000);
 	}
 
 	// --------------------------------------------------------
