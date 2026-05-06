@@ -2185,6 +2185,10 @@ class Phong360LibraryUI {
 			const detail = event.detail || {};
 			this.showToast(detail.message || '', detail.level || 'info');
 		});
+		document.addEventListener('p360-section-updated', (event) => {
+			const detail = event.detail || {};
+			if (detail.collectionId) this.updateSection(detail.collectionId, detail);
+		});
 	}
 
 	_enableOwnerMode(detail) {
@@ -2322,7 +2326,7 @@ class Phong360LibraryUI {
 			});
 		});
 		this._addOwnerMenuButton(menu, section.isPublished === false ? 'Publish' : 'Unpublish', () => {
-			this._dispatchOwnerAction('publish-toggle', null, {
+			this._dispatchOwnerAction('publish-toggle-collection', null, {
 				collectionId: section.collectionId,
 				publish: section.isPublished === false
 			});
@@ -2582,6 +2586,13 @@ class Phong360LibraryUI {
 		const section = this._sections.find((s) => s.collectionId === collectionId || s.id === collectionId);
 		if (!section) return;
 		section.title = newName;
+		this._refreshOwnerLibraryData();
+	}
+
+	updateSection(collectionId, patch) {
+		const section = this._sections.find((s) => s.collectionId === collectionId || s.id === collectionId);
+		if (!section || !patch) return;
+		Object.assign(section, patch);
 		this._refreshOwnerLibraryData();
 	}
 
