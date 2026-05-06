@@ -2496,6 +2496,48 @@ class Phong360LibraryUI {
 		});
 	}
 
+	/**
+	 * Picker that lists the user's collections + an "Other" target. `onPick`
+	 * receives the collectionId or null (for Other). Sources collections from
+	 * this._sections so it always reflects current state.
+	 */
+	_renderMovePicker({ anchorEl, currentCollectionId, onPick }) {
+		this._closeOwnerMenus();
+		const wrap = document.createElement('div');
+		wrap.className = 'p360-owner-move-picker';
+		wrap.dataset.ownerUi = 'true';
+		wrap.setAttribute('role', 'listbox');
+
+		const items = this._sections
+			.filter((s) => s.collectionId != null)
+			.map((s) => ({ id: s.collectionId, label: s.title || 'Untitled' }));
+		items.push({ id: null, label: 'Other (uncategorized)' });
+
+		items.forEach((item) => {
+			const btn = document.createElement('button');
+			btn.type = 'button';
+			btn.className = 'p360-owner-move-picker__item';
+			btn.setAttribute('role', 'option');
+			btn.textContent = item.label;
+			if (item.id === currentCollectionId) {
+				btn.setAttribute('aria-selected', 'true');
+				btn.disabled = true;
+			}
+			btn.addEventListener('click', () => {
+				wrap.remove();
+				onPick(item.id);
+			});
+			wrap.appendChild(btn);
+		});
+
+		anchorEl.parentElement.appendChild(wrap);
+		this._ownerMenus.add(wrap);
+		setTimeout(() => {
+			const first = wrap.querySelector('button:not([disabled])');
+			if (first) first.focus();
+		}, 0);
+	}
+
 	_openCollectionMenu(anchor, section) {
 		this._closeOwnerMenus();
 		const menu = this._makeOwnerMenu(anchor);
@@ -2541,12 +2583,17 @@ class Phong360LibraryUI {
 		this._closeOwnerMenus();
 		const menu = this._makeOwnerMenu(anchor);
 		this._addOwnerMenuButton(menu, 'Move to Collection', () => {
-			const target = window.prompt('Target collection id (leave blank for Other)', image.primaryCollectionId || '');
-			this._dispatchOwnerAction('move', image.id, {
-				imageId: image.id,
-				fromCollectionId: section && section.collectionId != null ? section.collectionId : null,
-				targetCollectionId: target ? target.trim() : null,
-				position: 1
+			this._renderMovePicker({
+				anchorEl: anchor,
+				currentCollectionId: section && section.collectionId != null ? section.collectionId : null,
+				onPick: (targetCollectionId) => {
+					this._dispatchOwnerAction('move', image.id, {
+						imageId: image.id,
+						fromCollectionId: section && section.collectionId != null ? section.collectionId : null,
+						targetCollectionId,
+						position: 1,
+					});
+				},
 			});
 		});
 		if (section && section.collectionId != null) {

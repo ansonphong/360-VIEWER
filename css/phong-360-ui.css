@@ -1756,3 +1756,32 @@
 	color: var(--p360-text); cursor: pointer; font-weight: 600;
 }
 .p360-owner-dialog__confirm--danger { background: #d23a1f; border-color: #d23a1f; color: #fff; }
+
+/* Owner-mode move-image picker (Phase 5 follow-up) */
+.p360-owner-move-picker {
+	background: var(--p360-bg-elevated);
+	border: 1px solid var(--p360-border-strong);
+	border-radius: 8px;
+	padding: 4px;
+	max-height: 240px;
+	overflow-y: auto;
+	min-width: 200px;
+	z-index: 270;
+	position: absolute;
+	right: 8px;
+	top: 36px;
+}
+.p360-owner-move-picker__item {
+	display: block;
+	width: 100%;
+	text-align: left;
+	background: transparent;
+	border: 0;
+	color: var(--p360-text);
+	padding: 8px 10px;
+	border-radius: 6px;
+	font-size: 13px;
+	cursor: pointer;
+}
+.p360-owner-move-picker__item:hover:not([disabled]) { background: var(--p360-hover-bg); }
+.p360-owner-move-picker__item[disabled] { opacity: 0.5; cursor: default; }
