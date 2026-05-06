@@ -2026,6 +2026,7 @@ class Phong360LibraryUI {
 			}
 
 			const title = document.createElement('span');
+			title.className = 'p360-section-title';
 			title.textContent = section.title;
 			heading.appendChild(title);
 
@@ -2439,6 +2440,88 @@ class Phong360LibraryUI {
 	}
 
 	/**
+	 * Inline-edit the section title in place. Replaces the title <span>
+	 * inside `headingEl` with an <input> that mirrors the title's typography.
+	 * Save on Enter or blur, cancel on Escape. Suppresses the heading's
+	 * collapse toggle while editing.
+	 */
+	_renderInlineTitleEdit({ headingEl, initial, maxLength = 80, onSubmit }) {
+		this._closeOwnerMenus();
+		const titleEl = headingEl.querySelector(':scope > .p360-section-title');
+		if (!titleEl) return null;
+		if (headingEl.querySelector(':scope > .p360-section-title-input')) return null;
+
+		const input = document.createElement('input');
+		input.type = 'text';
+		input.value = initial || '';
+		input.maxLength = maxLength;
+		input.className = 'p360-section-title-input';
+		input.dataset.ownerUi = 'true';
+		input.setAttribute('aria-label', 'Rename collection');
+
+		// Prevent the heading's collapse-toggle click + drag handlers from
+		// firing while the user interacts with the input.
+		const swallow = (e) => e.stopPropagation();
+		['click', 'mousedown', 'pointerdown', 'dragstart'].forEach((evt) => {
+			input.addEventListener(evt, swallow);
+		});
+
+		titleEl.style.display = 'none';
+		headingEl.insertBefore(input, titleEl);
+
+		let busy = false;
+		let finished = false;
+
+		const restore = () => {
+			input.remove();
+			titleEl.style.display = '';
+		};
+		const commit = async () => {
+			if (busy || finished) return;
+			const value = (input.value || '').trim();
+			if (!value || value === initial) { finished = true; restore(); return; }
+			busy = true;
+			input.disabled = true;
+			input.classList.add('p360-section-title-input--busy');
+			try {
+				const result = await onSubmit(value);
+				if (result && result.error) {
+					input.classList.remove('p360-section-title-input--busy');
+					input.classList.add('p360-section-title-input--error');
+					input.title = result.error;
+					input.disabled = false;
+					busy = false;
+					setTimeout(() => input.focus(), 0);
+					return;
+				}
+				finished = true;
+				titleEl.textContent = value;
+				restore();
+			} catch (e) {
+				input.classList.remove('p360-section-title-input--busy');
+				input.classList.add('p360-section-title-input--error');
+				input.title = (e && e.message) || 'Rename failed.';
+				input.disabled = false;
+				busy = false;
+			}
+		};
+		const cancel = () => {
+			if (busy || finished) return;
+			finished = true;
+			restore();
+		};
+
+		input.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') { e.preventDefault(); commit(); }
+			else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+		});
+		input.addEventListener('blur', () => commit());
+
+		setTimeout(() => { input.focus(); input.select(); }, 0);
+		return input;
+	}
+
+	/**
 	 * Modal-style confirm dialog with focus trap. Resolves true if confirmed,
 	 * false if cancelled.
 	 */
@@ -2564,9 +2647,11 @@ class Phong360LibraryUI {
 		if (wasOpen) return;
 		const menu = this._makeOwnerMenu(anchor);
 		this._addOwnerMenuButton(menu, 'Rename', () => {
-			this._renderInlineForm({
-				anchorEl: anchor,
-				label: 'Rename collection',
+			const sectionEl = anchor.closest('.p360-section');
+			const headingEl = sectionEl && sectionEl.querySelector(':scope > .p360-section-heading');
+			if (!headingEl) return;
+			this._renderInlineTitleEdit({
+				headingEl,
 				initial: section.title || '',
 				maxLength: 80,
 				onSubmit: async (name) => {
