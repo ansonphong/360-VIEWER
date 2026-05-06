@@ -300,7 +300,6 @@
 
 .p360-sidebar--owner .p360-section-heading {
 	position: relative;
-	border-bottom: 1px dashed var(--p360-border-strong);
 	cursor: grab;
 }
 
