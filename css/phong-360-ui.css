@@ -171,6 +171,7 @@
 	display: flex;
 	align-items: center;
 	gap: 12px;
+	position: relative;
 }
 
 .p360-header-avatar {
