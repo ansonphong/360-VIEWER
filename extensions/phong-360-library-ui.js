@@ -2559,7 +2559,9 @@ class Phong360LibraryUI {
 	}
 
 	_openCollectionMenu(anchor, section) {
+		const wasOpen = anchor.parentElement.querySelector('.p360-owner-menu');
 		this._closeOwnerMenus();
+		if (wasOpen) return;
 		const menu = this._makeOwnerMenu(anchor);
 		this._addOwnerMenuButton(menu, 'Rename', () => {
 			this._renderInlineForm({
@@ -2621,7 +2623,9 @@ class Phong360LibraryUI {
 	}
 
 	_openThumbnailMenu(anchor, image, section) {
+		const wasOpen = anchor.parentElement.querySelector('.p360-owner-menu');
 		this._closeOwnerMenus();
+		if (wasOpen) return;
 		const menu = this._makeOwnerMenu(anchor);
 		this._addOwnerMenuButton(menu, 'Move to Collection', () => {
 			this._renderMovePicker({
