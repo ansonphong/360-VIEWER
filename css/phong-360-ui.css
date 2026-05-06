@@ -1698,3 +1698,61 @@
 	padding-top: 4px;
 	border-top: 1px solid var(--p360-border);
 }
+
+/* Owner-mode inline forms + confirm dialogs (Phase 5 follow-up) */
+.p360-owner-inline-form {
+	background: var(--p360-bg-elevated);
+	border: 1px solid var(--p360-border-strong);
+	border-radius: 8px;
+	padding: 10px 12px;
+	margin: 6px 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.p360-owner-inline-form__label { font-size: 12px; color: var(--p360-text-muted); }
+.p360-owner-inline-form__input {
+	width: 100%;
+	background: var(--p360-bg);
+	color: var(--p360-text);
+	border: 1px solid var(--p360-border);
+	border-radius: 6px;
+	padding: 8px 10px;
+	font-size: 14px;
+}
+.p360-owner-inline-form__error { color: #ff8a70; font-size: 12px; min-height: 14px; }
+.p360-owner-inline-form__actions { display: flex; gap: 6px; justify-content: flex-end; }
+.p360-owner-inline-form__cancel,
+.p360-owner-inline-form__save {
+	border-radius: 6px;
+	padding: 6px 10px;
+	border: 1px solid var(--p360-border);
+	background: transparent;
+	color: var(--p360-text);
+	cursor: pointer;
+}
+.p360-owner-inline-form__save { background: var(--p360-accent); border-color: var(--p360-accent); color: #fff; }
+.p360-owner-inline-form--busy * { opacity: 0.7; pointer-events: none; }
+
+.p360-owner-dialog-overlay {
+	position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+	display: flex; align-items: center; justify-content: center;
+	z-index: 9999;
+}
+.p360-owner-dialog {
+	background: var(--p360-bg-elevated);
+	border: 1px solid var(--p360-border-strong);
+	border-radius: 10px;
+	padding: 18px 20px;
+	min-width: 320px; max-width: 480px;
+	box-shadow: var(--p360-shadow);
+}
+.p360-owner-dialog__title { margin: 0 0 8px 0; font-size: 16px; }
+.p360-owner-dialog__body { margin: 0 0 14px 0; color: var(--p360-text-muted); font-size: 13px; }
+.p360-owner-dialog__actions { display: flex; gap: 8px; justify-content: flex-end; }
+.p360-owner-dialog__cancel, .p360-owner-dialog__confirm {
+	border-radius: 6px; padding: 8px 14px;
+	border: 1px solid var(--p360-border); background: transparent;
+	color: var(--p360-text); cursor: pointer; font-weight: 600;
+}
+.p360-owner-dialog__confirm--danger { background: #d23a1f; border-color: #d23a1f; color: #fff; }

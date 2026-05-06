@@ -2231,9 +2231,24 @@ class Phong360LibraryUI {
 		btn.dataset.ownerUi = 'true';
 		btn.textContent = '+ New Collection';
 		btn.addEventListener('click', () => {
-			const name = window.prompt('Collection name');
-			if (!name || !name.trim()) return;
-			this._dispatchOwnerAction('create-collection', null, { name: name.trim() });
+			this._renderInlineForm({
+				anchorEl: btn,
+				label: 'New collection',
+				maxLength: 80,
+				placeholder: 'Collection name',
+				onSubmit: async (name) => {
+					return new Promise((resolve) => {
+						document.dispatchEvent(new CustomEvent('p360-owner-action', {
+							detail: {
+								action: 'create-collection',
+								imageId: null,
+								ctx: { name },
+								callback: (err) => resolve(err ? { error: err.message || 'Create failed.' } : null),
+							},
+						}));
+					});
+				},
+			});
 		});
 		const other = this._contentEl.querySelector('.p360-section[data-section-id="uncategorized"]');
 		if (other) this._contentEl.insertBefore(btn, other);
@@ -2315,14 +2330,193 @@ class Phong360LibraryUI {
 		});
 	}
 
+	/**
+	 * Inline form anchored under `anchorEl`. Calls `onSubmit(value)` when user
+	 * submits; `onSubmit` may return a Promise resolving to {error: string} to
+	 * render an inline error and keep the form open. Returns the form node.
+	 */
+	_renderInlineForm({ anchorEl, label, initial = '', maxLength = 80, placeholder = '', onSubmit }) {
+		this._closeOwnerMenus();
+		const wrap = document.createElement('div');
+		wrap.className = 'p360-owner-inline-form';
+		wrap.dataset.ownerUi = 'true';
+
+		const labelEl = document.createElement('label');
+		labelEl.className = 'p360-owner-inline-form__label';
+		labelEl.textContent = label;
+
+		const input = document.createElement('input');
+		input.type = 'text';
+		input.value = initial;
+		input.maxLength = maxLength;
+		input.placeholder = placeholder;
+		input.className = 'p360-owner-inline-form__input';
+		input.setAttribute('aria-label', label);
+
+		const error = document.createElement('div');
+		error.className = 'p360-owner-inline-form__error';
+		error.setAttribute('role', 'alert');
+
+		const actions = document.createElement('div');
+		actions.className = 'p360-owner-inline-form__actions';
+
+		const cancelBtn = document.createElement('button');
+		cancelBtn.type = 'button';
+		cancelBtn.className = 'p360-owner-inline-form__cancel';
+		cancelBtn.textContent = 'Cancel';
+
+		const saveBtn = document.createElement('button');
+		saveBtn.type = 'button';
+		saveBtn.className = 'p360-owner-inline-form__save';
+		saveBtn.textContent = 'Save';
+
+		actions.appendChild(cancelBtn);
+		actions.appendChild(saveBtn);
+		wrap.appendChild(labelEl);
+		wrap.appendChild(input);
+		wrap.appendChild(error);
+		wrap.appendChild(actions);
+		anchorEl.parentElement.appendChild(wrap);
+
+		const close = () => { wrap.remove(); };
+		const setBusy = (busy) => {
+			input.disabled = busy;
+			saveBtn.disabled = busy;
+			cancelBtn.disabled = busy;
+			wrap.classList.toggle('p360-owner-inline-form--busy', busy);
+		};
+		const showError = (msg) => {
+			error.textContent = msg || '';
+			if (msg) input.focus();
+		};
+
+		cancelBtn.addEventListener('click', close);
+		input.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') { e.stopPropagation(); close(); }
+			if (e.key === 'Enter') { e.preventDefault(); saveBtn.click(); }
+		});
+		saveBtn.addEventListener('click', async () => {
+			const value = (input.value || '').trim();
+			if (!value) { showError('Cannot be empty.'); return; }
+			showError('');
+			setBusy(true);
+			try {
+				const result = await onSubmit(value);
+				if (result && result.error) {
+					showError(result.error);
+					setBusy(false);
+					return;
+				}
+				close();
+			} catch (e) {
+				showError(e && e.message ? e.message : 'Something went wrong.');
+				setBusy(false);
+			}
+		});
+
+		setTimeout(() => input.focus(), 0);
+		this._ownerMenus.add(wrap); // so _closeOwnerMenus tears it down too
+		return wrap;
+	}
+
+	/**
+	 * Modal-style confirm dialog with focus trap. Resolves true if confirmed,
+	 * false if cancelled.
+	 */
+	_renderConfirmDialog({ title, body, confirmLabel = 'Delete', danger = true }) {
+		return new Promise((resolve) => {
+			const overlay = document.createElement('div');
+			overlay.className = 'p360-owner-dialog-overlay';
+			overlay.dataset.ownerUi = 'true';
+
+			const dialog = document.createElement('div');
+			dialog.className = 'p360-owner-dialog';
+			dialog.setAttribute('role', 'dialog');
+			dialog.setAttribute('aria-modal', 'true');
+			dialog.setAttribute('aria-labelledby', 'p360-owner-dialog-title');
+
+			const h = document.createElement('h2');
+			h.id = 'p360-owner-dialog-title';
+			h.className = 'p360-owner-dialog__title';
+			h.textContent = title;
+
+			const p = document.createElement('p');
+			p.className = 'p360-owner-dialog__body';
+			p.textContent = body;
+
+			const actions = document.createElement('div');
+			actions.className = 'p360-owner-dialog__actions';
+
+			const cancelBtn = document.createElement('button');
+			cancelBtn.type = 'button';
+			cancelBtn.className = 'p360-owner-dialog__cancel';
+			cancelBtn.textContent = 'Cancel';
+
+			const confirmBtn = document.createElement('button');
+			confirmBtn.type = 'button';
+			confirmBtn.className = danger
+				? 'p360-owner-dialog__confirm p360-owner-dialog__confirm--danger'
+				: 'p360-owner-dialog__confirm';
+			confirmBtn.textContent = confirmLabel;
+
+			actions.appendChild(cancelBtn);
+			actions.appendChild(confirmBtn);
+			dialog.appendChild(h);
+			dialog.appendChild(p);
+			dialog.appendChild(actions);
+			overlay.appendChild(dialog);
+			document.body.appendChild(overlay);
+
+			const previousFocus = document.activeElement;
+			const focusables = [cancelBtn, confirmBtn];
+			let focusIndex = 1;
+			confirmBtn.focus();
+
+			const close = (result) => {
+				overlay.removeEventListener('keydown', onKey);
+				overlay.remove();
+				if (previousFocus && previousFocus.focus) previousFocus.focus();
+				resolve(result);
+			};
+			const onKey = (e) => {
+				if (e.key === 'Escape') { e.stopPropagation(); close(false); }
+				if (e.key === 'Tab') {
+					e.preventDefault();
+					focusIndex = (focusIndex + (e.shiftKey ? -1 : 1) + focusables.length) % focusables.length;
+					focusables[focusIndex].focus();
+				}
+			};
+			overlay.addEventListener('keydown', onKey);
+			cancelBtn.addEventListener('click', () => close(false));
+			confirmBtn.addEventListener('click', () => close(true));
+			// Click on overlay outside dialog cancels
+			overlay.addEventListener('click', (e) => {
+				if (e.target === overlay) close(false);
+			});
+		});
+	}
+
 	_openCollectionMenu(anchor, section) {
 		this._closeOwnerMenus();
 		const menu = this._makeOwnerMenu(anchor);
 		this._addOwnerMenuButton(menu, 'Rename', () => {
-			const name = window.prompt('Collection name', section.title || '');
-			if (name && name.trim()) this._dispatchOwnerAction('rename', null, {
-				collectionId: section.collectionId,
-				name: name.trim()
+			this._renderInlineForm({
+				anchorEl: anchor,
+				label: 'Rename collection',
+				initial: section.title || '',
+				maxLength: 80,
+				onSubmit: async (name) => {
+					return new Promise((resolve) => {
+						document.dispatchEvent(new CustomEvent('p360-owner-action', {
+							detail: {
+								action: 'rename',
+								imageId: null,
+								ctx: { collectionId: section.collectionId, name },
+								callback: (err) => resolve(err ? { error: err.message || 'Rename failed.' } : null),
+							},
+						}));
+					});
+				},
 			});
 		});
 		this._addOwnerMenuButton(menu, section.isPublished === false ? 'Publish' : 'Unpublish', () => {
@@ -2331,10 +2525,15 @@ class Phong360LibraryUI {
 				publish: section.isPublished === false
 			});
 		});
-		this._addOwnerMenuButton(menu, 'Delete', () => {
-			if (window.confirm('Images will move to Other. Delete this collection?')) {
-				this._dispatchOwnerAction('delete-collection', null, { collectionId: section.collectionId });
-			}
+		this._addOwnerMenuButton(menu, 'Delete', async () => {
+			const ok = await this._renderConfirmDialog({
+				title: 'Delete collection?',
+				body: 'Images in this collection will move to Other.',
+				confirmLabel: 'Delete',
+				danger: true,
+			});
+			if (!ok) return;
+			this._dispatchOwnerAction('delete-collection', null, { collectionId: section.collectionId });
 		}, true);
 	}
 
@@ -2358,10 +2557,15 @@ class Phong360LibraryUI {
 				});
 			});
 		}
-		this._addOwnerMenuButton(menu, 'Delete Image', () => {
-			if (window.confirm('Delete this image?')) {
-				this._dispatchOwnerAction('delete-image', image.id, { imageId: image.id });
-			}
+		this._addOwnerMenuButton(menu, 'Delete Image', async () => {
+			const ok = await this._renderConfirmDialog({
+				title: 'Delete image?',
+				body: 'This permanently deletes the image and all its variants.',
+				confirmLabel: 'Delete',
+				danger: true,
+			});
+			if (!ok) return;
+			this._dispatchOwnerAction('delete-image', image.id, { imageId: image.id });
 		}, true);
 	}
 
