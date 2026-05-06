@@ -2160,6 +2160,18 @@ class Phong360LibraryUI {
 
 		const listItem = this._contentEl.querySelector(`.p360-list-item[data-image-id="${imageId}"]`);
 		if (listItem) listItem.classList.add('p360-list-item--selected');
+
+		// Ensure the section containing the active image is expanded so
+		// the user can see where they are.
+		const target = thumb || listItem;
+		if (target) {
+			const parentSection = target.closest('.p360-section');
+			if (parentSection && parentSection.classList.contains('p360-section--collapsed')) {
+				parentSection.classList.remove('p360-section--collapsed');
+				const body = parentSection.querySelector('.p360-section-body');
+				if (body) body.style.maxHeight = body.scrollHeight + 'px';
+			}
+		}
 	}
 
 	// --------------------------------------------------------
