@@ -2323,7 +2323,7 @@ class Phong360LibraryUI {
 					handle.setAttribute('aria-hidden', 'true');
 					thumb.appendChild(handle);
 				}
-				thumb.draggable = !this._ownerState.dragInFlight && !this._ownerState.truncated;
+				thumb.draggable = !this._ownerState.dragInFlight;
 				if (!thumb.dataset.ownerDragBound) {
 					thumb.dataset.ownerDragBound = 'true';
 					thumb.addEventListener('dragstart', (e) => this._onThumbDragStart(e, image, section));
@@ -2675,7 +2675,7 @@ class Phong360LibraryUI {
 	}
 
 	_onThumbDragStart(event, image, section) {
-		if (this._ownerState.dragInFlight || this._ownerState.truncated) {
+		if (this._ownerState.dragInFlight) {
 			event.preventDefault();
 			return;
 		}
@@ -2696,7 +2696,28 @@ class Phong360LibraryUI {
 		const data = this._readDragData(event);
 		if (!data || data.type !== 'image') return;
 		const collectionId = section && section.collectionId != null ? section.collectionId : null;
-		if (collectionId == null || data.fromCollectionId !== collectionId) return;
+
+		// Cross-section move: safe under truncation
+		if (data.fromCollectionId !== collectionId) {
+			this._dispatchOwnerAction('move', data.imageId, {
+				imageId: data.imageId,
+				fromCollectionId: data.fromCollectionId,
+				targetCollectionId: collectionId,
+				position: 1,
+			});
+			return;
+		}
+
+		// Within-collection reorder: blocked under truncation
+		if (this._ownerState.truncated) {
+			this.showToast(
+				"Reorder is disabled while older images aren't loaded. Move single images instead.",
+				'warn'
+			);
+			return;
+		}
+
+		if (collectionId == null) return;
 		const ids = this.getSectionImageIds(collectionId);
 		const from = ids.indexOf(data.imageId);
 		const to = ids.indexOf(targetImage.id);
