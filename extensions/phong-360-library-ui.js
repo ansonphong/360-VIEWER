@@ -2060,11 +2060,26 @@ class Phong360LibraryUI {
 				heading.appendChild(chevron);
 
 				heading.addEventListener('click', () => {
+					const willExpand = sectionEl.classList.contains('p360-section--collapsed');
 					sectionEl.classList.toggle('p360-section--collapsed');
 					// Update max-height for animation
 					const body = sectionEl.querySelector('.p360-section-body');
 					if (body && !sectionEl.classList.contains('p360-section--collapsed')) {
 						body.style.maxHeight = body.scrollHeight + 'px';
+					}
+					// Accordion behavior in owner mode: opening a section
+					// collapses sibling sections so only one is expanded at a
+					// time. Other contexts keep their multi-open behavior.
+					if (willExpand && this._sidebar && this._sidebar.classList.contains('p360-sidebar--owner')) {
+						const siblings = sectionEl.parentElement
+							? sectionEl.parentElement.querySelectorAll(':scope > .p360-section')
+							: [];
+						siblings.forEach((other) => {
+							if (other === sectionEl) return;
+							if (!other.classList.contains('p360-section--collapsed')) {
+								other.classList.add('p360-section--collapsed');
+							}
+						});
 					}
 					if (this.callbacks.onSectionToggle) {
 						this.callbacks.onSectionToggle(
