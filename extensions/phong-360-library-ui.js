@@ -2260,19 +2260,35 @@ class Phong360LibraryUI {
 		}
 		this._injectOwnerCollectionMenus();
 		this._injectOwnerThumbnailMenus();
-		this._injectOwnerAddCollection();
+		this._injectOwnerHeaderMenu();
 	}
 
-	_injectOwnerAddCollection() {
-		if (this._contentEl.querySelector('.p360-owner-add-collection')) return;
+	_injectOwnerHeaderMenu() {
+		const profileRow = this._contentEl.querySelector('.p360-header-profile');
+		if (!profileRow) return;
+		if (profileRow.querySelector('.p360-owner-header-menu')) return;
 		const btn = document.createElement('button');
 		btn.type = 'button';
-		btn.className = 'p360-owner-add-collection';
+		btn.className = 'p360-owner-header-menu';
 		btn.dataset.ownerUi = 'true';
-		btn.textContent = '+ New Collection';
-		btn.addEventListener('click', () => {
+		btn.setAttribute('aria-label', 'Library actions');
+		btn.textContent = '...';
+		btn.addEventListener('mousedown', (e) => e.stopPropagation());
+		btn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			this._openHeaderMenu(btn);
+		});
+		profileRow.appendChild(btn);
+	}
+
+	_openHeaderMenu(anchor) {
+		const wasOpen = anchor.parentElement.querySelector('.p360-owner-menu');
+		this._closeOwnerMenus();
+		if (wasOpen) return;
+		const menu = this._makeOwnerMenu(anchor);
+		this._addOwnerMenuButton(menu, 'New Collection', () => {
 			this._renderInlineForm({
-				anchorEl: btn,
+				anchorEl: anchor,
 				label: 'New collection',
 				maxLength: 80,
 				placeholder: 'Collection name',
@@ -2290,9 +2306,6 @@ class Phong360LibraryUI {
 				},
 			});
 		});
-		const other = this._contentEl.querySelector('.p360-section[data-section-id="uncategorized"]');
-		if (other) this._contentEl.insertBefore(btn, other);
-		else this._contentEl.appendChild(btn);
 	}
 
 	_injectOwnerCollectionMenus() {
@@ -2760,7 +2773,7 @@ class Phong360LibraryUI {
 			if (this._ownerMenus.size === 0) return;
 			// Keep menu open if click landed inside any open menu/picker
 			// or on the anchor button that opens it.
-			if (e.target.closest('.p360-owner-menu, .p360-owner-move-picker, .p360-owner-thumb-menu, .p360-owner-section-menu, .p360-owner-inline-form')) {
+			if (e.target.closest('.p360-owner-menu, .p360-owner-move-picker, .p360-owner-thumb-menu, .p360-owner-section-menu, .p360-owner-header-menu, .p360-owner-inline-form')) {
 				return;
 			}
 			this._closeOwnerMenus();
