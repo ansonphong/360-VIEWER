@@ -1419,6 +1419,12 @@ class Phong360LibraryUI {
 			}
 		}
 
+		// Skip emitting an empty header wrapper — happens for owner mode
+		// (suppressHeader + no profile row), and any time the context has
+		// neither title, profile, nor links. Don't reserve layout space for
+		// a div with no children.
+		if (!header.firstChild) return;
+
 		// Insert header inside scrollable content area
 		this._contentEl.insertBefore(header, this._contentEl.firstChild);
 		this._headerEl = header;
@@ -2662,27 +2668,6 @@ class Phong360LibraryUI {
 								imageId: null,
 								ctx: { collectionId: section.collectionId, name },
 								callback: (err) => resolve(err ? { error: err.message || 'Rename failed.' } : null),
-							},
-						}));
-					});
-				},
-			});
-		});
-		this._addOwnerMenuButton(menu, 'Edit Description', () => {
-			this._renderInlineForm({
-				anchorEl: anchor,
-				label: 'Description (max 1000)',
-				initial: section.description || '',
-				maxLength: 1000,
-				placeholder: 'Describe this collection',
-				onSubmit: async (description) => {
-					return new Promise((resolve) => {
-						document.dispatchEvent(new CustomEvent('p360-owner-action', {
-							detail: {
-								action: 'edit-collection-description',
-								imageId: null,
-								ctx: { collectionId: section.collectionId, description },
-								callback: (err) => resolve(err ? { error: err.message || 'Update failed.' } : null),
 							},
 						}));
 					});
