@@ -2561,6 +2561,27 @@ class Phong360LibraryUI {
 				},
 			});
 		});
+		this._addOwnerMenuButton(menu, 'Edit Description', () => {
+			this._renderInlineForm({
+				anchorEl: anchor,
+				label: 'Description (max 1000)',
+				initial: section.description || '',
+				maxLength: 1000,
+				placeholder: 'Describe this collection',
+				onSubmit: async (description) => {
+					return new Promise((resolve) => {
+						document.dispatchEvent(new CustomEvent('p360-owner-action', {
+							detail: {
+								action: 'edit-collection-description',
+								imageId: null,
+								ctx: { collectionId: section.collectionId, description },
+								callback: (err) => resolve(err ? { error: err.message || 'Update failed.' } : null),
+							},
+						}));
+					});
+				},
+			});
+		});
 		this._addOwnerMenuButton(menu, section.isPublished === false ? 'Publish' : 'Unpublish', () => {
 			this._dispatchOwnerAction('publish-toggle-collection', null, {
 				collectionId: section.collectionId,
