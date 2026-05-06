@@ -769,7 +769,8 @@ class Phong360LibraryUI {
 			username: null,
 			selectedImages: new Set(),
 			dragInFlight: false,
-			truncated: false
+			truncated: false,
+			boundDragNodes: new Map() // node -> {dragstart, dragover, drop}
 		};
 		this._ownerMenus = new Set();
 
@@ -2204,6 +2205,7 @@ class Phong360LibraryUI {
 	}
 
 	_disableOwnerMode() {
+		this._unbindAllDrag();
 		this._ownerState.enabled = false;
 		this._ownerState.userId = null;
 		this._ownerState.username = null;
@@ -2211,6 +2213,21 @@ class Phong360LibraryUI {
 		this._closeOwnerMenus();
 		this._sidebar?.classList.remove('p360-sidebar--owner', 'p360-drag-in-flight');
 		this._syncOwnerDecorations();
+	}
+
+	_bindDrag(node, handlers) {
+		if (this._ownerState.boundDragNodes.has(node)) return;
+		Object.entries(handlers).forEach(([type, h]) => node.addEventListener(type, h));
+		this._ownerState.boundDragNodes.set(node, handlers);
+		node.dataset.ownerDragBound = 'true';
+	}
+
+	_unbindAllDrag() {
+		this._ownerState.boundDragNodes.forEach((handlers, node) => {
+			Object.entries(handlers).forEach(([type, h]) => node.removeEventListener(type, h));
+			delete node.dataset.ownerDragBound;
+		});
+		this._ownerState.boundDragNodes.clear();
 	}
 
 	_syncOwnerDecorations() {
@@ -2287,12 +2304,11 @@ class Phong360LibraryUI {
 			heading.title = this._ownerState.truncated
 				? 'Reorder is disabled while older images are hidden - coming in v2.'
 				: '';
-			if (!heading.dataset.ownerDragBound) {
-				heading.dataset.ownerDragBound = 'true';
-				heading.addEventListener('dragstart', (e) => this._onSectionDragStart(e, section));
-				heading.addEventListener('dragover', (e) => this._onSectionDragOver(e));
-				heading.addEventListener('drop', (e) => this._onSectionDrop(e, section));
-			}
+			this._bindDrag(heading, {
+				dragstart: (e) => this._onSectionDragStart(e, section),
+				dragover: (e) => this._onSectionDragOver(e),
+				drop: (e) => this._onSectionDrop(e, section),
+			});
 		});
 	}
 
@@ -2324,12 +2340,11 @@ class Phong360LibraryUI {
 					thumb.appendChild(handle);
 				}
 				thumb.draggable = !this._ownerState.dragInFlight;
-				if (!thumb.dataset.ownerDragBound) {
-					thumb.dataset.ownerDragBound = 'true';
-					thumb.addEventListener('dragstart', (e) => this._onThumbDragStart(e, image, section));
-					thumb.addEventListener('dragover', (e) => this._onThumbDragOver(e));
-					thumb.addEventListener('drop', (e) => this._onThumbDrop(e, image, section));
-				}
+				this._bindDrag(thumb, {
+					dragstart: (e) => this._onThumbDragStart(e, image, section),
+					dragover: (e) => this._onThumbDragOver(e),
+					drop: (e) => this._onThumbDrop(e, image, section),
+				});
 			});
 		});
 	}
