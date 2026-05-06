@@ -2551,6 +2551,7 @@ class Phong360LibraryUI {
 
 		anchorEl.parentElement.appendChild(wrap);
 		this._ownerMenus.add(wrap);
+		this._bindOwnerOutsideClose();
 		setTimeout(() => {
 			const first = wrap.querySelector('button:not([disabled])');
 			if (first) first.focus();
@@ -2662,7 +2663,25 @@ class Phong360LibraryUI {
 		menu.dataset.ownerUi = 'true';
 		anchor.parentElement.appendChild(menu);
 		this._ownerMenus.add(menu);
+		this._bindOwnerOutsideClose();
 		return menu;
+	}
+
+	_bindOwnerOutsideClose() {
+		if (this._ownerOutsideBound) return;
+		this._ownerOutsideBound = true;
+		document.addEventListener('click', (e) => {
+			if (this._ownerMenus.size === 0) return;
+			// Keep menu open if click landed inside any open menu/picker
+			// or on the anchor button that opens it.
+			if (e.target.closest('.p360-owner-menu, .p360-owner-move-picker, .p360-owner-thumb-menu, .p360-owner-section-menu, .p360-owner-inline-form')) {
+				return;
+			}
+			this._closeOwnerMenus();
+		}, true);
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && this._ownerMenus.size > 0) this._closeOwnerMenus();
+		});
 	}
 
 	_addOwnerMenuButton(menu, label, handler, danger = false) {

@@ -408,11 +408,12 @@
 }
 
 .p360-section-body {
-	overflow: hidden;
+	overflow: visible;
 	transition: max-height 0.3s ease;
 }
 
 .p360-section--collapsed .p360-section-body {
+	overflow: hidden;
 	max-height: 0 !important;
 }
 
