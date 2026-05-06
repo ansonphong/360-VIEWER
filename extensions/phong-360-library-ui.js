@@ -2189,6 +2189,10 @@ class Phong360LibraryUI {
 			const detail = event.detail || {};
 			if (detail.collectionId) this.updateSection(detail.collectionId, detail);
 		});
+		document.addEventListener('p360-collections-reordered', (event) => {
+			const order = (event.detail && event.detail.collectionIds) || [];
+			this.reorderSections(order);
+		});
 	}
 
 	_enableOwnerMode(detail) {
@@ -2865,6 +2869,24 @@ class Phong360LibraryUI {
 		const section = this._sections.find((s) => s.collectionId === collectionId || s.id === collectionId);
 		if (!section || !patch) return;
 		Object.assign(section, patch);
+		this._refreshOwnerLibraryData();
+	}
+
+	reorderSections(collectionIds) {
+		const order = Array.isArray(collectionIds) ? collectionIds : [];
+		if (!order.length) return;
+		const otherSections = this._sections.filter((s) => s.collectionId == null);
+		const byId = new Map(this._sections
+			.filter((s) => s.collectionId != null)
+			.map((s) => [s.collectionId, s]));
+		const reordered = [];
+		order.forEach((id) => { if (byId.has(id)) reordered.push(byId.get(id)); });
+		this._sections.forEach((s) => {
+			if (s.collectionId != null && !order.includes(s.collectionId) && !reordered.includes(s)) {
+				reordered.push(s);
+			}
+		});
+		this._sections = reordered.concat(otherSections);
 		this._refreshOwnerLibraryData();
 	}
 
