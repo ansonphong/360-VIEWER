@@ -168,6 +168,11 @@ class BaseRenderer {
 			}
 		});
 
+		// Run thumbnail decorators registered on the engine (Phase 2).
+		if (this.engine && typeof this.engine._runThumbnailDecorators === 'function') {
+			this.engine._runThumbnailDecorators(wrapper, image, this.section);
+		}
+
 		return wrapper;
 	}
 
@@ -854,6 +859,10 @@ class Phong360LibraryUI {
 		// the library load to complete.
 		this._contextLoaded = false;
 		this._slotWrappers = {};
+
+		// Decorator lists (Phase 2)
+		this._thumbnailDecorators = [];
+		this._decoratorIdCounter = 0;
 
 		// Initialize
 		this.init();
@@ -3969,6 +3978,62 @@ class Phong360LibraryUI {
 		this._slots.clear(name);
 		if (this._sidebar && this._contextLoaded) {
 			this._renderSlot(name);
+		}
+	}
+
+	// --------------------------------------------------------
+	// Decorator API (Phase 2)
+	// --------------------------------------------------------
+
+	/**
+	 * Register a decorator function called after every thumbnail element is
+	 * rendered. The decorator receives the finished DOM element, the image
+	 * data object, and the parent section object, and may mutate the element
+	 * in-place (e.g. inject owner controls, badges, overlays).
+	 *
+	 * Decorators run in registration order. A throwing decorator is caught
+	 * and console.warn'd so subsequent decorators are not blocked.
+	 *
+	 * @param {Function} fn  (el: Element, image: Object, section: Object) => void
+	 * @returns {{ id: string, remove(): void }}  SlotHandle — call remove() to un-register.
+	 * @since 5.0.0
+	 */
+	addThumbnailDecorator(fn) {
+		if (typeof fn !== 'function') {
+			throw new TypeError('Phong360LibraryUI.addThumbnailDecorator: fn must be a function');
+		}
+		const id = 'thumb-' + (++this._decoratorIdCounter);
+		const entry = { id, fn };
+		this._thumbnailDecorators.push(entry);
+		return {
+			id,
+			remove: () => {
+				const idx = this._thumbnailDecorators.indexOf(entry);
+				if (idx !== -1) this._thumbnailDecorators.splice(idx, 1);
+			},
+		};
+	}
+
+	/**
+	 * Run all registered thumbnail decorators in order for a single rendered
+	 * thumbnail element. Called by BaseRenderer.createThumbnail after the
+	 * element is fully assembled.
+	 *
+	 * @param {Element} el       The thumbnail DOM element.
+	 * @param {Object}  image    The image data object from the manifest.
+	 * @param {Object}  section  The parent section object from the manifest.
+	 * @private
+	 */
+	_runThumbnailDecorators(el, image, section) {
+		for (const entry of this._thumbnailDecorators) {
+			try {
+				entry.fn(el, image, section);
+			} catch (err) {
+				console.warn(
+					`Phong360LibraryUI: thumbnail decorator "${entry.id}" threw:`,
+					err && err.message ? err.message : err
+				);
+			}
 		}
 	}
 
