@@ -8,19 +8,63 @@
  * lives in the sibling .js files; `tsc --emitDeclarationOnly` turns this
  * into `dist/library-ui.d.ts`.
  *
+ * Engine types are redeclared inline (rather than imported via paths) so
+ * `tsc` with `rootDir: ./src` works without cross-package references.
+ *
  * @version 5.0.0-rc.1
  * @license MIT
  */
 
-import type {
-  EngineOptions,
-  LibraryManifest,
-  SectionData,
-  ImageData,
-  LibraryContext,
-  FacetsData,
-  ResolutionVariant
-} from '@phong/360-engine';
+// =========================================================================
+// Engine types (duplicated from @phong/360-engine for build isolation)
+// =========================================================================
+
+interface EngineOptions {
+  container: HTMLElement | string;
+  libraryUrl?: string;
+  baseUrl?: string;
+  projection?: 'gnomonic' | 'stereographic';
+  resolution?: string | 'auto';
+  theme?: 'auto' | 'light' | 'dark';
+  accent?: string | null;
+  autoRotate?: boolean;
+  autoRotationRate?: number;
+  fov?: { init: number; initTarget?: number };
+  controls?: { enableZoom?: boolean; enablePan?: boolean };
+  transition?: { fadeInDuration?: number; fadeOutDuration?: number };
+  keyboardShortcuts?: boolean;
+}
+
+interface LibraryContext {
+  [key: string]: any;
+}
+
+interface ImageData {
+  id: string;
+  [key: string]: any;
+}
+
+interface SectionData {
+  id: string;
+  title?: string;
+  [key: string]: any;
+}
+
+interface LibraryManifest {
+  version: number | string;
+  [key: string]: any;
+}
+
+interface ResolutionVariant {
+  id: string;
+  label: string;
+  width: number;
+  height: number;
+}
+
+interface FacetsData {
+  [key: string]: any;
+}
 
 // =========================================================================
 // Library-UI option types
@@ -36,7 +80,7 @@ export interface LibraryUIOptions extends EngineOptions {
   /** Only render the section matching this collection slug */
   filterCollection?: string;
 
-  /** Sidebar width in px (280–600) */
+  /** Sidebar width in px (280-600) */
   panelWidth?: number;
 
   /** Info bar alignment */
@@ -128,18 +172,6 @@ export interface SidebarSectionSpec {
 }
 
 // =========================================================================
-// Library-UI event payloads (extends engine events)
-// =========================================================================
-
-export interface LibraryUIEventPayload {
-  'link:click': { url: string; item?: any };
-  'section:toggle': { section: SectionData; expanded: boolean };
-  'sections:render': { sections: SectionData[]; modelFilterActive: boolean };
-  'badge:click': { image: ImageData; badge: any };
-  'help:open': Record<string, never>;
-}
-
-// =========================================================================
 // Main library-ui class
 // =========================================================================
 
@@ -147,7 +179,7 @@ export declare class Phong360LibraryUI {
   constructor(options: LibraryUIOptions);
 
   /** The underlying engine instance */
-  readonly engine: Phong360Engine;
+  readonly engine: any /* Phong360Engine */;
 
   /** The engine's container element */
   readonly container: HTMLElement;
@@ -238,6 +270,3 @@ export declare class Phong360LibraryUI {
   // Lifecycle
   destroy(): void;
 }
-
-// Re-export engine type so consumers don't need two imports
-import type { Phong360Engine } from '@phong/360-engine';

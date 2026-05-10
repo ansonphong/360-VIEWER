@@ -1,5 +1,16 @@
 {
   "name": "phong-360-viewer",
   "private": true,
-  "workspaces": ["packages/*", "examples/*"]
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @phong/360-engine -w @phong/360-library-ui",
+    "build:types": "npm run build:types --workspaces"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0",
+    "typescript": "^6.0.3"
+  }
 }

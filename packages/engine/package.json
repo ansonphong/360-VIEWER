@@ -9,13 +9,21 @@
   "files": ["dist"],
   "exports": {
     ".": {
+      "types": "./dist/engine.d.ts",
       "import": "./dist/engine.esm.js",
-      "require": "./dist/engine.umd.js",
-      "types": "./dist/engine.d.ts"
+      "require": "./dist/engine.umd.js"
     },
     "./engine.css": "./dist/engine.css"
   },
   "peerDependencies": {
     "three": "^0.128.0"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "build:types": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.0"
   }
 }

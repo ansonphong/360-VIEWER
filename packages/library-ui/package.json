@@ -10,13 +10,21 @@
   "files": ["dist"],
   "exports": {
     ".": {
+      "types": "./dist/library-ui.d.ts",
       "import": "./dist/library-ui.esm.js",
-      "require": "./dist/library-ui.umd.js",
-      "types": "./dist/library-ui.d.ts"
+      "require": "./dist/library-ui.umd.js"
     },
     "./library-ui.css": "./dist/library-ui.css"
   },
   "dependencies": {
     "@phong/360-engine": "5.0.0-rc.1"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "build:types": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.0"
   }
 }
