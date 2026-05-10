@@ -1,0 +1,5 @@
+{
+  "name": "phong-360-viewer",
+  "private": true,
+  "workspaces": ["packages/*", "examples/*"]
+}

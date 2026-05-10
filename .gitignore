@@ -1,6 +1,7 @@
 # Ignore folders
 _ARCHIVE/
 library/*
+node_modules/
 !library/index.html
 !library/build_library.bat
 !library/build_library.py

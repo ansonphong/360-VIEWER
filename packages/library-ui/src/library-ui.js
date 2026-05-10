@@ -1,0 +1,4149 @@
+/**
+ * Phong 360 Library UI - Layer 3
+ *
+ * Section-based library interface with pluggable template renderers.
+ * Supports v4.0 library.json format with context, sections, badges,
+ * theme management, accent colors, and deep-linking.
+ *
+ * @version 5.0.0-rc.1
+ * @author Phong
+ * @license MIT
+ */
+
+// ============================================================
+// SlotRegistry — keyed factory map for named UI slots
+// ============================================================
+
+/**
+ * SlotRegistry — keyed factory map for named UI slots.
+ *
+ * Slots are named insertion points the engine renders into during
+ * sidebar DOM construction. Consumers call viewer.setSlot(name, factory)
+ * to register a render function; the engine calls it at the right time
+ * and inserts the result.
+ *
+ * The registry validates names against the engine's frozen SLOT_NAMES
+ * list — registering an unknown slot throws so consumer typos surface
+ * loudly instead of silently no-oping.
+ *
+ * @since 4.2.0
+ */
+class SlotRegistry {
+	constructor(validNames) {
+		this._valid = new Set(validNames);
+		this._factories = new Map();
+	}
+
+	set(name, factory) {
+		if (!this._valid.has(name)) {
+			throw new Error(
+				`Phong360LibraryUI: unknown slot "${name}". ` +
+				`Valid: ${[...this._valid].join(', ')}`,
+			);
+		}
+		if (typeof factory !== 'function') {
+			throw new Error(
+				`Phong360LibraryUI: slot factory for "${name}" must be a function`,
+			);
+		}
+		this._factories.set(name, factory);
+	}
+
+	clear(name) {
+		this._factories.delete(name);
+	}
+
+	get(name) {
+		return this._factories.get(name) || null;
+	}
+
+	has(name) {
+		return this._factories.has(name);
+	}
+}
+
+// ============================================================
+// BaseRenderer — shared utilities for all template renderers
+// ============================================================
+
+class BaseRenderer {
+	constructor(section, config, engine) {
+		this.section = section;
+		this.config = config;
+		this.engine = engine;
+	}
+
+	createSectionHeading() {
+		const heading = document.createElement('button');
+		heading.className = 'p360-section-heading';
+		heading.type = 'button';
+
+		if (this.section.icon) {
+			const icon = document.createElement('i');
+			icon.className = this._resolveIcon(this.section.icon);
+			heading.appendChild(icon);
+		}
+
+		const title = document.createElement('span');
+		title.textContent = this.section.title || this.section.id || 'Section';
+		heading.appendChild(title);
+
+		const images = this.section.images || [];
+		if (images.length > 0) {
+			const count = document.createElement('span');
+			count.className = 'p360-section-heading-count';
+			count.textContent = images.length;
+			heading.appendChild(count);
+		}
+
+		const chevron = document.createElement('span');
+		chevron.className = 'p360-section-chevron';
+		chevron.innerHTML = '&#9660;';
+		heading.appendChild(chevron);
+
+		return heading;
+	}
+
+	createThumbnail(image) {
+		const wrapper = document.createElement('div');
+		wrapper.className = 'p360-thumbnail';
+		wrapper.dataset.imageId = image.id;
+		wrapper.dataset.status = image.status || 'ready';
+		if (image.primaryCollectionId !== undefined && image.primaryCollectionId !== null) {
+			wrapper.dataset.primaryCollectionId = image.primaryCollectionId;
+		}
+
+		const thumbPath = image.thumbnail?.path || image.thumbnail;
+		const isReady = !image._drifted && (!image.status || image.status === 'ready') && thumbPath;
+		if (isReady) {
+			const img = document.createElement('img');
+			// Lazy loading via IntersectionObserver
+			// Don't prepend baseUrl to absolute paths
+			const isAbsolute = thumbPath.startsWith('/') || thumbPath.startsWith('http');
+			img.dataset.src = isAbsolute ? thumbPath : this.config.baseUrl + thumbPath;
+			img.alt = image.title || image.name || '';
+			wrapper.appendChild(img);
+		} else {
+			wrapper.classList.add('p360-thumbnail--placeholder');
+			if (image._drifted) wrapper.classList.add('p360-thumbnail--drifted');
+			if (image.status === 'processing') wrapper.classList.add('p360-thumbnail--processing');
+			if (image.status === 'error') wrapper.classList.add('p360-thumbnail--error');
+			const placeholder = document.createElement('div');
+			placeholder.className = 'p360-placeholder-tile';
+			const icon = document.createElement('div');
+			icon.className = 'p360-placeholder-icon';
+			if (image._drifted) {
+				icon.textContent = '!';
+			} else if (image.status === 'processing') {
+				icon.className += ' p360-placeholder-spinner';
+			} else if (image.status === 'error') {
+				icon.textContent = '!';
+			}
+			const caption = document.createElement('div');
+			caption.className = 'p360-placeholder-caption';
+			if (image._drifted) {
+				caption.textContent = 'Recovering...';
+			} else if (image.status === 'processing') {
+				caption.textContent = 'Processing...';
+			} else if (image.status === 'error') {
+				caption.textContent = 'Failed - tap for options';
+			} else {
+				caption.textContent = 'Unavailable';
+			}
+			placeholder.appendChild(icon);
+			placeholder.appendChild(caption);
+			wrapper.appendChild(placeholder);
+		}
+
+		// Render badges if present
+		const badges = image.badges || [];
+		if (badges.length > 0) {
+			this._renderBadges(wrapper, badges);
+		}
+
+		wrapper.addEventListener('click', (e) => {
+			e.stopPropagation();
+			if (!image._drifted && (!image.status || image.status === 'ready')) {
+				this.engine.onImageClick(image);
+			}
+		});
+
+		// Run thumbnail decorators registered on the engine (Phase 2).
+		if (this.engine && typeof this.engine._runThumbnailDecorators === 'function') {
+			this.engine._runThumbnailDecorators(wrapper, image, this.section);
+		}
+
+		return wrapper;
+	}
+
+	_renderBadges(el, badges) {
+		const container = document.createElement('div');
+		container.className = 'p360-badges';
+
+		const display = badges.slice(0, 3);
+		for (const badge of display) {
+			const b = document.createElement('span');
+			b.className = 'p360-badge';
+
+			// Normalize: accept both emoji/count and icon/value
+			const icon = badge.emoji || badge.icon || '';
+			const value = badge.count ?? badge.value ?? 0;
+
+			const iconSpan = document.createElement('span');
+			iconSpan.className = 'p360-badge-icon';
+			iconSpan.textContent = this._getBadgeIcon(icon);
+			b.appendChild(iconSpan);
+
+			if (value > 0) {
+				const countSpan = document.createElement('span');
+				countSpan.className = 'p360-badge-count';
+				countSpan.textContent = this._formatCount(value);
+				b.appendChild(countSpan);
+			}
+
+			b.addEventListener('click', (ev) => {
+				ev.stopPropagation();
+				const imageData = this.engine._findImageInSections(el.dataset.imageId);
+				this.engine._invokeCallback('onBadgeClick', imageData, badge);
+			});
+
+			container.appendChild(b);
+		}
+
+		el.appendChild(container);
+	}
+
+	_getBadgeIcon(icon) {
+		if (!icon) return '';
+		// If it contains a letter character, it's likely a Phosphor class, otherwise emoji
+		if (/^[a-z]/i.test(icon) && !icon.match(/[\u{1F000}-\u{1FFFF}]/u)) {
+			return icon; // Will be handled as CSS class by caller if needed
+		}
+		return icon; // Emoji — render as text
+	}
+
+	_formatCount(n) {
+		if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+		if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+		return String(n);
+	}
+
+	_resolvePath(path) {
+		if (!path) return '';
+		if (path.startsWith('/') || path.startsWith('http')) return path;
+		return this.config.baseUrl + path;
+	}
+
+	_resolveIcon(iconStr) {
+		if (!iconStr) return '';
+		// If already a full Phosphor class (e.g. "ph ph-folder")
+		if (iconStr.startsWith('ph ')) return iconStr;
+		// Short name (e.g. "folder" -> "ph ph-folder")
+		return 'ph ph-' + iconStr;
+	}
+
+	render() {
+		throw new Error('render() must be implemented by subclass');
+	}
+}
+
+// ============================================================
+// Built-in Renderers
+// ============================================================
+
+class GridRenderer extends BaseRenderer {
+	render() {
+		const el = document.createElement('div');
+		el.className = 'p360-grid';
+		for (const image of this.section.images || []) {
+			el.appendChild(this.createThumbnail(image));
+		}
+		return el;
+	}
+}
+
+class FeedRenderer extends BaseRenderer {
+	render() {
+		const el = document.createElement('div');
+		el.className = 'p360-feed';
+		for (const image of this.section.images || []) {
+			const item = document.createElement('div');
+			item.className = 'p360-feed-item';
+			item.dataset.imageId = image.id;
+
+			const img = document.createElement('img');
+			const thumbPath = image.thumbnail?.path || image.thumbnail;
+			if (thumbPath) {
+				img.dataset.src = this._resolvePath(thumbPath);
+				img.alt = image.title || image.name || '';
+			}
+			item.appendChild(img);
+
+			// Badges
+			if (image.badges && image.badges.length > 0) {
+				this._renderBadges(item, image.badges);
+			}
+
+			const info = document.createElement('div');
+			info.className = 'p360-feed-item-info';
+			const title = document.createElement('p');
+			title.className = 'p360-feed-item-title';
+			title.textContent = image.title || image.name || '';
+			info.appendChild(title);
+
+			if (image.metadata?.creator || image.creator) {
+				const meta = document.createElement('p');
+				meta.className = 'p360-feed-item-meta';
+				meta.textContent = 'by ' + (image.metadata?.creator || image.creator);
+				info.appendChild(meta);
+			}
+
+			item.appendChild(info);
+
+			item.addEventListener('click', (e) => {
+				e.stopPropagation();
+				this.engine.onImageClick(image);
+			});
+
+			el.appendChild(item);
+		}
+		return el;
+	}
+}
+
+class AccordionRenderer extends BaseRenderer {
+	render() {
+		const el = document.createElement('div');
+		el.className = 'p360-accordion';
+
+		const trigger = document.createElement('button');
+		trigger.className = 'p360-accordion-trigger';
+		trigger.type = 'button';
+
+		if (this.section.icon) {
+			const icon = document.createElement('i');
+			icon.className = this._resolveIcon(this.section.icon);
+			trigger.appendChild(icon);
+		}
+
+		const titleSpan = document.createElement('span');
+		titleSpan.textContent = this.section.title || this.section.id || 'Section';
+		trigger.appendChild(titleSpan);
+
+		const images = this.section.images || [];
+		if (images.length > 0) {
+			const count = document.createElement('span');
+			count.className = 'p360-section-heading-count';
+			count.textContent = images.length;
+			trigger.appendChild(count);
+		}
+
+		const chevron = document.createElement('span');
+		chevron.className = 'p360-accordion-chevron';
+		chevron.innerHTML = '&#9660;';
+		trigger.appendChild(chevron);
+
+		el.appendChild(trigger);
+
+		const body = document.createElement('div');
+		body.className = 'p360-accordion-body';
+		const inner = document.createElement('div');
+		inner.className = 'p360-accordion-inner';
+
+		// Delegate inner content to template engine directly (no section wrapper/heading)
+		const innerTemplate = this.section.innerTemplate || 'grid';
+		const innerSection = { ...this.section, template: innerTemplate, title: null };
+		const innerContent = this.engine.templateEngine.render(innerSection, {
+			baseUrl: this.config.baseUrl
+		});
+		if (innerContent) {
+			inner.appendChild(innerContent);
+		}
+
+		body.appendChild(inner);
+		el.appendChild(body);
+
+		trigger.addEventListener('click', () => {
+			el.classList.toggle('p360-accordion--open');
+		});
+
+		// Default open
+		if (this.section.defaultOpen !== false) {
+			el.classList.add('p360-accordion--open');
+		}
+
+		return el;
+	}
+}
+
+class HeroRenderer extends BaseRenderer {
+	render() {
+		const images = this.section.images || [];
+		if (images.length === 0) return document.createElement('div');
+
+		const image = images[0];
+		const el = document.createElement('div');
+		el.className = 'p360-hero';
+		el.dataset.imageId = image.id;
+
+		const img = document.createElement('img');
+		const thumbPath = image.thumbnail?.path || image.thumbnail;
+		if (thumbPath) {
+			img.dataset.src = this._resolvePath(thumbPath);
+			img.alt = image.title || image.name || '';
+		}
+		el.appendChild(img);
+
+		const overlay = document.createElement('div');
+		overlay.className = 'p360-hero-overlay';
+
+		const title = document.createElement('h3');
+		title.className = 'p360-hero-title';
+		title.textContent = image.title || image.name || '';
+		overlay.appendChild(title);
+
+		if (image.description) {
+			const sub = document.createElement('p');
+			sub.className = 'p360-hero-subtitle';
+			sub.textContent = image.description;
+			overlay.appendChild(sub);
+		}
+
+		el.appendChild(overlay);
+
+		// Badges
+		if (image.badges && image.badges.length > 0) {
+			this._renderBadges(el, image.badges);
+		}
+
+		el.addEventListener('click', (e) => {
+			e.stopPropagation();
+			this.engine.onImageClick(image);
+		});
+
+		return el;
+	}
+}
+
+class ListRenderer extends BaseRenderer {
+	render() {
+		const el = document.createElement('div');
+		el.className = 'p360-list';
+		for (const image of this.section.images || []) {
+			const item = document.createElement('div');
+			item.className = 'p360-list-item';
+			item.dataset.imageId = image.id;
+
+			const thumbPath = image.thumbnail?.path || image.thumbnail;
+			if (thumbPath) {
+				const img = document.createElement('img');
+				img.className = 'p360-list-item-thumb';
+				img.dataset.src = this._resolvePath(thumbPath);
+				img.alt = image.title || image.name || '';
+				item.appendChild(img);
+			}
+
+			const info = document.createElement('div');
+			info.className = 'p360-list-item-info';
+			const title = document.createElement('div');
+			title.className = 'p360-list-item-title';
+			title.textContent = image.title || image.name || '';
+			info.appendChild(title);
+
+			if (image.metadata?.creator || image.creator) {
+				const meta = document.createElement('div');
+				meta.className = 'p360-list-item-meta';
+				meta.textContent = image.metadata?.creator || image.creator;
+				info.appendChild(meta);
+			}
+
+			item.appendChild(info);
+
+			item.addEventListener('click', (e) => {
+				e.stopPropagation();
+				this.engine.onImageClick(image);
+			});
+
+			el.appendChild(item);
+		}
+		return el;
+	}
+}
+
+class CarouselRenderer extends BaseRenderer {
+	render() {
+		const el = document.createElement('div');
+		el.className = 'p360-carousel';
+
+		const track = document.createElement('div');
+		track.className = 'p360-carousel-track';
+
+		for (const image of this.section.images || []) {
+			const item = document.createElement('div');
+			item.className = 'p360-carousel-item';
+			item.appendChild(this.createThumbnail(image));
+			track.appendChild(item);
+		}
+
+		el.appendChild(track);
+		return el;
+	}
+}
+
+class AvatarRowRenderer extends BaseRenderer {
+	render() {
+		const el = document.createElement('div');
+		el.className = 'p360-avatar-row';
+		for (const item of this.section.items || this.section.images || []) {
+			const avatar = document.createElement('div');
+			avatar.className = 'p360-avatar-item';
+
+			const img = document.createElement('img');
+			img.className = 'p360-avatar';
+			const avatarUrl = item.avatar || item.thumbnail?.path || item.thumbnail || '';
+			if (avatarUrl) {
+				img.dataset.src = this._resolvePath(avatarUrl);
+			}
+			img.alt = item.name || item.title || '';
+			avatar.appendChild(img);
+
+			const name = document.createElement('span');
+			name.className = 'p360-avatar-name';
+			name.textContent = item.name || item.title || '';
+			avatar.appendChild(name);
+
+			avatar.addEventListener('click', (e) => {
+				e.stopPropagation();
+				if (item.url) this.engine._invokeCallback('onLinkClick', item.url, item);
+			});
+
+			el.appendChild(avatar);
+		}
+		return el;
+	}
+}
+
+class AvatarGridRenderer extends BaseRenderer {
+	render() {
+		const el = document.createElement('div');
+		el.className = 'p360-avatar-grid';
+		for (const item of this.section.items || this.section.images || []) {
+			const card = document.createElement('div');
+			card.className = 'p360-avatar-card';
+
+			const img = document.createElement('img');
+			img.className = 'p360-avatar';
+			const avatarUrl = item.avatar || item.thumbnail?.path || item.thumbnail || '';
+			if (avatarUrl) {
+				img.dataset.src = this._resolvePath(avatarUrl);
+			}
+			img.alt = item.name || item.title || '';
+			card.appendChild(img);
+
+			const name = document.createElement('div');
+			name.className = 'p360-avatar-card-name';
+			name.textContent = item.name || item.title || '';
+			card.appendChild(name);
+
+			if (item.count !== undefined || item.imageCount !== undefined) {
+				const meta = document.createElement('div');
+				meta.className = 'p360-avatar-card-meta';
+				const n = item.count ?? item.imageCount;
+				meta.textContent = n + ' image' + (n !== 1 ? 's' : '');
+				card.appendChild(meta);
+			}
+
+			card.addEventListener('click', (e) => {
+				e.stopPropagation();
+				if (item.url) this.engine._invokeCallback('onLinkClick', item.url, item);
+			});
+
+			el.appendChild(card);
+		}
+		return el;
+	}
+}
+
+class EmptyStateRenderer extends BaseRenderer {
+	render() {
+		const el = document.createElement('div');
+		el.className = 'p360-empty-state';
+
+		const icon = document.createElement('i');
+		icon.className = this._resolveIcon(this.section.icon || 'image');
+		el.appendChild(icon);
+
+		const title = document.createElement('div');
+		title.className = 'p360-empty-state-title';
+		title.textContent = this.section.title || 'No images yet';
+		el.appendChild(title);
+
+		if (this.section.message) {
+			const msg = document.createElement('div');
+			msg.className = 'p360-empty-state-message';
+			msg.textContent = this.section.message;
+			el.appendChild(msg);
+		}
+
+		return el;
+	}
+}
+
+// ============================================================
+// TemplateEngine — maps template names to renderers
+// ============================================================
+
+class TemplateEngine {
+	constructor(engine) {
+		this.engine = engine;
+		this.renderers = {
+			grid: GridRenderer,
+			feed: FeedRenderer,
+			accordion: AccordionRenderer,
+			hero: HeroRenderer,
+			list: ListRenderer,
+			carousel: CarouselRenderer,
+			'avatar-row': AvatarRowRenderer,
+			'avatar-grid': AvatarGridRenderer,
+			empty: EmptyStateRenderer
+		};
+	}
+
+	register(name, RendererClass) {
+		this.renderers[name] = RendererClass;
+	}
+
+	render(section, config) {
+		const templateName = section.template || 'grid';
+		const Renderer = this.renderers[templateName];
+		if (!Renderer) {
+			console.warn(`Unknown template "${templateName}", falling back to grid`);
+			return new GridRenderer(section, config, this.engine).render();
+		}
+		return new Renderer(section, config, this.engine).render();
+	}
+}
+
+// ============================================================
+// Link detection — URL domain → Phosphor icon
+// ============================================================
+
+const LINK_ICONS = {
+	'instagram.com': 'instagram-logo',
+	'youtube.com': 'youtube-logo',
+	'twitter.com': 'twitter-logo',
+	'x.com': 'x-logo',
+	'github.com': 'github-logo',
+	'tiktok.com': 'tiktok-logo',
+	'facebook.com': 'facebook-logo',
+	'linkedin.com': 'linkedin-logo',
+	'discord.com': 'discord-logo',
+	'discord.gg': 'discord-logo',
+	'twitch.tv': 'twitch-logo',
+	'reddit.com': 'reddit-logo',
+	'pinterest.com': 'pinterest-logo',
+	'threads.net': 'threads-logo'
+};
+
+function detectLinkIcon(url) {
+	try {
+		const hostname = new URL(url).hostname.replace('www.', '');
+		for (const [domain, icon] of Object.entries(LINK_ICONS)) {
+			if (hostname === domain || hostname.endsWith('.' + domain)) {
+				return 'ph ph-' + icon;
+			}
+		}
+	} catch (e) {
+		// invalid URL
+	}
+	return 'ph ph-link';
+}
+
+// ============================================================
+// Phong360LibraryUI — main class
+// ============================================================
+
+class Phong360LibraryUI {
+	static MOBILE_BREAKPOINT = 768;
+
+	/** Maximum decorators per kind before a warn is logged (inclusive — 21st triggers). */
+	static MAX_DECORATORS_WARN = 20;
+
+	/** Hard cap per kind — 101st add*Decorator call returns a no-op handle and logs an error. */
+	static MAX_DECORATORS_HARD = 100;
+
+	/**
+	 * Names of all UI slots a consumer may register a factory for.
+	 * Frozen to prevent runtime mutation. Renaming any of these is a
+	 * breaking change.
+	 * @since 4.2.0
+	 */
+	static SLOT_NAMES = Object.freeze([
+		'toolbar-leading',
+		'info-bar-leading',
+		'info-bar-trailing',
+		'sidebar-toggle-icon',
+	]);
+
+	/** Events that exist for backward compatibility only and will be deleted in Phase 5. */
+	static COMPAT_EVENTS = new Set([
+		'link:click',
+		'section:toggle',
+		'sections:render',
+		'badge:click',
+		'help:open'
+	]);
+
+
+	/** Maps legacy callback names to engine events with payload builders. */
+	static CALLBACK_EVENT_MAP = {
+		onLibraryLoad:     { event: 'library:load',     compat: false, buildPayload: function(data)     { return { manifest: this.libraryData, context: this._context, sections: this.getSections(), images: this.getImages(), facets: this.libraryData?.facets || null }; } },
+		onContextReady:    { event: 'context:ready',    compat: false, buildPayload: function(ctx)      { return Object.assign({}, ctx); } },
+		onImageSelect:     { event: 'image:select',     compat: false, buildPayload: function(image)    { return Object.assign({}, image); } },
+		onImageLoad:       { event: 'image:visible',    compat: false, buildPayload: function(img, res) { return { image: img ? Object.assign({}, img) : null, resolution: res || null }; } },
+		onLinkClick:       { event: 'link:click',       compat: true,  buildPayload: function(url, it)  { return { url, item: it }; } },
+		onSectionToggle:   { event: 'section:toggle',   compat: true,  buildPayload: function(sec, exp) { return { section: sec, expanded: exp }; } },
+		onSectionsRendered:{ event: 'sections:render',  compat: true,  buildPayload: function(flt, mfa) { return { sections: flt, modelFilterActive: mfa }; } },
+		onThemeChange:     { event: 'theme:change',     compat: false, buildPayload: function(resolved) { return { resolved, choice: this._theme }; } },
+		onBadgeClick:      { event: 'badge:click',      compat: true,  buildPayload: function(img, b)   { return { image: img, badge: b }; } },
+		onHelpClick:       { event: 'help:open',        compat: true,  buildPayload: function()         { return {}; } },
+	};
+
+	/**
+	 * @param {Object} options
+	 * @param {string} options.containerId - DOM element ID for the 360 viewer canvas
+	 * @param {string} [options.libraryUrl] - URL to fetch library.json
+	 * @param {Object} [options.libraryData] - Pre-loaded library data
+	 * @param {string} [options.autoloadId] - Auto-load image by id or slug after render
+	 * @param {string} [options.filterCollection] - Only render section matching this collection slug
+	 * @param {string} [options.theme] - 'dark' | 'light' | 'auto'
+	 * @param {string} [options.accent] - Accent color hex (e.g. '#6366f1')
+	 * @param {string} [options.baseUrl] - Base URL for resolving image paths
+	 * @param {string} [options.configUrl] - URL to 360-viewer.json config (loaded separately from library)
+	 * @param {number} [options.panelWidth] - Sidebar width in px (280-600)
+	 * @param {string} [options.infoBar] - Info bar alignment: 'center' | 'left'
+	 * @param {string} [options.favicon] - Emoji to use as favicon (e.g. '🌐')
+	 * @param {boolean} [options.desktopOpenByDefault=false] - If true, sidebar opens
+	 *     automatically on load when window > MOBILE_BREAKPOINT. Manual collapse
+	 *     on desktop is remembered across resize round-trips.
+	 */
+	constructor(options = {}) {
+		this.containerId = options.containerId;
+		this._containerEl = document.getElementById(options.containerId);
+		if (!this._containerEl) {
+			throw new Error(`Container element "${options.containerId}" not found`);
+		}
+
+		this.libraryUrl = options.libraryUrl || null;
+		this.libraryData = options.libraryData || null;
+		this.autoloadId = options.autoloadId || null;
+		// urlSync: true (default) | false | { read?: fn, write?: fn }
+		// Controls deep-link URL behavior. Fires on every image change
+		// (click, prev, next, autoload). Default preserves the legacy
+		// `?img=<slug>` read/write pair for every existing consumer.
+		this.urlSync = options.urlSync !== undefined ? options.urlSync : true;
+		this.filterCollection = options.filterCollection || null;
+		this.baseUrl = options.baseUrl || '';
+		this.configUrl = options.configUrl || null;
+		this._panelWidth = options.panelWidth || null;
+		this._infoBarAlign = options.infoBar || null;
+		this._favicon = options.favicon || null;
+		this._sensitivity = options.sensitivity || null;
+		this._grid = options.grid || null;
+		this._desktopOpenByDefault = options.desktopOpenByDefault === true;
+
+		// Engine control options (Phase 1 — constructor API)
+		this._keyboardShortcuts = options.keyboardShortcuts !== false; // default true
+		this._legacyModelFilter = options.legacyModelFilter !== false; // default true
+		this._fov = options.fov || null;
+		this._controls = options.controls || null;
+		this._autoRotationRate = options.autoRotationRate !== undefined ? options.autoRotationRate : null;
+		this._transition = options.transition || null;
+		this._autoRotate = options.autoRotate !== undefined ? options.autoRotate : null;
+
+		// Loading state (Phase 1 — engine API)
+		this._isLoading = false;
+		this._loadingPhase = 'idle'; // 'idle' | 'library' | 'image'
+		this._abortController = null;
+		this._loadToken = 0;
+		this._selectToken = 0;
+		this._resolutionMode = 'auto'; // 'auto' | 'manual'
+
+		// Lifecycle
+		this._destroyed = false;
+
+		// Core viewer instances (created internally)
+		this.core = null;
+		this.multiViewer = null;
+
+		// Template engine
+		this.templateEngine = new TemplateEngine(this);
+
+		// Theme
+		this._theme = options.theme || 'auto';
+		this._accent = options.accent || null;
+
+		// Callbacks
+		this.callbacks = {
+			onBadgeClick: null,
+			onImageSelect: null,
+			onImageLoad: null,
+			onContextReady: null,
+			onLibraryLoad: null,
+			onSectionToggle: null,
+			onLinkClick: null,
+			onSectionsRendered: null,
+			onThemeChange: null,
+			onHelpClick: null
+		};
+
+		// Typed event emitter (Phase 1 — engine API)
+		/** @type {Map<string, Function[]>} */
+		this._listeners = new Map();
+		this._suppressCallbackBridge = false;
+
+		// State
+		this._sections = [];
+		this._allImages = [];
+		this._context = null;
+		this._sidebarOpen = false;
+		this._userCollapsedOnDesktop = false;
+		this._wasDesktop = null;
+		this._currentImageId = null;
+		this._currentImageData = null;
+
+
+		// Model filter state (see plans/meta/2026-04-19-gallery-model-metadata/ §7.4)
+		this._modelFilterState = {
+			architectures: new Set(),
+			models: new Set(),
+			includeCustom: false,
+			includeUnknown: false
+		};
+		this._modelFilterContainer = null;
+		this._headerEl = null;
+		this._hashchangeBound = false;
+		this._infoDetails = null;
+
+		// DOM references
+		this._sidebar = null;
+		this._backdrop = null;
+		this._toggle = null;
+		this._contentEl = null;
+		this._observer = null;
+
+		// Slot system (since 4.2.0)
+		this._slots = new SlotRegistry(Phong360LibraryUI.SLOT_NAMES);
+		// Slot factories receive loaded context. The sidebar DOM is built
+		// BEFORE loadLibrary() resolves (engine builds chrome up-front, then
+		// fetches the manifest). _contextLoaded gates slot rendering so
+		// factories never see an empty {} context — first paint waits for
+		// the library load to complete.
+		this._contextLoaded = false;
+		this._slotWrappers = {};
+
+		// Decorator lists (Phase 2)
+		this._thumbnailDecorators = [];
+		this._headingDecorators = [];
+		this._decoratorIdCounter = 0;
+
+		// Memory-bounds state (Task 2.4)
+		// Per-kind flags: warn fires once when count exceeds MAX_DECORATORS_WARN;
+		// error fires once when count exceeds MAX_DECORATORS_HARD.
+		this._decoratorWarned  = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		this._decoratorErrored = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		// Per-kind live counts for sidebar-section and toolbar-button (mounted-once decorators
+		// whose instances don't live in a persistent array like _thumbnailDecorators).
+		this._sidebarSectionCount  = 0;
+		this._toolbarButtonCount   = 0;
+
+		// Idempotency state (Task 2.4)
+		// Per-kind WeakMaps track which (handleId) sets have already run on each target element.
+		// Used for target-only mutators (no injected child) to prevent re-runs on the same node.
+		this._thumbnailDecoratorTargets = new WeakMap(); // Element → Set<handleId> (skipped)
+		this._headingDecoratorTargets   = new WeakMap(); // Element → Set<handleId> (skipped)
+
+		// Tracks "has ran at least once on target" for child-injecting decorators,
+		// to detect second-run of same decorator on same element (used for missing-marker warn).
+		this._thumbnailDecoratorFirstRun = new WeakMap(); // Element → Set<handleId>
+		this._headingDecoratorFirstRun   = new WeakMap(); // Element → Set<handleId>
+
+		// Missing-marker warn dedup: Set<"<handleId>:UID"> fired per (handleId, target) pair.
+		this._missingMarkerWarned = new Set();
+
+		// Additive slot state (Phase 2 — Task 2.3)
+		// _contentEl, _toolbar, and _infoBar are built during init() → _buildSidebarDOM().
+		// These arrays/maps hold registrations made BEFORE or AFTER the DOM is built.
+		// Injection strategy: if the target container already exists, inject immediately;
+		// otherwise the _buildSidebarDOM / _buildInfoBar / _buildToolbar methods check
+		// these lists at the end and inject any pending registrations.
+		this._additiveSidebarSections = [];
+		this._toolbarButtons = [];
+		this._infoBarSlots = { left: null, center: null, right: null };
+
+		// Initialize
+		this.init();
+		this._setupCompatBridge();
+	}
+
+	get container() {
+		return this._containerEl;
+	}
+
+	get canvas() {
+		return this.core?.renderer?.domElement || null;
+	}
+
+	async init() {
+		this._initCore();
+		// Emit ready after core initialized + canvas mounted + multiViewer wired
+		this.emit('ready');
+		this._buildSidebarDOM();
+		this._setupLazyLoading();
+		this._applyTheme(this._theme);
+
+		// Track viewport class for resize handler
+		this._wasDesktop = this._isDesktop();
+		window.addEventListener('resize', () => this._handleResize());
+
+		// Load standalone config (360-viewer.json) before library
+		if (this.configUrl) {
+			await this._loadConfig();
+		}
+
+		if (this.libraryUrl) {
+			await this.loadLibrary();
+		} else if (this.libraryData) {
+			this._processLibraryData(this.libraryData);
+		}
+
+		// Opt-in default-open on desktop (after config + library applied, so
+		// panel width / theme / content are settled before first paint).
+		if (this._desktopOpenByDefault && this._isDesktop()) {
+			this.openSidebar();
+		}
+	}
+
+	async _loadConfig() {
+		try {
+			const resp = await fetch(this.configUrl);
+			if (!resp.ok) return;
+			const data = await resp.json();
+			const ctx = data.context || data;
+			// Apply config fields (constructor values take precedence)
+			if (!this._panelWidth && ctx.panelWidth) this._panelWidth = ctx.panelWidth;
+			if (!this._infoBarAlign && ctx.infoBar) this._infoBarAlign = ctx.infoBar;
+			if (!this._favicon && ctx.favicon) this._favicon = ctx.favicon;
+			if (!this._accent && ctx.accent) this._accent = ctx.accent;
+			if (!this._grid && ctx.grid) this._grid = ctx.grid;
+			if (ctx.sensitivity && this.core) {
+				Object.assign(this.core.config.sensitivity, ctx.sensitivity);
+			}
+			if (this._theme === 'auto' && ctx.theme && ctx.theme !== 'auto') {
+				this._applyTheme(ctx.theme);
+			}
+			// Apply early so sidebar width is correct before library loads
+			this._applyPanelConfig();
+		} catch (e) {
+			console.warn('Could not load config:', e);
+		}
+	}
+
+	// --------------------------------------------------------
+	// Core viewer setup
+	// --------------------------------------------------------
+
+	_initCore() {
+		// Auto-rotate: constructor option takes precedence; fall back to localStorage for
+		// backward compatibility during migration. The engine API contract says engine does
+		// NOT read localStorage — the consumer seeds autoRotate via the constructor option.
+		let autoRotate = this._autoRotate !== null ? this._autoRotate : false;
+		if (this._autoRotate === null) {
+			try {
+				const saved = localStorage.getItem('phong360.preferences.autoRotate');
+				if (saved !== null) autoRotate = saved === 'true';
+			} catch (e) {
+				/* ignore */
+			}
+		}
+
+		if (typeof Phong360ViewerCore !== 'undefined') {
+			const coreConfig = {
+				viewRotation: { autoRotate, autoRotationRate: this._autoRotationRate !== null ? this._autoRotationRate : 1 }
+			};
+			if (this._sensitivity) coreConfig.sensitivity = this._sensitivity;
+
+			// Apply fov option to core config
+			if (this._fov) {
+				if (this._fov.init !== undefined) {
+					coreConfig.fov = coreConfig.fov || {};
+					coreConfig.fov.init = this._fov.init;
+					coreConfig.fov.initTarget = this._fov.initTarget !== undefined ? this._fov.initTarget : this._fov.init;
+				} else if (this._fov.initTarget !== undefined) {
+					coreConfig.fov = coreConfig.fov || {};
+					coreConfig.fov.initTarget = this._fov.initTarget;
+				}
+			}
+
+			// Apply controls option to core config
+			if (this._controls) {
+				coreConfig.controls = coreConfig.controls || {};
+				if (this._controls.enableZoom !== undefined) coreConfig.controls.enableZoom = this._controls.enableZoom;
+				if (this._controls.enablePan !== undefined) coreConfig.controls.enablePan = this._controls.enablePan;
+			}
+
+			// Apply transition option to core config loading section
+			if (this._transition) {
+				coreConfig.loading = coreConfig.loading || {};
+				if (this._transition.fadeInDuration !== undefined) coreConfig.loading.fadeInDuration = this._transition.fadeInDuration;
+				if (this._transition.fadeOutDuration !== undefined) coreConfig.loading.fadeOutDuration = this._transition.fadeOutDuration;
+			}
+
+			this.core = new Phong360ViewerCore({
+				containerId: this.containerId,
+				config: coreConfig
+			});
+
+			// Suppress keyboard shortcuts if disabled (Phase 1 — keyboardShortcuts option)
+			if (!this._keyboardShortcuts) {
+				if (this.core.boundHandlers && this.core.boundHandlers.onKeyDown) {
+					document.removeEventListener('keydown', this.core.boundHandlers.onKeyDown);
+					document.removeEventListener('keyup', this.core.boundHandlers.onKeyUp);
+				}
+			}
+		}
+
+		if (typeof Phong360MultiImage !== 'undefined' && this.core) {
+			this.multiViewer = new Phong360MultiImage({
+				core: this.core,
+				baseUrl: this.baseUrl,
+				adaptiveLoading: true,
+				callbacks: {
+					onImageLoad: (imageData, resolution) => {
+						this._onImageLoaded(imageData, resolution);
+					},
+					onImageError: (error) => {
+						console.error('Image load error:', error);
+					},
+					onResolutionChange: (resolution) => {
+						if (this._resBtn) {
+							this._resBtn.textContent = resolution.id.toUpperCase();
+						}
+						if (this._resDropdown) {
+							this._resDropdown.querySelectorAll('.p360-res-option').forEach((b) => {
+								b.classList.toggle('active', b.dataset.resId === resolution.id);
+							});
+						}
+					}
+				}
+			});
+		}
+	}
+
+	// --------------------------------------------------------
+	// Sidebar DOM
+	// --------------------------------------------------------
+
+	_buildSidebarDOM() {
+		// Toggle button
+		this._toggle = document.createElement('button');
+		this._toggle.className = 'p360-sidebar-toggle';
+		this._toggle.title = 'Browse Library';
+		this._toggle.setAttribute('aria-controls', 'p360-sidebar');
+		this._toggle.addEventListener('click', (e) => {
+			e.stopPropagation();
+			this.toggleSidebar();
+		});
+		// sidebar-toggle-icon slot wrapper (since 4.2.0). Persistent
+		// across state changes so _updateToggleIcon → _renderSlot only
+		// swaps the inner <i>, never the wrapper.
+		const iconWrapper = document.createElement('span');
+		iconWrapper.dataset.slot = 'sidebar-toggle-icon';
+		iconWrapper.className = 'p360-slot';
+		this._toggle.appendChild(iconWrapper);
+		this._slotWrappers['sidebar-toggle-icon'] = iconWrapper;
+		document.body.appendChild(this._toggle);
+
+		// Backdrop
+		this._backdrop = document.createElement('div');
+		this._backdrop.className = 'p360-sidebar-backdrop';
+		this._backdrop.addEventListener('click', () => this.closeSidebar());
+		document.body.appendChild(this._backdrop);
+
+		// Sidebar
+		this._sidebar = document.createElement('div');
+		this._sidebar.className = 'p360-sidebar';
+		this._sidebar.id = 'p360-sidebar';
+		this._sidebar.setAttribute('data-theme', this._resolveTheme());
+
+		// Toolbar (resolution selector + projection toggle)
+		this._toolbar = document.createElement('div');
+		this._toolbar.className = 'p360-toolbar';
+		this._buildToolbar();
+		this._sidebar.appendChild(this._toolbar);
+
+		// Content area
+		this._contentEl = document.createElement('div');
+		this._contentEl.className = 'p360-content';
+		this._sidebar.appendChild(this._contentEl);
+
+		// Flush any pending addSidebarSection() calls made before the DOM was ready.
+		for (const { el, position } of this._additiveSidebarSections) {
+			this._insertSidebarSection(el, position);
+		}
+		this._additiveSidebarSections = [];
+
+		document.body.appendChild(this._sidebar);
+		this._buildInfoBar();
+		this._updateToggleIcon();
+	}
+
+	_buildToolbar() {
+		// toolbar-leading slot (since 4.2.0) — first child of toolbar.
+		// Contains brand pill (default) or consumer-registered factory output.
+		const leadingWrapper = document.createElement('div');
+		leadingWrapper.dataset.slot = 'toolbar-leading';
+		leadingWrapper.className = 'p360-slot';
+		this._toolbar.appendChild(leadingWrapper);
+		this._slotWrappers['toolbar-leading'] = leadingWrapper;
+		// Defer first render to _renderAllSlots() after context loads.
+
+		// Resolution dropdown
+		this._resWrapper = document.createElement('div');
+		this._resWrapper.className = 'p360-res-wrapper';
+		this._resWrapper.style.display = 'none';
+
+		this._resBtn = document.createElement('button');
+		this._resBtn.className = 'p360-res-btn';
+		this._resBtn.title = 'Image Resolution';
+		this._resBtn.textContent = '--';
+		this._resBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			this._resDropdown.classList.toggle('open');
+		});
+
+		this._resDropdown = document.createElement('div');
+		this._resDropdown.className = 'p360-res-dropdown';
+
+		this._resWrapper.appendChild(this._resBtn);
+		this._resWrapper.appendChild(this._resDropdown);
+		this._toolbar.appendChild(this._resWrapper);
+
+		// Projection toggle button
+		this._projectionBtn = document.createElement('button');
+		this._projectionBtn.className = 'p360-toolbar-btn';
+		this._projectionBtn.title = 'Switch Projection (P)';
+		this._projectionBtn.innerHTML = '<i class="ph ph-globe-hemisphere-east"></i>';
+		this._projectionBtn.addEventListener('click', () => {
+			if (this.core) {
+				const next = this.core.projectionType === 0 ? 1 : 0;
+				this.core.switchProjection(next);
+				this._updateProjectionButton(next);
+			}
+		});
+		this._toolbar.appendChild(this._projectionBtn);
+
+		// Theme toggle button
+		this._themeBtn = document.createElement('button');
+		this._themeBtn.className = 'p360-toolbar-btn';
+		this._themeBtn.title = 'Toggle Theme';
+		this._themeBtn.innerHTML = '<i class="ph ph-moon"></i>';
+		this._themeBtn.addEventListener('click', () => {
+			const resolved = this._resolveTheme();
+			const next = resolved === 'dark' ? 'light' : 'dark';
+			this.setTheme(next);
+			this._updateThemeButton(next);
+		});
+		this._toolbar.appendChild(this._themeBtn);
+
+		// Help button
+		this._helpBtn = document.createElement('button');
+		this._helpBtn.className = 'p360-toolbar-btn';
+		this._helpBtn.title = 'Help';
+		this._helpBtn.innerHTML = '<i class="ph ph-question"></i>';
+		this._helpBtn.addEventListener('click', () => {
+			document.dispatchEvent(new CustomEvent('p360-help'));
+			this._invokeCallback('onHelpClick');
+		});
+		this._toolbar.appendChild(this._helpBtn);
+
+		// Close resolution dropdown on outside click
+		document.addEventListener('click', () => {
+			if (this._resDropdown) this._resDropdown.classList.remove('open');
+		});
+
+		// Flush any pending addToolbarButton() calls made before the DOM was ready.
+		for (const { btn, position } of this._toolbarButtons) {
+			this._insertToolbarButton(btn, position);
+		}
+		this._toolbarButtons = [];
+	}
+
+	_buildInfoBar() {
+		this._infoBar = document.createElement('div');
+		this._infoBar.className = 'p360-info-bar p360-info-center'; // default center
+
+		// Prev button
+		this._prevBtn = document.createElement('button');
+		this._prevBtn.className = 'p360-info-nav';
+		this._prevBtn.innerHTML = '<i class="ph ph-caret-left"></i>';
+		this._prevBtn.title = 'Previous image';
+		this._prevBtn.disabled = true;
+		this._prevBtn.addEventListener('click', () => {
+			if (this.multiViewer) this.multiViewer.loadPreviousImage();
+		});
+
+		// Text
+		this._infoText = document.createElement('div');
+		this._infoText.className = 'p360-info-text';
+
+		this._infoTitle = document.createElement('div');
+		this._infoTitle.className = 'p360-info-title';
+		this._infoTitle.textContent = 'Loading...';
+
+		this._infoSubtitle = document.createElement('div');
+		this._infoSubtitle.className = 'p360-info-subtitle';
+		this._infoSubtitle.textContent = '360\u00B0 Viewer';
+
+		this._infoText.appendChild(this._infoTitle);
+		this._infoText.appendChild(this._infoSubtitle);
+
+		// Next button
+		this._nextBtn = document.createElement('button');
+		this._nextBtn.className = 'p360-info-nav';
+		this._nextBtn.innerHTML = '<i class="ph ph-caret-right"></i>';
+		this._nextBtn.title = 'Next image';
+		this._nextBtn.disabled = true;
+		this._nextBtn.addEventListener('click', () => {
+			if (this.multiViewer) this.multiViewer.loadNextImage();
+		});
+
+		// info-bar-leading slot (since 4.2.0) — between prev arrow and title
+		const leadingWrapper = document.createElement('div');
+		leadingWrapper.dataset.slot = 'info-bar-leading';
+		leadingWrapper.className = 'p360-slot';
+		this._slotWrappers['info-bar-leading'] = leadingWrapper;
+
+		// info-bar-trailing slot (since 4.2.0) — between title and next arrow
+		const trailingWrapper = document.createElement('div');
+		trailingWrapper.dataset.slot = 'info-bar-trailing';
+		trailingWrapper.className = 'p360-slot';
+		this._slotWrappers['info-bar-trailing'] = trailingWrapper;
+
+		// Additive info-bar slots (Phase 2 — Task 2.3).
+		// Three dedicated containers sit at the left, center, and right positions
+		// in the bar's flex row. setInfoBarSlot(position, el) swaps their child.
+		// 'left' is before prevBtn; 'center' overlays the info-text area; 'right' is after nextBtn.
+		this._infoSlotLeft = document.createElement('div');
+		this._infoSlotLeft.className = 'p360-info-slot p360-info-slot--left';
+
+		this._infoSlotCenter = document.createElement('div');
+		this._infoSlotCenter.className = 'p360-info-slot p360-info-slot--center';
+
+		this._infoSlotRight = document.createElement('div');
+		this._infoSlotRight.className = 'p360-info-slot p360-info-slot--right';
+
+		this._infoBar.appendChild(this._infoSlotLeft);
+		this._infoBar.appendChild(this._prevBtn);
+		this._infoBar.appendChild(leadingWrapper);
+		this._infoBar.appendChild(this._infoText);
+		this._infoBar.appendChild(this._infoSlotCenter);
+		this._infoBar.appendChild(trailingWrapper);
+		this._infoBar.appendChild(this._nextBtn);
+		this._infoBar.appendChild(this._infoSlotRight);
+		document.body.appendChild(this._infoBar);
+
+		// Flush any pending setInfoBarSlot() calls made before the DOM was ready.
+		for (const pos of ['left', 'center', 'right']) {
+			const el = this._infoBarSlots[pos];
+			if (el) this._applyInfoBarSlot(pos, el);
+		}
+	}
+
+	_updateInfoBar(imageData, resolution) {
+		if (!this._infoBar) return;
+
+		// Title
+		this._infoTitle.textContent = imageData.title || imageData.name || 'Unknown';
+
+		// Subtitle: resolution info
+		if (resolution) {
+			this._infoSubtitle.textContent =
+				resolution.id.toUpperCase() + ' (' + resolution.width + '\u00D7' + resolution.height + ')';
+		} else {
+			this._infoSubtitle.textContent = 'Equirectangular';
+		}
+
+		// Show the bar
+		this._infoBar.classList.add('visible');
+
+		// Update prev/next button disabled state
+		if (this.multiViewer && this._allImages.length > 0) {
+			const idx = this._allImages.findIndex((img) => img.id === imageData.id);
+			this._prevBtn.disabled = idx <= 0;
+			this._nextBtn.disabled = idx === -1 || idx >= this._allImages.length - 1;
+		}
+
+		// Model / LoRAs / Full settings block (design §7.5)
+		if (!this._infoDetails) {
+			this._infoDetails = document.createElement('div');
+			this._infoDetails.className = 'p360-info-details';
+			this._infoBar.appendChild(this._infoDetails);
+		}
+		this._renderInfoDetails(imageData);
+	}
+
+	_updateResolutionSelector(imageData, currentResolution) {
+		if (!this._resBtn || !imageData?.resolutions) return;
+
+		this._resDropdown.innerHTML = '';
+		for (const res of imageData.resolutions) {
+			const btn = document.createElement('button');
+			btn.className = 'p360-res-option';
+			btn.textContent = res.id.toUpperCase();
+			btn.dataset.resId = res.id;
+			if (currentResolution && currentResolution.id === res.id) {
+				btn.classList.add('active');
+				this._resBtn.textContent = res.id.toUpperCase();
+			}
+			btn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				if (this.multiViewer) this.multiViewer.switchResolution(res.id);
+				this._resDropdown
+					.querySelectorAll('.p360-res-option')
+					.forEach((b) => b.classList.remove('active'));
+				btn.classList.add('active');
+				this._resBtn.textContent = res.id.toUpperCase();
+				this._resDropdown.classList.remove('open');
+			});
+			this._resDropdown.appendChild(btn);
+		}
+		this._resWrapper.style.display = '';
+	}
+
+	_updateProjectionButton(type) {
+		if (!this._projectionBtn) return;
+		if (type === 1) {
+			this._projectionBtn.innerHTML = '<i class="ph ph-globe-hemisphere-east"></i>';
+			this._projectionBtn.title = 'Stereographic — click for Gnomonic (P)';
+			this._projectionBtn.classList.remove('active');
+		} else {
+			this._projectionBtn.innerHTML = '<i class="ph ph-cube"></i>';
+			this._projectionBtn.title = 'Gnomonic — click for Stereographic (P)';
+			this._projectionBtn.classList.add('active');
+		}
+	}
+
+	_updateThemeButton(theme) {
+		if (!this._themeBtn) return;
+		if (theme === 'dark') {
+			this._themeBtn.innerHTML = '<i class="ph ph-moon"></i>';
+		} else {
+			this._themeBtn.innerHTML = '<i class="ph ph-sun"></i>';
+		}
+	}
+
+	_applyPanelConfig() {
+		// Panel width: constructor > context > default CSS
+		const pw = this._panelWidth || this._context?.panelWidth;
+		if (pw) {
+			const w = Math.max(280, Math.min(600, parseInt(pw)));
+			document.documentElement.style.setProperty('--p360-sidebar-width', w + 'px');
+		}
+
+		// Info bar alignment: constructor > context > default 'center'
+		if (this._infoBar) {
+			const align = this._infoBarAlign || this._context?.infoBar || 'center';
+			this._infoBar.classList.remove('p360-info-left', 'p360-info-center');
+			this._infoBar.classList.add(align === 'left' ? 'p360-info-left' : 'p360-info-center');
+		}
+
+		// Favicon: constructor > context
+		const emoji = this._favicon || this._context?.favicon;
+		if (emoji) {
+			this._setEmojiFavicon(emoji);
+		}
+
+		// Grid layout: constructor > context
+		const grid = this._grid || this._context?.grid;
+		if (grid) {
+			if (grid.minWidth) {
+				document.documentElement.style.setProperty(
+					'--p360-grid-min-width',
+					parseInt(grid.minWidth) + 'px'
+				);
+			}
+			if (grid.gap) {
+				document.documentElement.style.setProperty('--p360-grid-gap', parseInt(grid.gap) + 'px');
+			}
+		}
+	}
+
+	_setEmojiFavicon(emoji) {
+		const canvas = document.createElement('canvas');
+		canvas.width = 64;
+		canvas.height = 64;
+		const ctx = canvas.getContext('2d');
+		ctx.font = '56px serif';
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		ctx.fillText(emoji, 32, 38);
+
+		// Remove existing favicons
+		const existing = document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]');
+		existing.forEach((el) => el.remove());
+
+		const link = document.createElement('link');
+		link.rel = 'icon';
+		link.href = canvas.toDataURL('image/png');
+		document.head.appendChild(link);
+	}
+
+	// --------------------------------------------------------
+	// Library loading
+	// --------------------------------------------------------
+
+	async loadLibrary(urlOrManifest) {
+		// Object form: delegate to setLibrary (synchronous, resolves immediately).
+		if (urlOrManifest && typeof urlOrManifest === 'object') {
+			this.setLibrary(urlOrManifest);
+			return;
+		}
+		// String form: treat as URL and update libraryUrl for future reloadLibrary().
+		if (typeof urlOrManifest === 'string') {
+			this.libraryUrl = urlOrManifest;
+		}
+		if (!this.libraryUrl) return;
+		this._isLoading = true;
+		this._loadingPhase = 'library';
+		this._abortController = new AbortController();
+		const controller = this._abortController;
+		this.emit('loading:start', { source: 'library' });
+		const _endPreempted = () => {
+			// Preempted by setLibrary(): match the loading:start with a failed end
+			// so consumers' spinners don't hang. setLibrary emits its own library:load.
+			this._isLoading = false;
+			this._loadingPhase = 'idle';
+			this.emit('loading:end', { source: 'library', success: false });
+		};
+		try {
+			const resp = await fetch(this.libraryUrl, { signal: controller.signal });
+			// Check if aborted or preempted during fetch
+			if (controller.signal.aborted || this._abortController !== controller) {
+				_endPreempted();
+				return;
+			}
+			if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+			const data = await resp.json();
+			// Re-check after json parse (setLibrary may have fired during)
+			if (controller.signal.aborted || this._abortController !== controller) {
+				_endPreempted();
+				return;
+			}
+			// _processLibraryData emits library:load + context:ready
+			this._processLibraryData(data);
+			this._isLoading = false;
+			this._loadingPhase = 'idle';
+			this.emit('loading:end', { source: 'library', success: true });
+		} catch (error) {
+			// AbortError means setLibrary() preempted us — setLibrary already
+			// emitted its own library:load + context:ready. Still emit our
+			// loading:end so the loading:start has a partner.
+			if (error.name === 'AbortError' || controller.signal.aborted) {
+				_endPreempted();
+				return;
+			}
+			console.error('Error loading library:', error);
+			this.emit('library:error', {
+				error: error.message,
+				url: this.libraryUrl,
+				code: error.name === 'SyntaxError' ? 'parse' : 'network',
+			});
+			this._isLoading = false;
+			this._loadingPhase = 'idle';
+			this.emit('loading:end', { source: 'library', success: false });
+		} finally {
+			if (this._abortController === controller) {
+				this._abortController = null;
+			}
+		}
+	}
+
+	_isViewerLoadableImage(image) {
+		if (!image) return false;
+		if (image._drifted) return false;
+		if (image.status && image.status !== 'ready') return false;
+		return Array.isArray(image.resolutions) && image.resolutions.length > 0;
+	}
+
+	_processLibraryData(data) {
+		this.libraryData = data;
+		this._context = data.context || null;
+		this._sections = data.sections || [];
+		this._allImages = [];
+
+		// Flatten all images from all sections
+		for (const section of this._sections) {
+			if (section.images) {
+				this._allImages.push(...section.images.filter((img) => this._isViewerLoadableImage(img)));
+			}
+			if (section.items) {
+				// items can also contain images (avatar sections)
+				for (const item of section.items) {
+					if (this._isViewerLoadableImage(item)) this._allImages.push(item);
+				}
+			}
+		}
+
+		// Set images on multi-viewer
+		if (this.multiViewer) {
+			this.multiViewer.setImages(this._allImages);
+		}
+
+		// Apply accent from context if not set via constructor
+		if (!this._accent && this._context?.accent) {
+			this._accent = this._context.accent;
+		}
+		if (this._accent) {
+			this.setAccent(this._accent);
+		}
+
+		// Apply theme from context if constructor was 'auto'
+		if (this._theme === 'auto' && this._context?.theme && this._context.theme !== 'auto') {
+			this._applyTheme(this._context.theme);
+		}
+
+		this._applyPanelConfig();
+
+		// Build the model filter block before sections render (appears above them)
+		if (this._legacyModelFilter) { this._buildModelFilter(data.facets && data.facets.model); }
+
+		// Render (sections first since it clears innerHTML, then context prepends header)
+		this._renderSections(this._sections);
+		this._renderContext(this._context);
+
+		// Callbacks
+		this._invokeCallback('onLibraryLoad', data);
+		// Mark context as loaded BEFORE firing onContextReady. Until this
+		// flips, all _renderSlot calls (from setSlot/clearSlot/state changes)
+		// are deferred. Guarantees factories never see an empty context.
+		this._contextLoaded = true;
+		// Render all slots: wrappers built earlier during _buildSidebarDOM
+		// / _buildInfoBar are in the DOM — we now swap their inner content
+		// with context-aware defaults / registered factories.
+		this._renderAllSlots();
+
+		this._invokeCallback('onContextReady', this._context);
+
+		// Handle URL params or autoload
+		this._handleUrlParameters();
+	}
+
+	// --------------------------------------------------------
+	// Context header rendering
+	// --------------------------------------------------------
+
+	_renderContext(context) {
+		if (!context) return;
+
+		const header = document.createElement('div');
+		header.className = 'p360-header';
+
+		if (context.type === 'profile') {
+			const row = document.createElement('div');
+			row.className = 'p360-header-profile';
+
+			if (context.avatar) {
+				const avatar = document.createElement('img');
+				avatar.className = 'p360-header-avatar';
+				avatar.src = context.avatar;
+				avatar.alt = context.title || '';
+				row.appendChild(avatar);
+			}
+
+			const info = document.createElement('div');
+			info.className = 'p360-header-info';
+
+			const title = document.createElement('h2');
+			title.className = 'p360-header-title';
+			title.textContent = context.title || '';
+			info.appendChild(title);
+
+			if (context.subtitle) {
+				const sub = document.createElement('p');
+				sub.className = 'p360-header-subtitle';
+				sub.textContent = context.subtitle;
+				info.appendChild(sub);
+			}
+
+			row.appendChild(info);
+			header.appendChild(row);
+
+			// Links
+			if (context.links && context.links.length > 0) {
+				const linksEl = document.createElement('div');
+				linksEl.className = 'p360-header-links';
+				for (const link of context.links) {
+					const a = document.createElement('a');
+					a.className = 'p360-header-link';
+					a.href = link.url;
+					a.target = '_blank';
+					a.rel = 'noopener noreferrer';
+
+					const icon = document.createElement('i');
+					icon.className = detectLinkIcon(link.url);
+					a.appendChild(icon);
+
+					const label = document.createTextNode(link.label || this._domainFromUrl(link.url));
+					a.appendChild(label);
+
+					a.addEventListener('click', (e) => {
+						this._invokeCallback('onLinkClick', link.url, link);
+					});
+
+					linksEl.appendChild(a);
+				}
+				header.appendChild(linksEl);
+			}
+		} else {
+			// discover or local
+			// Skip the legacy <h2> when context.suppressHeader is true.
+			// Independent of context.brand — third-party consumers can have
+			// a brand pill AND a distinct discover/local heading.
+			if (!context.suppressHeader) {
+				const title = document.createElement('h2');
+				title.className = 'p360-header-title';
+				title.textContent = context.title || (context.type === 'discover' ? 'Discover' : 'Library');
+				header.appendChild(title);
+			}
+
+			if (context.subtitle) {
+				const sub = document.createElement('p');
+				sub.className = 'p360-header-subtitle';
+				sub.textContent = context.subtitle;
+				header.appendChild(sub);
+			}
+		}
+
+		// Skip emitting an empty header wrapper — happens for owner mode
+		// (suppressHeader + no profile row), and any time the context has
+		// neither title, profile, nor links. Don't reserve layout space for
+		// a div with no children.
+		if (!header.firstChild) return;
+
+		// Insert header inside scrollable content area
+		this._contentEl.insertBefore(header, this._contentEl.firstChild);
+		this._headerEl = header;
+	}
+
+	_domainFromUrl(url) {
+		try {
+			return new URL(url).hostname.replace('www.', '');
+		} catch (e) {
+			return url;
+		}
+	}
+
+	// --------------------------------------------------------
+	// Section rendering
+	// --------------------------------------------------------
+
+	_renderSections(sections) {
+		// Selective clear — preserve persistent UI (header + filter bar) and
+		// only remove section/empty-state children. The old code wiped
+		// innerHTML and re-attached _headerEl + _modelFilterContainer, which
+		// destroyed the .p360-filter-bar wrapper introduced for the new
+		// dropdown layout. The bar is now a permanent child of _contentEl.
+		const keep = new Set(
+			[this._headerEl, this._filterBarEl].filter(Boolean)
+		);
+		Array.from(this._contentEl.children).forEach((child) => {
+			if (!keep.has(child)) this._contentEl.removeChild(child);
+		});
+
+		const collScoped = this.filterCollection
+			? sections.filter((s) => s.id === this.filterCollection || s.slug === this.filterCollection)
+			: sections;
+
+		const filtered = this._applyModelFilterToSections(collScoped);
+
+		const allEmpty = filtered.length === 0 || filtered.every(
+			(s) => !s.keepEmpty && !(s.images && s.images.length) && !(s.items && s.items.length)
+		);
+
+		if (allEmpty) {
+			const emptySection = {
+				template: 'empty',
+				title: 'No images found',
+				icon: 'image',
+				message: this._isModelFilterActive()
+					? 'No images match the selected models.'
+					: 'This gallery is empty.'
+			};
+			const el = this.templateEngine.render(emptySection, { baseUrl: this.baseUrl });
+			this._contentEl.appendChild(el);
+		} else {
+			for (const section of filtered) {
+				const sectionEl = this.renderSection(section);
+				if (sectionEl) {
+					this._contentEl.appendChild(sectionEl);
+				}
+			}
+			// Start observing lazy images
+			this._observeImages();
+		}
+
+		// Notify consumers (e.g. gallery-integration's teaser-row injector)
+		// that section DOM has just been rebuilt. `filtered` is the array
+		// that was actually rendered — already model-filtered.
+		this._invokeCallback('onSectionsRendered', filtered, this._isModelFilterActive());
+	}
+
+	_isModelFilterActive() {
+		const s = this._modelFilterState;
+		return s.architectures.size > 0 || s.models.size > 0 || s.includeCustom || s.includeUnknown;
+	}
+
+	_applyModelFilterToSections(sections) {
+		if (!this._isModelFilterActive()) return sections;
+		const s = this._modelFilterState;
+		return sections.map((section) => {
+			const images = Array.isArray(section.images) ? section.images : null;
+			if (!images) return section;
+			const kept = images.filter((item) => {
+				const m = item.model;
+				if (m == null) return s.includeUnknown;
+				if (m.isCustom) return s.includeCustom || (m.id && s.models.has(m.id));
+				if (m.id && s.models.has(m.id)) return true;
+				if (m.architecture && s.architectures.has(m.architecture)) return true;
+				return false;
+			});
+			return { ...section, images: kept };
+		});
+	}
+
+	_applyModelFilter() {
+		this._renderSections(this._sections);
+		this._writeHash();
+		this._renderActivePills();
+		this._updateFilterCountBadge();
+		if (this._filterClearBtn) {
+			this._filterClearBtn.style.display = this._isModelFilterActive() ? '' : 'none';
+		}
+	}
+
+	_buildModelFilter(facets) {
+		// Build the filter bar (self-contained: trigger + dropdown + pills)
+		// inside _contentEl so the gallery's toolbar relocation can't touch it.
+		this._buildFilterBar();
+		if (this._filterDropdown) this._filterDropdown.innerHTML = '';
+		this._modelFilterContainer = null;
+		if (this._filterBarEl) this._filterBarEl.style.display = 'none';
+		if (this._activePillsEl) this._activePillsEl.innerHTML = '';
+
+		if (!facets || !this._filterDropdown) return;
+
+		const archs = Array.isArray(facets.architectures) ? facets.architectures : [];
+		const models = Array.isArray(facets.models) ? facets.models : [];
+		const customCount = facets.customCount || 0;
+		const unknownCount = facets.unknownCount || 0;
+		if (archs.length === 0 && models.length === 0 && customCount === 0 && unknownCount === 0) {
+			return;
+		}
+
+		// Cache facets so _renderActivePills can resolve display labels
+		this._modelFacets = { archs, models, customCount, unknownCount };
+
+		const wrap = document.createElement('div');
+		wrap.className = 'p360-model-filter';
+
+		const heading = document.createElement('div');
+		heading.className = 'p360-model-filter-heading';
+		const headingLabel = document.createElement('span');
+		headingLabel.textContent = 'Model';
+		heading.appendChild(headingLabel);
+		const clearBtn = document.createElement('button');
+		clearBtn.type = 'button';
+		clearBtn.className = 'p360-model-filter-clear';
+		clearBtn.textContent = 'Clear all';
+		clearBtn.addEventListener('click', () => {
+			const s = this._modelFilterState;
+			s.architectures.clear();
+			s.models.clear();
+			s.includeCustom = false;
+			s.includeUnknown = false;
+			this._syncFilterUIFromState();
+			this._applyModelFilter();
+		});
+		heading.appendChild(clearBtn);
+		this._filterClearBtn = clearBtn;
+		wrap.appendChild(heading);
+
+		const modelsByArch = {};
+		for (const m of models) {
+			const a = m.architecture || '__';
+			(modelsByArch[a] = modelsByArch[a] || []).push(m);
+		}
+
+		for (const arch of archs) {
+			const archRow = document.createElement('div');
+			archRow.className = 'p360-model-filter-arch';
+
+			const archLabel = document.createElement('label');
+			const archCb = document.createElement('input');
+			archCb.type = 'checkbox';
+			archCb.dataset.archId = arch.id;
+			archCb.addEventListener('change', () => {
+				if (archCb.checked) this._modelFilterState.architectures.add(arch.id);
+				else this._modelFilterState.architectures.delete(arch.id);
+				this._applyModelFilter();
+			});
+			archLabel.appendChild(archCb);
+			archLabel.appendChild(document.createTextNode(` ${arch.label || arch.id} (${arch.count})`));
+			archRow.appendChild(archLabel);
+
+			const archModels = modelsByArch[arch.id] || [];
+			if (archModels.length) {
+				const subList = document.createElement('div');
+				subList.className = 'p360-model-filter-sublist';
+				for (const m of archModels) {
+					const modLabel = document.createElement('label');
+					const modCb = document.createElement('input');
+					modCb.type = 'checkbox';
+					modCb.dataset.modelId = m.id;
+					modCb.addEventListener('change', () => {
+						if (modCb.checked) this._modelFilterState.models.add(m.id);
+						else this._modelFilterState.models.delete(m.id);
+						this._applyModelFilter();
+					});
+					modLabel.appendChild(modCb);
+					modLabel.appendChild(document.createTextNode(` ${m.displayName || m.id} (${m.count})`));
+					subList.appendChild(modLabel);
+				}
+				archRow.appendChild(subList);
+			}
+			wrap.appendChild(archRow);
+		}
+
+		if (customCount > 0) {
+			const row = document.createElement('div');
+			row.className = 'p360-model-filter-bucket';
+			const lbl = document.createElement('label');
+			const cb = document.createElement('input');
+			cb.type = 'checkbox';
+			cb.dataset.bucket = 'custom';
+			cb.addEventListener('change', () => {
+				this._modelFilterState.includeCustom = cb.checked;
+				this._applyModelFilter();
+			});
+			lbl.appendChild(cb);
+			lbl.appendChild(document.createTextNode(` Other / Custom (${customCount})`));
+			row.appendChild(lbl);
+			wrap.appendChild(row);
+		}
+
+		if (unknownCount > 0) {
+			const row = document.createElement('div');
+			row.className = 'p360-model-filter-bucket';
+			const lbl = document.createElement('label');
+			const cb = document.createElement('input');
+			cb.type = 'checkbox';
+			cb.dataset.bucket = 'unknown';
+			cb.addEventListener('change', () => {
+				this._modelFilterState.includeUnknown = cb.checked;
+				this._applyModelFilter();
+			});
+			lbl.appendChild(cb);
+			lbl.appendChild(document.createTextNode(` Unknown (${unknownCount})`));
+			row.appendChild(lbl);
+			wrap.appendChild(row);
+		}
+
+		this._filterDropdown.appendChild(wrap);
+		this._modelFilterContainer = wrap;
+		if (this._filterBarEl) this._filterBarEl.style.display = '';
+
+		// Restore from URL on first build, then listen for back/forward
+		this._readHash();
+		this._syncFilterUIFromState();
+		if (!this._hashchangeBound) {
+			window.addEventListener('hashchange', () => {
+				this._readHash();
+				this._syncFilterUIFromState();
+				this._renderSections(this._sections);
+			});
+			this._hashchangeBound = true;
+		}
+	}
+
+	_writeHash() {
+		const s = this._modelFilterState;
+		const parts = [];
+		if (s.architectures.size > 0) {
+			parts.push('arch=' + [...s.architectures].join(','));
+		}
+		const modelVals = [...s.models];
+		if (s.includeCustom) modelVals.push('custom');
+		if (s.includeUnknown) modelVals.push('unknown');
+		if (modelVals.length > 0) {
+			parts.push('model=' + modelVals.join(','));
+		}
+		const hash = parts.length ? '#' + parts.join('&') : '';
+		const url = window.location.pathname + window.location.search + hash;
+		try { history.replaceState(null, '', url); } catch (_) { /* file:// may reject */ }
+	}
+
+	_readHash() {
+		const raw = (window.location.hash || '').replace(/^#/, '');
+		const s = this._modelFilterState;
+		s.architectures.clear();
+		s.models.clear();
+		s.includeCustom = false;
+		s.includeUnknown = false;
+		if (!raw) return false;
+		for (const pair of raw.split('&')) {
+			const eq = pair.indexOf('=');
+			if (eq < 0) continue;
+			const key = pair.slice(0, eq);
+			const val = decodeURIComponent(pair.slice(eq + 1));
+			if (!val) continue;
+			const items = val.split(',').filter(Boolean);
+			if (key === 'arch') {
+				for (const a of items) s.architectures.add(a);
+			} else if (key === 'model') {
+				for (const m of items) {
+					if (m === 'custom') s.includeCustom = true;
+					else if (m === 'unknown') s.includeUnknown = true;
+					else s.models.add(m);
+				}
+			}
+		}
+		return true;
+	}
+
+	_syncFilterUIFromState() {
+		const s = this._modelFilterState;
+		if (this._modelFilterContainer) {
+			const archCbs = this._modelFilterContainer.querySelectorAll('input[data-arch-id]');
+			archCbs.forEach((cb) => { cb.checked = s.architectures.has(cb.dataset.archId); });
+			const modCbs = this._modelFilterContainer.querySelectorAll('input[data-model-id]');
+			modCbs.forEach((cb) => { cb.checked = s.models.has(cb.dataset.modelId); });
+			const customCb = this._modelFilterContainer.querySelector('input[data-bucket="custom"]');
+			if (customCb) customCb.checked = s.includeCustom;
+			const unknownCb = this._modelFilterContainer.querySelector('input[data-bucket="unknown"]');
+			if (unknownCb) unknownCb.checked = s.includeUnknown;
+		}
+		this._renderActivePills();
+		this._updateFilterCountBadge();
+		if (this._filterClearBtn) {
+			this._filterClearBtn.style.display = this._isModelFilterActive() ? '' : 'none';
+		}
+	}
+
+	_buildFilterBar() {
+		if (this._filterBarEl && this._filterBarEl.parentNode === this._contentEl) return;
+		if (!this._contentEl) return;
+		// If a stale reference exists but the node was detached, drop it so we rebuild.
+		this._filterBarEl = null;
+
+		const bar = document.createElement('div');
+		bar.className = 'p360-filter-bar';
+		bar.style.display = 'none';
+
+		const trigger = document.createElement('button');
+		trigger.type = 'button';
+		trigger.className = 'p360-filter-trigger';
+		trigger.setAttribute('aria-haspopup', 'menu');
+		trigger.setAttribute('aria-expanded', 'false');
+		trigger.innerHTML =
+			'<i class="ph ph-funnel-simple"></i>' +
+			'<span class="p360-filter-trigger-label">Filter</span>' +
+			'<span class="p360-filter-trigger-count" data-count="0"></span>' +
+			'<i class="ph ph-caret-down p360-filter-trigger-caret"></i>';
+		this._filterTrigger = trigger;
+		this._filterCountBadge = trigger.querySelector('.p360-filter-trigger-count');
+
+		const pills = document.createElement('div');
+		pills.className = 'p360-active-filters';
+		pills.addEventListener('click', (e) => {
+			const pill = e.target.closest('.p360-active-pill');
+			if (!pill) return;
+			const kind = pill.dataset.kind;
+			const id = pill.dataset.id;
+			const s = this._modelFilterState;
+			if (kind === 'arch') s.architectures.delete(id);
+			else if (kind === 'model') s.models.delete(id);
+			else if (kind === 'bucket' && id === 'custom') s.includeCustom = false;
+			else if (kind === 'bucket' && id === 'unknown') s.includeUnknown = false;
+			this._syncFilterUIFromState();
+			this._applyModelFilter();
+		});
+		this._activePillsEl = pills;
+
+		const dropdown = document.createElement('div');
+		dropdown.className = 'p360-filter-dropdown';
+		dropdown.dataset.state = 'closed';
+		dropdown.setAttribute('role', 'menu');
+		dropdown.addEventListener('click', (e) => e.stopPropagation());
+		this._filterDropdown = dropdown;
+
+		trigger.addEventListener('click', (e) => {
+			e.stopPropagation();
+			const isOpen = dropdown.dataset.state === 'open';
+			dropdown.dataset.state = isOpen ? 'closed' : 'open';
+			trigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+			if (!isOpen) this._syncFilterUIFromState();
+		});
+
+		bar.appendChild(trigger);
+		bar.appendChild(pills);
+		bar.appendChild(dropdown);
+
+		// Insert as the first child of _contentEl so it sits above all sections
+		if (this._contentEl.firstChild) {
+			this._contentEl.insertBefore(bar, this._contentEl.firstChild);
+		} else {
+			this._contentEl.appendChild(bar);
+		}
+		this._filterBarEl = bar;
+
+		// Outside click + ESC close the dropdown
+		if (!this._filterOutsideBound) {
+			document.addEventListener('click', (e) => {
+				if (!this._filterDropdown) return;
+				if (this._filterDropdown.dataset.state !== 'open') return;
+				// Only clicks INSIDE the dropdown panel itself keep it open.
+				// Trigger toggles via its own handler (stopPropagation), so
+				// clicks anywhere else — including pills, the bar's
+				// background, sections, header — close the dropdown.
+				if (this._filterDropdown.contains(e.target)) return;
+				this._filterDropdown.dataset.state = 'closed';
+				this._filterTrigger.setAttribute('aria-expanded', 'false');
+			});
+			document.addEventListener('keydown', (e) => {
+				if (e.key !== 'Escape') return;
+				if (!this._filterDropdown) return;
+				if (this._filterDropdown.dataset.state !== 'open') return;
+				this._filterDropdown.dataset.state = 'closed';
+				this._filterTrigger.setAttribute('aria-expanded', 'false');
+			});
+			this._filterOutsideBound = true;
+		}
+	}
+
+	_renderActivePills() {
+		if (!this._activePillsEl) return;
+		this._activePillsEl.innerHTML = '';
+		const s = this._modelFilterState;
+		const facets = this._modelFacets || { archs: [], models: [] };
+		const archById = new Map(facets.archs.map((a) => [a.id, a]));
+		const modelById = new Map(facets.models.map((m) => [m.id, m]));
+
+		const make = (kind, id, label) => {
+			const btn = document.createElement('button');
+			btn.type = 'button';
+			btn.className = 'p360-active-pill';
+			btn.dataset.kind = kind;
+			btn.dataset.id = id;
+			btn.title = `Remove ${label} filter`;
+			const lbl = document.createElement('span');
+			lbl.className = 'p360-active-pill-label';
+			lbl.textContent = label;
+			const x = document.createElement('span');
+			x.className = 'p360-active-pill-x';
+			x.innerHTML = '<i class="ph ph-x"></i>';
+			btn.appendChild(lbl);
+			btn.appendChild(x);
+			this._activePillsEl.appendChild(btn);
+		};
+
+		s.architectures.forEach((id) => {
+			const a = archById.get(id);
+			make('arch', id, a ? (a.label || a.id) : id);
+		});
+		s.models.forEach((id) => {
+			const m = modelById.get(id);
+			make('model', id, m ? (m.displayName || m.id) : id);
+		});
+		if (s.includeCustom) make('bucket', 'custom', 'Other / Custom');
+		if (s.includeUnknown) make('bucket', 'unknown', 'Unknown');
+	}
+
+	_updateFilterCountBadge() {
+		if (!this._filterCountBadge) return;
+		const s = this._modelFilterState;
+		const count = s.architectures.size + s.models.size +
+			(s.includeCustom ? 1 : 0) + (s.includeUnknown ? 1 : 0);
+		this._filterCountBadge.dataset.count = String(count);
+		this._filterCountBadge.textContent = count > 0 ? String(count) : '';
+	}
+
+	_renderInfoDetails(imageData) {
+		if (!this._infoDetails) return;
+		this._infoDetails.innerHTML = '';
+
+		if (imageData.model) {
+			const row = document.createElement('div');
+			row.className = 'p360-info-model';
+			const lbl = document.createElement('span');
+			lbl.className = 'p360-info-label';
+			lbl.textContent = 'Model';
+			row.appendChild(lbl);
+
+			if (imageData.model.architecture) {
+				const arch = document.createElement('button');
+				arch.type = 'button';
+				arch.className = 'p360-info-badge';
+				arch.textContent = imageData.model.architecture;
+				arch.addEventListener('click', () => {
+					this._modelFilterState.architectures.clear();
+					this._modelFilterState.architectures.add(imageData.model.architecture);
+					this._modelFilterState.models.clear();
+					this._modelFilterState.includeCustom = false;
+					this._modelFilterState.includeUnknown = false;
+					this._syncFilterUIFromState();
+					this._writeHash();
+					this._renderSections(this._sections);
+				});
+				row.appendChild(arch);
+			}
+			if (imageData.model.id) {
+				const mod = document.createElement('button');
+				mod.type = 'button';
+				mod.className = 'p360-info-badge';
+				mod.textContent = imageData.model.displayName || imageData.model.id;
+				mod.addEventListener('click', () => {
+					this._modelFilterState.architectures.clear();
+					this._modelFilterState.models.clear();
+					this._modelFilterState.models.add(imageData.model.id);
+					this._modelFilterState.includeCustom = false;
+					this._modelFilterState.includeUnknown = false;
+					this._syncFilterUIFromState();
+					this._writeHash();
+					this._renderSections(this._sections);
+				});
+				row.appendChild(mod);
+			}
+			this._infoDetails.appendChild(row);
+		}
+
+		if (Array.isArray(imageData.loras) && imageData.loras.length > 0) {
+			const row = document.createElement('div');
+			row.className = 'p360-info-loras';
+			const lbl = document.createElement('span');
+			lbl.className = 'p360-info-label';
+			lbl.textContent = 'LoRAs';
+			row.appendChild(lbl);
+			const ul = document.createElement('ul');
+			for (const lora of imageData.loras) {
+				const li = document.createElement('li');
+				const strength = (typeof lora.strength === 'number') ? lora.strength.toFixed(2) : lora.strength;
+				li.textContent = `${lora.displayName} (${strength})`;
+				ul.appendChild(li);
+			}
+			row.appendChild(ul);
+			this._infoDetails.appendChild(row);
+		}
+
+		if (imageData.hasConfig && imageData.id) {
+			const details = document.createElement('details');
+			details.className = 'p360-info-fullsettings';
+			const summary = document.createElement('summary');
+			summary.textContent = 'Full settings';
+			details.appendChild(summary);
+
+			const body = document.createElement('div');
+			body.className = 'p360-info-fullsettings-body';
+			body.textContent = 'Loading…';
+			details.appendChild(body);
+
+			let loaded = false;
+			details.addEventListener('toggle', async () => {
+				if (!details.open || loaded) return;
+				loaded = true;
+				try {
+					const resp = await fetch(`/api/v1/images/${encodeURIComponent(imageData.id)}/config`);
+					if (resp.status === 404) {
+						body.textContent = 'No config available.';
+						return;
+					}
+					if (!resp.ok) {
+						body.textContent = `Failed to load (${resp.status}).`;
+						return;
+					}
+					const cfg = await resp.json();
+					body.innerHTML = '';
+					const dl = document.createElement('dl');
+					this._renderConfigAsDl(cfg, dl, '');
+					body.appendChild(dl);
+				} catch (err) {
+					body.textContent = 'Failed to load config.';
+				}
+			});
+			this._infoDetails.appendChild(details);
+		}
+	}
+
+	_renderConfigAsDl(obj, dl, prefix) {
+		if (obj == null || typeof obj !== 'object') {
+			const dd = document.createElement('dd');
+			dd.textContent = String(obj);
+			dl.appendChild(dd);
+			return;
+		}
+		for (const [k, v] of Object.entries(obj)) {
+			const dt = document.createElement('dt');
+			dt.textContent = prefix ? `${prefix}.${k}` : k;
+			dl.appendChild(dt);
+			if (v && typeof v === 'object' && !Array.isArray(v)) {
+				this._renderConfigAsDl(v, dl, prefix ? `${prefix}.${k}` : k);
+			} else {
+				const dd = document.createElement('dd');
+				dd.textContent = Array.isArray(v) ? JSON.stringify(v) : String(v);
+				dl.appendChild(dd);
+			}
+		}
+	}
+
+	renderSection(section) {
+		// For accordion template, skip the section wrapper — accordion is self-contained
+		if (section.template === 'accordion') {
+			const config = { baseUrl: this.baseUrl };
+			const sectionEl = document.createElement('div');
+			sectionEl.className = 'p360-section';
+			sectionEl.dataset.sectionId = section.id || '';
+			const body = this.templateEngine.render(section, config);
+			sectionEl.appendChild(body);
+			return sectionEl;
+		}
+
+		const sectionEl = document.createElement('div');
+		sectionEl.className = 'p360-section';
+		sectionEl.dataset.sectionId = section.id || '';
+
+		// Section heading with collapse toggle
+		if (section.title) {
+			const collapsible = section.collapsible !== false;
+			const heading = document.createElement(collapsible ? 'button' : 'div');
+			heading.className = 'p360-section-heading';
+			if (collapsible) heading.type = 'button';
+
+			if (section.icon) {
+				const icon = document.createElement('i');
+				icon.className = /^ph /.test(section.icon) ? section.icon : 'ph ph-' + section.icon;
+				heading.appendChild(icon);
+			}
+
+			const title = document.createElement('span');
+			title.className = 'p360-section-title';
+			title.textContent = section.title;
+			heading.appendChild(title);
+
+			// Section-level badge (number or object from library_service)
+			const badgeValue = section.badge;
+			if (badgeValue !== undefined && badgeValue !== null) {
+				const count = document.createElement('span');
+				count.className = 'p360-section-heading-count';
+				count.textContent = typeof badgeValue === 'object' ? badgeValue.text : badgeValue;
+				heading.appendChild(count);
+			} else {
+				const images = section.images || [];
+				if (images.length > 0) {
+					const count = document.createElement('span');
+					count.className = 'p360-section-heading-count';
+					count.textContent = images.length;
+					heading.appendChild(count);
+				}
+			}
+
+			if (collapsible) {
+				const chevron = document.createElement('span');
+				chevron.className = 'p360-section-chevron';
+				chevron.innerHTML = '&#9660;';
+				heading.appendChild(chevron);
+
+				heading.addEventListener('click', () => {
+					sectionEl.classList.toggle('p360-section--collapsed');
+					// Update max-height for animation
+					const body = sectionEl.querySelector('.p360-section-body');
+					if (body && !sectionEl.classList.contains('p360-section--collapsed')) {
+						body.style.maxHeight = body.scrollHeight + 'px';
+					}
+					this._invokeCallback('onSectionToggle', section, !sectionEl.classList.contains('p360-section--collapsed'));
+				});
+			}
+
+			sectionEl.appendChild(heading);
+
+			// Run heading decorators registered on the engine (Phase 2).
+			this._runHeadingDecorators(heading, section);
+
+			// Apply initial collapsed state
+			if (collapsible && section.collapsed) {
+				sectionEl.classList.add('p360-section--collapsed');
+			}
+		}
+
+		// Section body
+		const body = document.createElement('div');
+		body.className = 'p360-section-body';
+		const config = { baseUrl: this.baseUrl };
+		const content = this.templateEngine.render(section, config);
+		body.appendChild(content);
+
+		// Set max-height for animation
+		requestAnimationFrame(() => {
+			body.style.maxHeight = body.scrollHeight + 'px';
+		});
+
+		sectionEl.appendChild(body);
+		return sectionEl;
+	}
+
+	// --------------------------------------------------------
+	// Image click / selection
+	// --------------------------------------------------------
+
+	onImageClick(image) {
+		this._currentImageId = image.id;
+
+		// Only close sidebar on mobile; keep open on desktop
+		if (window.innerWidth <= Phong360LibraryUI.MOBILE_BREAKPOINT) {
+			this.closeSidebar();
+		}
+
+		setTimeout(() => {
+			if (this.multiViewer) {
+				this.multiViewer.loadImageById(image.id);
+			}
+			this._highlightImage(image.id);
+
+			this._invokeCallback('onImageSelect', image);
+		}, 200);
+	}
+
+	_onImageLoaded(imageData, resolution) {
+		this._currentImageId = imageData.id;
+		this._currentImageData = imageData;
+		this._highlightImage(imageData.id);
+
+		// Update toolbar controls
+		this._updateResolutionSelector(imageData, resolution);
+		this._updateProjectionButton(this.core?.projectionType ?? 1);
+		this._updateInfoBar(imageData, resolution);
+
+		// Re-render info-bar slots with new imageData (since 4.2.0)
+		this._renderSlot('info-bar-leading');
+		this._renderSlot('info-bar-trailing');
+
+		this._invokeCallback('onImageLoad', imageData, resolution);
+
+		this._urlSyncWrite(imageData);
+	}
+
+	_highlightImage(imageId) {
+		if (!this._contentEl) return;
+		// Remove previous highlight
+		const prev = this._contentEl.querySelectorAll(
+			'.p360-thumbnail--selected, .p360-list-item--selected'
+		);
+		prev.forEach((el) =>
+			el.classList.remove('p360-thumbnail--selected', 'p360-list-item--selected')
+		);
+
+		// Add highlight
+		const thumb = this._contentEl.querySelector(`.p360-thumbnail[data-image-id="${imageId}"]`);
+		if (thumb) thumb.classList.add('p360-thumbnail--selected');
+
+		const listItem = this._contentEl.querySelector(`.p360-list-item[data-image-id="${imageId}"]`);
+		if (listItem) listItem.classList.add('p360-list-item--selected');
+
+		// Ensure the section containing the active image is expanded so
+		// the user can see where they are.
+		const target = thumb || listItem;
+		if (target) {
+			const parentSection = target.closest('.p360-section');
+			if (parentSection && parentSection.classList.contains('p360-section--collapsed')) {
+				parentSection.classList.remove('p360-section--collapsed');
+				const body = parentSection.querySelector('.p360-section-body');
+				if (body) body.style.maxHeight = body.scrollHeight + 'px';
+			}
+		}
+	}
+
+
+	setLibrary(manifest) {
+		// Cancel in-flight fetch if any (preempted loadLibrary will emit its own loading:end)
+		if (this._abortController) {
+			this._abortController.abort();
+			this._abortController = null;
+		}
+		// _processLibraryData emits library:load + context:ready
+		this._processLibraryData(manifest);
+	}
+	loadLibraryData(data) { this.setLibrary(data); }
+
+	_findImageInSections(imageId) {
+		for (const img of this._allImages) {
+			if (img.id === imageId) return img;
+		}
+		return { id: imageId };
+	}
+
+	// --------------------------------------------------------
+	// Sidebar toggle
+	// --------------------------------------------------------
+
+	_isDesktop() {
+		return window.innerWidth > Phong360LibraryUI.MOBILE_BREAKPOINT;
+	}
+
+	_handleResize() {
+		const desktop = this._isDesktop();
+		if (desktop && this._wasDesktop === false) {
+			// mobile → desktop: re-open only if opted in AND user hasn't collapsed
+			this._backdrop.classList.remove('p360-sidebar-backdrop--visible');
+			if (this._desktopOpenByDefault && !this._userCollapsedOnDesktop) {
+				this.openSidebar();
+			}
+		} else if (!desktop && this._wasDesktop === true) {
+			// desktop → mobile: always close so panel doesn't trap the canvas
+			this.closeSidebar();
+		} else if (desktop && this._sidebarOpen) {
+			// already desktop, sidebar already open — ensure no leftover backdrop
+			this._backdrop.classList.remove('p360-sidebar-backdrop--visible');
+		}
+		this._wasDesktop = desktop;
+	}
+
+	_updateToggleIcon() {
+		if (!this._toggle) return;
+		// Button-level attributes (label/title/aria-expanded) — engine owns
+		// these because they reflect the button's semantic state, not the
+		// icon glyph.
+		if (this._sidebarOpen) {
+			this._toggle.title = 'Collapse panel';
+			this._toggle.setAttribute('aria-label', 'Collapse panel');
+			this._toggle.setAttribute('aria-expanded', 'true');
+		} else {
+			this._toggle.title = 'Browse Library';
+			this._toggle.setAttribute('aria-label', 'Browse library');
+			this._toggle.setAttribute('aria-expanded', 'false');
+		}
+		// Icon glyph is owned by the sidebar-toggle-icon slot (since 4.2.0).
+		// _renderSlot reads this._sidebarOpen via _buildSlotProps. The
+		// default renderer paints immediately even before _contextLoaded
+		// (rule 3 of context-load gating) so the toggle is never blank.
+		this._renderSlot('sidebar-toggle-icon');
+	}
+
+	toggleSidebar() {
+		if (this._sidebarOpen) {
+			if (this._isDesktop()) this._userCollapsedOnDesktop = true;
+			this.closeSidebar();
+		} else {
+			this._userCollapsedOnDesktop = false;
+			this.openSidebar();
+		}
+	}
+
+	openSidebar() {
+		this._sidebarOpen = true;
+		this._sidebar.classList.add('p360-sidebar--open');
+		if (!this._isDesktop()) {
+			this._backdrop.classList.add('p360-sidebar-backdrop--visible');
+		}
+
+		// Re-observe in case images were added
+		this._observeImages();
+		this._updateToggleIcon();
+	}
+
+	closeSidebar() {
+		this._sidebarOpen = false;
+		this._sidebar.classList.remove('p360-sidebar--open');
+		this._backdrop.classList.remove('p360-sidebar-backdrop--visible');
+		this._updateToggleIcon();
+	}
+
+	// --------------------------------------------------------
+	// Theme management
+	// --------------------------------------------------------
+
+	setTheme(theme) {
+		this._theme = theme;
+		this._applyTheme(theme);
+	}
+
+	_applyTheme(theme) {
+		const resolved = this._resolveTheme(theme);
+		const choice = theme || this._theme;
+
+		// CSS variable contract (Phase 1 — engine API):
+		// Set data-theme attribute AND --p360-canvas-bg on the container element.
+		if (this._containerEl) {
+			this._containerEl.setAttribute('data-theme', resolved);
+			this._containerEl.style.setProperty('--p360-canvas-bg', resolved === 'dark' ? '#000000' : '#f0f0f0');
+		}
+		this._sidebar?.setAttribute('data-theme', resolved);
+		this._updateThemeButton(resolved);
+
+		// Compatibility callback
+		this._invokeCallback('onThemeChange', resolved);
+	}
+
+	_resolveTheme(theme) {
+		const t = theme || this._theme;
+		if (t === 'auto') {
+			return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+		}
+		return t;
+	}
+
+	// --------------------------------------------------------
+	// Accent color
+	// --------------------------------------------------------
+
+	setAccent(hex) {
+		this._accent = hex;
+
+		// Null reverts to brand default — clear the custom properties.
+		if (hex === null) {
+			if (this._containerEl) {
+				this._containerEl.style.removeProperty('--p360-accent');
+			}
+			if (this._sidebar) {
+				this._sidebar.style.removeProperty('--p360-accent');
+				this._sidebar.style.removeProperty('--p360-accent-hover');
+				this._sidebar.style.removeProperty('--p360-accent-active');
+				this._sidebar.style.removeProperty('--p360-accent-border');
+			}
+			this.emit('accent:change', { color: null });
+			return;
+		}
+
+		if (!this._sidebar) return;
+
+		const r = parseInt(hex.slice(1, 3), 16);
+		const g = parseInt(hex.slice(3, 5), 16);
+		const b = parseInt(hex.slice(5, 7), 16);
+
+		// Lighten ~15% for hover
+		const lighten = (v) => Math.min(255, Math.round(v + (255 - v) * 0.15));
+
+		// Set --p360-accent on container (engine CSS var contract)
+		if (this._containerEl) {
+			this._containerEl.style.setProperty('--p360-accent', hex);
+		}
+		this._sidebar.style.setProperty('--p360-accent', hex);
+		this._sidebar.style.setProperty(
+			'--p360-accent-hover',
+			`#${lighten(r).toString(16).padStart(2, '0')}${lighten(g).toString(16).padStart(2, '0')}${lighten(b).toString(16).padStart(2, '0')}`
+		);
+		this._sidebar.style.setProperty('--p360-accent-active', `rgba(${r},${g},${b},0.25)`);
+		this._sidebar.style.setProperty('--p360-accent-border', `rgba(${r},${g},${b},0.6)`);
+
+		// Engine event
+		this.emit('accent:change', { color: hex });
+	}
+
+	// --------------------------------------------------------
+	// Engine API — View control (Phase 1)
+	// --------------------------------------------------------
+
+	/**
+	 * Enable or disable auto-rotation.
+	 * @param {boolean} enabled
+	 */
+	setAutoRotate(enabled) {
+		const next = !!enabled;
+		if (this.core && this.core.config && this.core.config.viewRotation) {
+			if (this.core.config.viewRotation.autoRotate === next) return;
+			this.core.config.viewRotation.autoRotate = next;
+		}
+		this.emit('autorotate:change', { enabled: next });
+	}
+
+	/**
+	 * Get current auto-rotation state.
+	 * @returns {boolean}
+	 */
+	getAutoRotate() {
+		if (this.core && this.core.config && this.core.config.viewRotation) {
+			return this.core.config.viewRotation.autoRotate;
+		}
+		return false;
+	}
+
+	/**
+	 * Set projection mode by string identifier.
+	 * @param {'gnomonic'|'stereographic'} projection
+	 */
+	setProjection(projection) {
+		if (!this.core) return;
+		const type = projection === 'gnomonic' ? 0 : projection === 'stereographic' ? 1 : null;
+		if (type === null) {
+			console.warn('[Phong360] setProjection: invalid projection "' + projection + '". Expected "gnomonic" or "stereographic".');
+			return;
+		}
+		if (this.core.projectionType === type) return;
+		this.core.switchProjection(type);
+		this._updateProjectionButton(type);
+		this.emit('projection:change', { projection });
+	}
+
+	/**
+	 * Get current projection as string identifier.
+	 * @returns {'gnomonic'|'stereographic'}
+	 */
+	getProjection() {
+		if (!this.core) return 'stereographic';
+		return this.core.projectionType === 0 ? 'gnomonic' : 'stereographic';
+	}
+
+	/**
+	 * Select an image resolution by id. Pass 'auto' to return to auto mode.
+	 * @param {string|'auto'} level — resolution id (e.g. '2k', '4k', '8k') or 'auto'
+	 */
+	setResolution(level) {
+		if (level === 'auto') {
+			if (this._resolutionMode === 'auto') return;
+			this._resolutionMode = 'auto';
+			this.emit('resolution:change', { id: 'auto', label: 'Auto' });
+			return;
+		}
+		this._resolutionMode = 'manual';
+		if (!this.multiViewer) return;
+		this.multiViewer.switchResolution(level);
+		// Emit resolution:change with the resolved label.
+		const cur = this.multiViewer.currentImageData;
+		if (cur && Array.isArray(cur.resolutions)) {
+			const res = cur.resolutions.find((r) => r.id === level);
+			if (res) {
+				this.emit('resolution:change', { id: res.id, label: res.label || res.id });
+			}
+		}
+	}
+
+	/**
+	 * Get the currently active resolution id (never returns 'auto').
+	 * Use getResolutionMode() to check if auto mode is active.
+	 * @returns {string}
+	 */
+	getResolution() {
+		if (this.multiViewer && this.multiViewer.getCurrentResolution) {
+			const res = this.multiViewer.getCurrentResolution();
+			if (res) return res.id;
+		}
+		return this._activeResolution || '';
+	}
+
+	/**
+	 * Get the current resolution mode.
+	 * @returns {'auto'|'manual'}
+	 */
+	getResolutionMode() {
+		return this._resolutionMode;
+	}
+
+	/**
+	 * Get available resolutions for the current image.
+	 * Passthrough to Phong360MultiImage.
+	 * @returns {Array<{id: string, label: string, width: number, height: number}>}
+	 */
+	getAvailableResolutions() {
+		if (this.multiViewer && this.multiViewer.getAvailableResolutions) {
+			return this.multiViewer.getAvailableResolutions();
+		}
+		return [];
+	}
+
+	// --------------------------------------------------------
+	// Engine API — Loading state queries (Phase 1)
+	// --------------------------------------------------------
+
+	/**
+	 * Whether a load is currently in progress.
+	 * @returns {boolean}
+	 */
+	isLoading() {
+		return this._isLoading;
+	}
+
+	/**
+	 * Get the current loading phase.
+	 * @returns {'idle'|'library'|'image'}
+	 */
+	getLoadingPhase() {
+		return this._loadingPhase;
+	}
+
+	// --------------------------------------------------------
+	// Engine API — Lifecycle + fullscreen (Phase 1)
+	// --------------------------------------------------------
+
+	/**
+	 * Dispose the engine completely. Safe to call at any lifecycle stage.
+	 * Idempotent — subsequent calls are no-ops.
+	 */
+	destroy() {
+		if (this._destroyed) return;
+		this._destroyed = true;
+
+		// Cancel in-flight network requests
+		if (this._abortController) {
+			this._abortController.abort();
+			this._abortController = null;
+		}
+
+		// Cancel in-flight load (latest-wins token bump)
+		this._loadToken++;
+		this._isLoading = false;
+		this._loadingPhase = 'idle';
+
+		// Dispose core renderer (Three.js cleanup, canvas removal, event listeners)
+		if (this.core && this.core.destroy) {
+			this.core.destroy();
+		}
+		this.core = null;
+		this.multiViewer = null;
+
+		// Remove all DOM children from container
+		if (this._containerEl) {
+			while (this._containerEl.firstChild || (this._containerEl._children && this._containerEl._children.length)) {
+				const child = this._containerEl.firstChild || (this._containerEl._children && this._containerEl._children[0]);
+				if (child) this._containerEl.removeChild(child);
+			}
+			this._containerEl = null;
+		}
+
+		// Remove sidebar and backdrop from document body
+		if (this._sidebar) {
+			if (this._sidebar.parentNode) this._sidebar.parentNode.removeChild(this._sidebar);
+			this._sidebar = null;
+		}
+		if (this._backdrop) {
+			if (this._backdrop.parentNode) this._backdrop.parentNode.removeChild(this._backdrop);
+			this._backdrop = null;
+		}
+		if (this._toggle) {
+			if (this._toggle.parentNode) this._toggle.parentNode.removeChild(this._toggle);
+			this._toggle = null;
+		}
+		if (this._infoBar) {
+			if (this._infoBar.parentNode) this._infoBar.parentNode.removeChild(this._infoBar);
+			this._infoBar = null;
+		}
+
+		// Null remaining refs
+		this._contentEl = null;
+		this._observer = null;
+		this._listeners.clear();
+		this._sections = [];
+		this._allImages = [];
+		this._currentImageData = null;
+		this._currentImageId = null;
+		this.libraryData = null;
+		this._context = null;
+	}
+
+	/**
+	 * Toggle fullscreen mode.
+	 * @param {boolean} on
+	 * @returns {Promise<void>}
+	 */
+	async setFullscreen(on) {
+		if (on) {
+			if (!document.fullscreenElement) {
+				try {
+					await document.documentElement.requestFullscreen();
+				} catch (e) {
+					// Fullscreen may be denied by browser policy
+				}
+			}
+		} else {
+			if (document.fullscreenElement && document.exitFullscreen) {
+				try {
+					await document.exitFullscreen();
+				} catch (e) {
+					/* ignore */
+				}
+			}
+		}
+		this.emit('fullscreen:change', { isFullscreen: !!document.fullscreenElement });
+	}
+
+	// --------------------------------------------------------
+	// Engine API — Image navigation (Phase 1)
+	// --------------------------------------------------------
+
+	/**
+	 * Select an image by id or slug. Last-write-wins concurrency.
+	 * Throws if no library data exists.
+	 * @param {string} idOrSlug
+	 * @returns {Promise<void>}
+	 */
+	async selectImage(idOrSlug) {
+		if (!this.libraryData && (!this._allImages || this._allImages.length === 0)) {
+			throw new Error('Phong360: no library data loaded. Call loadLibrary() or setLibrary() first.');
+		}
+		if (!this.multiViewer) return;
+
+		// Last-write-wins: cancel any in-flight select
+		this._selectToken = (this._selectToken || 0) + 1;
+		const token = this._selectToken;
+
+		// Find the image by id or slug
+		let found = this._allImages.find((img) => img.id === idOrSlug);
+		if (!found) {
+			found = this._allImages.find((img) => img.slug === idOrSlug);
+		}
+		if (!found) {
+			console.warn('[Phong360] selectImage: image not found:', idOrSlug);
+			return;
+		}
+
+		// Save previous image for error rollback
+		const prevImageData = this._currentImageData;
+		const prevImageId = this._currentImageId;
+
+		// Emit image:select
+		this._currentImageId = found.id;
+		this._currentImageData = found;
+		this.emit('image:select', { ...found });
+
+		// Set loading state
+		this._isLoading = true;
+		this._loadingPhase = 'image';
+		this.emit('loading:start', { source: 'image' });
+
+		// Load via multiViewer (emits image:load-request before load, image:visible after)
+		try {
+			const resolution = this.multiViewer.selectOptimalResolution(found.resolutions);
+			await this.multiViewer.loadImageWithResolution(found, resolution);
+			if (this._selectToken !== token) return;
+			this._isLoading = false;
+			this._loadingPhase = 'idle';
+			this.emit('loading:end', { source: 'image', success: true });
+		} catch (e) {
+			if (this._selectToken !== token) return;
+			// Roll back current image on error
+			this._currentImageData = prevImageData;
+			this._currentImageId = prevImageId;
+			// image:error is already emitted by multi-image layer
+			this._isLoading = false;
+			this._loadingPhase = 'idle';
+			this.emit('loading:end', { source: 'image', success: false });
+			throw e;
+		}
+	}
+
+	/***
+	 * Load the next image in the manifest. No-op if no library loaded or
+	 * only raw loadImage(url) calls have been made.
+	 * @returns {Promise<void>}
+	 */
+	async next() {
+		if (!this.multiViewer || !this._allImages || this._allImages.length === 0) return;
+		// No-op if no library loaded or only raw loadImage(url) calls have been made
+		if (!this._currentImageId) {
+			return this.selectImage(this._allImages[0].id);
+		}
+		const idx = this._allImages.findIndex((img) => img.id === this._currentImageId);
+		if (idx === -1) return;
+		// Wrap around: if at last, go to first
+		const nextIdx = (idx >= this._allImages.length - 1) ? 0 : idx + 1;
+		return this.selectImage(this._allImages[nextIdx].id);
+	}
+
+	/**
+	 * Load the previous image in the manifest. No-op if no library loaded or
+	 * only raw loadImage(url) calls have been made.
+	 * Delegates to selectImage() so the full event chain fires.
+	 * @returns {Promise<void>}
+	 */
+	async prev() {
+		if (!this.multiViewer || !this._allImages || this._allImages.length === 0) return;
+		if (!this._currentImageId) {
+			return this.selectImage(this._allImages[0].id);
+		}
+		const idx = this._allImages.findIndex((img) => img.id === this._currentImageId);
+		if (idx === -1) return;
+		// Wrap around: if at first, go to last
+		const prevIdx = (idx <= 0) ? this._allImages.length - 1 : idx - 1;
+		return this.selectImage(this._allImages[prevIdx].id);
+	}
+
+	// --------------------------------------------------------
+	// Engine API — Public lifecycle wrappers (Phase 1)
+	// --------------------------------------------------------
+
+	/**
+	 * Load a raw panorama URL without a manifest.
+	 * No ImageData generated; image:visible payload is { url }.
+	 * @param {string} url
+	 * @returns {Promise<void>}
+	 */
+	async loadImage(url) {
+		if (!this.core) throw new Error('Phong360: core not initialized');
+		this._isLoading = true;
+		this._loadingPhase = 'image';
+		this.emit('loading:start', { source: 'image', url });
+		this.emit('image:load-request', { url });
+		try {
+			await this.core.loadImage(url);
+			this.emit('image:visible', { url });
+			this._isLoading = false;
+			this._loadingPhase = 'idle';
+			this.emit('loading:end', { source: 'image', success: true });
+		} catch (e) {
+			this.emit('image:error', { url, error: e.message });
+			this._isLoading = false;
+			this._loadingPhase = 'idle';
+			this.emit('loading:end', { source: 'image', success: false });
+		}
+	}
+
+	// --------------------------------------------------------
+	// Lazy loading via IntersectionObserver
+	// --------------------------------------------------------
+
+	_setupLazyLoading() {
+		if (typeof IntersectionObserver === 'undefined') return;
+
+		this._observer = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					if (entry.isIntersecting) {
+						const img = entry.target;
+						if (img.dataset.src) {
+							img.src = img.dataset.src;
+							img.onload = () => img.classList.add('p360-loaded');
+							img.removeAttribute('data-src');
+							this._observer.unobserve(img);
+						}
+					}
+				}
+			},
+			{
+				root: this._contentEl,
+				rootMargin: '200px'
+			}
+		);
+	}
+
+	_observeImages() {
+		if (!this._observer || !this._sidebar) return;
+		const images = this._sidebar.querySelectorAll('img[data-src]');
+		images.forEach((img) => this._observer.observe(img));
+	}
+
+	// --------------------------------------------------------
+	// Deep-linking / URL parameters
+	// --------------------------------------------------------
+
+	_urlSyncRead() {
+		const s = this.urlSync;
+		if (s === false) return null;
+
+		// Object form with explicit read:null disables read direction only.
+		if (s && typeof s === 'object' && s.read === null) return null;
+
+		const fn = (s && typeof s === 'object' && typeof s.read === 'function')
+			? s.read
+			: (url) => url.searchParams.get('img');
+
+		try {
+			return fn(new URL(window.location.href));
+		} catch (e) {
+			return null;
+		}
+	}
+
+	_urlSyncWrite(image) {
+		const s = this.urlSync;
+		if (s === false) return;
+
+		// Object form with explicit write:null disables write direction only.
+		if (s && typeof s === 'object' && s.write === null) return;
+
+		const fn = (s && typeof s === 'object' && typeof s.write === 'function')
+			? s.write
+			: (img) => '?img=' + encodeURIComponent(img.slug || img.id);
+
+		let out;
+		try {
+			out = fn(image);
+		} catch (e) {
+			return;
+		}
+		if (out == null) return;
+
+		const url = typeof out === 'string' ? out : (out && out.url);
+		if (!url) return;
+
+		const replace = typeof out === 'object' && out.replace === true;
+		if (replace) {
+			window.history.replaceState({}, '', url);
+		} else {
+			window.history.pushState({}, '', url);
+		}
+	}
+
+	_handleUrlParameters() {
+		const imgParam = this._urlSyncRead();
+
+		// Priority: constructor autoloadId > context.autoload > URL ?img= > first image
+		const autoload = this.autoloadId || (this._context && this._context.autoload);
+
+		if (autoload) {
+			this._loadImageByIdOrSlug(autoload);
+		} else if (imgParam) {
+			this._loadImageByIdOrSlug(imgParam);
+		} else if (this.multiViewer && this._allImages.length > 0) {
+			this.multiViewer.loadFirstImage();
+		}
+	}
+
+	_loadImageByIdOrSlug(idOrSlug) {
+		if (!this.multiViewer) return;
+
+		// Try direct ID first, then slug
+		let found = this._allImages.find((img) => img.id === idOrSlug);
+		if (!found) {
+			found = this._allImages.find((img) => img.slug === idOrSlug);
+		}
+
+		if (found) {
+			this.multiViewer.loadImageById(found.id);
+			this._highlightImage(found.id);
+		} else if (this._allImages.length > 0) {
+			this.multiViewer.loadFirstImage();
+		}
+	}
+
+	// --------------------------------------------------------
+	// Slot API (since 4.2.0)
+	// --------------------------------------------------------
+
+	/**
+	 * Register a factory function to produce content for a named slot.
+	 * The factory is called when the engine renders that slot's region
+	 * (during _buildSidebarDOM and on subsequent re-renders).
+	 *
+	 * @param {string} name     One of Phong360LibraryUI.SLOT_NAMES
+	 * @param {Function} factory  (slotProps) => HTMLElement | null
+	 *                            Return null to fall back to engine default.
+	 * @throws {Error} if name is not a known slot, or factory is not a function
+	 * @since 4.2.0
+	 */
+	setSlot(name, factory) {
+		this._slots.set(name, factory);
+		// Re-render immediately ONLY if the library has loaded. Before
+		// load, the sidebar DOM exists but context is empty — we defer
+		// first paint to _renderAllSlots() after loadLibrary() sets
+		// _contextLoaded. Consumers that register before load get their
+		// first render for free at load completion.
+		if (this._sidebar && this._contextLoaded) {
+			this._renderSlot(name);
+		}
+	}
+
+	/**
+	 * Remove a registered slot factory and revert to engine default.
+	 *
+	 * @param {string} name  One of Phong360LibraryUI.SLOT_NAMES
+	 * @since 4.2.0
+	 */
+	clearSlot(name) {
+		this._slots.clear(name);
+		if (this._sidebar && this._contextLoaded) {
+			this._renderSlot(name);
+		}
+	}
+
+	// --------------------------------------------------------
+	// Decorator API (Phase 2)
+	// --------------------------------------------------------
+
+	/**
+	 * Register a decorator function called after every thumbnail element is
+	 * rendered. The decorator receives the finished DOM element, the image
+	 * data object, and the parent section object, and may mutate the element
+	 * in-place (e.g. inject owner controls, badges, overlays).
+	 *
+	 * Decorators run in registration order. A throwing decorator is caught
+	 * and console.warn'd so subsequent decorators are not blocked.
+	 *
+	 * @param {Function} fn  (el: Element, image: Object, section: Object) => void
+	 * @returns {{ id: string, remove(): void }}  SlotHandle — call remove() to un-register.
+	 * @since 5.0.0
+	 */
+	addThumbnailDecorator(fn) {
+		if (typeof fn !== 'function') {
+			throw new TypeError('Phong360LibraryUI.addThumbnailDecorator: fn must be a function');
+		}
+		const kind = 'thumbnail';
+		const MAX_WARN = Phong360LibraryUI.MAX_DECORATORS_WARN;
+		const MAX_HARD = Phong360LibraryUI.MAX_DECORATORS_HARD;
+		const id = 'thumb-' + (++this._decoratorIdCounter);
+		// Lazy-init guard for bare prototype instances (tests create these without a constructor call)
+		if (!this._decoratorWarned)  this._decoratorWarned  = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		if (!this._decoratorErrored) this._decoratorErrored = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+
+		// Hard cap: reject if at limit
+		if (this._thumbnailDecorators.length >= MAX_HARD) {
+			if (!this._decoratorErrored[kind]) {
+				this._decoratorErrored[kind] = true;
+				console.error(
+					`Phong360LibraryUI: "${kind}" decorator hard cap (${MAX_HARD}) reached. ` +
+					`Additional decorators will be ignored. ` +
+					(new Error().stack || '')
+				);
+			}
+			// Return a no-op SlotHandle
+			return { id, remove: () => {} };
+		}
+
+		const entry = { id, fn };
+		this._thumbnailDecorators.push(entry);
+
+		// Warn threshold: fire once when list exceeds MAX_WARN
+		if (this._thumbnailDecorators.length > MAX_WARN && !this._decoratorWarned[kind]) {
+			this._decoratorWarned[kind] = true;
+			console.warn(
+				`Phong360LibraryUI: "${kind}" decorator count exceeded ${MAX_WARN}. ` +
+				`You now have ${this._thumbnailDecorators.length} registered. ` +
+				`Consider removing unused decorators. ` +
+				(new Error().stack || '')
+			);
+		}
+
+		return {
+			id,
+			remove: () => {
+				const idx = this._thumbnailDecorators.indexOf(entry);
+				if (idx !== -1) this._thumbnailDecorators.splice(idx, 1);
+			},
+		};
+	}
+
+	/**
+	 * Run all registered thumbnail decorators in order for a single rendered
+	 * thumbnail element. Called by BaseRenderer.createThumbnail after the
+	 * element is fully assembled.
+	 *
+	 * @param {Element} el       The thumbnail DOM element.
+	 * @param {Object}  image    The image data object from the manifest.
+	 * @param {Object}  section  The parent section object from the manifest.
+	 * @private
+	 */
+	_runThumbnailDecorators(el, image, section) {
+		// Ensure the target element has a stable UID for marker-warn dedup.
+		if (!el._p360DecoratorUid) {
+			el._p360DecoratorUid = 'uid-' + (++this._decoratorIdCounter);
+		}
+		// Ensure per-element WeakMap entries exist (WeakMaps may be absent on bare prototype instances)
+		if (!this._thumbnailDecoratorTargets) this._thumbnailDecoratorTargets = new WeakMap();
+		if (!this._thumbnailDecoratorFirstRun) this._thumbnailDecoratorFirstRun = new WeakMap();
+		if (!this._missingMarkerWarned) this._missingMarkerWarned = new Set();
+		if (!this._thumbnailDecoratorTargets.has(el)) {
+			this._thumbnailDecoratorTargets.set(el, new Set());
+		}
+		if (!this._thumbnailDecoratorFirstRun.has(el)) {
+			this._thumbnailDecoratorFirstRun.set(el, new Set());
+		}
+		const seen     = this._thumbnailDecoratorTargets.get(el);    // ids that are fully skipped
+		const hasRan   = this._thumbnailDecoratorFirstRun.get(el);   // ids that have run at least once
+
+		for (const entry of this._thumbnailDecorators) {
+			const { id, fn } = entry;
+
+			// Skip 1: child-marker check — injected child with our id already exists
+			if (el.querySelector && el.querySelector(`[data-p360-decorator-id="${id}"]`)) {
+				continue;
+			}
+
+			// Skip 2: WeakMap check — target-only mutator already ran on this element
+			if (seen.has(id)) {
+				continue;
+			}
+
+			// Snapshot children count before call to detect new child injection
+			const childCountBefore = el._children ? el._children.length : -1;
+
+			try {
+				fn(el, image, section);
+			} catch (err) {
+				console.warn(
+					`Phong360LibraryUI: thumbnail decorator "${id}" threw:`,
+					err && err.message ? err.message : err
+				);
+				// Record in both sets so we don't retry a broken decorator
+				seen.add(id);
+				hasRan.add(id);
+				continue;
+			}
+
+			// Post-call: check if fn injected children
+			const childCountAfter = el._children ? el._children.length : -1;
+			const childrenAdded = childCountAfter > childCountBefore;
+
+			if (childrenAdded) {
+				// Check if newly injected children carry the marker for this handle
+				const markerChild = el.querySelector ? el.querySelector(`[data-p360-decorator-id="${id}"]`) : null;
+				if (!markerChild) {
+					// Injected without marker: if this is the SECOND run on this target, warn.
+					// First run is fine — warn only when re-run is detected (hasRan already set).
+					if (hasRan.has(id)) {
+						const warnKey = id + ':' + el._p360DecoratorUid;
+						if (!this._missingMarkerWarned.has(warnKey)) {
+							this._missingMarkerWarned.add(warnKey);
+							console.warn(
+								`Phong360LibraryUI: thumbnail decorator "${id}" injected child elements ` +
+								`but did not set data-p360-decorator-id="${id}" on any of them. ` +
+								`Without this marker the engine cannot detect duplicate renders and may ` +
+								`call this decorator multiple times on the same target. ` +
+								`Add data-p360-decorator-id="${id}" to the outermost injected element.`
+							);
+						}
+					} else {
+						// First run — record so second run can detect the issue
+						hasRan.add(id);
+					}
+				}
+				// Don't add to seen — the child-marker check handles future skips for proper injectors
+			} else {
+				// Target-only mutator: record in seen so next render is skipped
+				seen.add(id);
+				hasRan.add(id);
+			}
+		}
+	}
+
+	/**
+	 * Register a decorator that runs after every section heading is rendered.
+	 *
+	 * The decorator receives the fully-assembled heading Element and the section
+	 * data object. It is called once per renderSection() invocation for sections
+	 * that have a title. Errors are caught per-decorator and console.warn'd so
+	 * subsequent decorators are not blocked.
+	 *
+	 * @param {Function} fn  (headingEl: Element, section: Object) => void
+	 * @returns {{ id: string, remove(): void }}  SlotHandle — call remove() to un-register.
+	 * @since 5.0.0
+	 */
+	addSectionHeadingDecorator(fn) {
+		if (typeof fn !== 'function') {
+			throw new TypeError('Phong360LibraryUI.addSectionHeadingDecorator: fn must be a function');
+		}
+		const kind = 'heading';
+		const MAX_WARN = Phong360LibraryUI.MAX_DECORATORS_WARN;
+		const MAX_HARD = Phong360LibraryUI.MAX_DECORATORS_HARD;
+		const id = 'heading-' + (++this._decoratorIdCounter);
+		// Lazy-init guard for bare prototype instances
+		if (!this._decoratorWarned)  this._decoratorWarned  = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		if (!this._decoratorErrored) this._decoratorErrored = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+
+		// Hard cap: reject if at limit
+		if (this._headingDecorators.length >= MAX_HARD) {
+			if (!this._decoratorErrored[kind]) {
+				this._decoratorErrored[kind] = true;
+				console.error(
+					`Phong360LibraryUI: "${kind}" decorator hard cap (${MAX_HARD}) reached. ` +
+					`Additional decorators will be ignored. ` +
+					(new Error().stack || '')
+				);
+			}
+			return { id, remove: () => {} };
+		}
+
+		const entry = { id, fn };
+		this._headingDecorators.push(entry);
+
+		// Warn threshold
+		if (this._headingDecorators.length > MAX_WARN && !this._decoratorWarned[kind]) {
+			this._decoratorWarned[kind] = true;
+			console.warn(
+				`Phong360LibraryUI: "${kind}" decorator count exceeded ${MAX_WARN}. ` +
+				`You now have ${this._headingDecorators.length} registered. ` +
+				`Consider removing unused decorators. ` +
+				(new Error().stack || '')
+			);
+		}
+
+		return {
+			id,
+			remove: () => {
+				const idx = this._headingDecorators.indexOf(entry);
+				if (idx !== -1) this._headingDecorators.splice(idx, 1);
+			},
+		};
+	}
+
+	/**
+	 * Run all registered heading decorators in order for a single rendered
+	 * section heading element. Called by renderSection() after the heading
+	 * element is fully assembled and appended to the section container.
+	 *
+	 * @param {Element} el       The heading DOM element.
+	 * @param {Object}  section  The section data object from the manifest.
+	 * @private
+	 */
+	_runHeadingDecorators(el, section) {
+		if (!Array.isArray(this._headingDecorators)) return;
+
+		// Ensure the target element has a stable UID for marker-warn dedup.
+		if (!el._p360DecoratorUid) {
+			el._p360DecoratorUid = 'uid-' + (++this._decoratorIdCounter);
+		}
+		// Ensure per-element WeakMap entries exist (WeakMaps may be absent on bare prototype instances)
+		if (!this._headingDecoratorTargets) this._headingDecoratorTargets = new WeakMap();
+		if (!this._headingDecoratorFirstRun) this._headingDecoratorFirstRun = new WeakMap();
+		if (!this._missingMarkerWarned) this._missingMarkerWarned = new Set();
+		if (!this._headingDecoratorTargets.has(el)) {
+			this._headingDecoratorTargets.set(el, new Set());
+		}
+		if (!this._headingDecoratorFirstRun.has(el)) {
+			this._headingDecoratorFirstRun.set(el, new Set());
+		}
+		const seen   = this._headingDecoratorTargets.get(el);
+		const hasRan = this._headingDecoratorFirstRun.get(el);
+
+		for (const entry of this._headingDecorators) {
+			const { id, fn } = entry;
+
+			// Skip 1: child-marker check
+			if (el.querySelector && el.querySelector(`[data-p360-decorator-id="${id}"]`)) {
+				continue;
+			}
+
+			// Skip 2: WeakMap check for target-only mutators
+			if (seen.has(id)) {
+				continue;
+			}
+
+			const childCountBefore = el._children ? el._children.length : -1;
+
+			try {
+				fn(el, section);
+			} catch (err) {
+				console.warn(
+					`Phong360LibraryUI: heading decorator "${id}" threw:`,
+					err && err.message ? err.message : err
+				);
+				seen.add(id);
+				hasRan.add(id);
+				continue;
+			}
+
+			const childCountAfter = el._children ? el._children.length : -1;
+			const childrenAdded = childCountAfter > childCountBefore;
+
+			if (childrenAdded) {
+				const markerChild = el.querySelector ? el.querySelector(`[data-p360-decorator-id="${id}"]`) : null;
+				if (!markerChild) {
+					if (hasRan.has(id)) {
+						const warnKey = id + ':' + el._p360DecoratorUid;
+						if (!this._missingMarkerWarned.has(warnKey)) {
+							this._missingMarkerWarned.add(warnKey);
+							console.warn(
+								`Phong360LibraryUI: heading decorator "${id}" injected child elements ` +
+								`but did not set data-p360-decorator-id="${id}" on any of them. ` +
+								`Without this marker the engine cannot detect duplicate renders and may ` +
+								`call this decorator multiple times on the same target. ` +
+								`Add data-p360-decorator-id="${id}" to the outermost injected element.`
+							);
+						}
+					} else {
+						hasRan.add(id);
+					}
+				}
+			} else {
+				seen.add(id);
+				hasRan.add(id);
+			}
+		}
+	}
+
+	// --------------------------------------------------------
+	// Phase 2 Task 2.3 — Additive structural decorators
+	// --------------------------------------------------------
+
+	/**
+	 * Mount a custom section in the sidebar's content area.
+	 *
+	 * The section is injected immediately if the sidebar is already built
+	 * (i.e. after init() has completed). If the sidebar is not yet built
+	 * the section is queued and injected at the end of _buildSidebarDOM().
+	 *
+	 * @param {Object} spec
+	 * @param {string}   spec.id       Unique id for this section.
+	 * @param {string}  [spec.title]   Optional visible title (informational only — caller
+	 *                                 sets up title markup via render()).
+	 * @param {Function} spec.render   Called once with the section's root HTMLElement.
+	 *                                 The caller populates the element inside this callback.
+	 * @param {string}  [spec.position] 'start' | 'end' (default 'end').
+	 *                                  'start' → before the first existing .p360-section;
+	 *                                  'end'   → after the last existing .p360-section.
+	 * @returns {{ id: string, remove(): void }}  SlotHandle.
+	 * @since 5.0.0
+	 */
+	addSidebarSection(spec) {
+		const kind = 'sidebar-section';
+		const MAX_WARN = Phong360LibraryUI.MAX_DECORATORS_WARN;
+		const MAX_HARD = Phong360LibraryUI.MAX_DECORATORS_HARD;
+		const id = 'sidebar-sec-' + (++this._decoratorIdCounter);
+		// Lazy-init guard for bare prototype instances
+		if (!this._decoratorWarned)     this._decoratorWarned     = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		if (!this._decoratorErrored)    this._decoratorErrored    = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		if (this._sidebarSectionCount == null) this._sidebarSectionCount = 0;
+
+		// Hard cap
+		if (this._sidebarSectionCount >= MAX_HARD) {
+			if (!this._decoratorErrored[kind]) {
+				this._decoratorErrored[kind] = true;
+				console.error(
+					`Phong360LibraryUI: "${kind}" decorator hard cap (${MAX_HARD}) reached. ` +
+					`Additional decorators will be ignored. ` +
+					(new Error().stack || '')
+				);
+			}
+			return { id, remove: () => {} };
+		}
+
+		this._sidebarSectionCount++;
+
+		// Warn threshold
+		if (this._sidebarSectionCount > MAX_WARN && !this._decoratorWarned[kind]) {
+			this._decoratorWarned[kind] = true;
+			console.warn(
+				`Phong360LibraryUI: "${kind}" decorator count exceeded ${MAX_WARN}. ` +
+				`You now have ${this._sidebarSectionCount} registered. ` +
+				`Consider removing unused decorators. ` +
+				(new Error().stack || '')
+			);
+		}
+
+		const position = (spec && spec.position) || 'end';
+
+		// Build the section container
+		const el = document.createElement('div');
+		el.className = 'p360-section p360-additive-section';
+		el.dataset.additiveId = id;
+
+		// Call the render callback — errors are caught so callers can't break the engine
+		if (spec && typeof spec.render === 'function') {
+			try {
+				spec.render(el);
+			} catch (err) {
+				console.warn(
+					`Phong360LibraryUI: addSidebarSection render for "${id}" threw:`,
+					err && err.message ? err.message : err
+				);
+			}
+		}
+
+		// Inject into _contentEl if already built; otherwise queue
+		if (this._contentEl) {
+			this._insertSidebarSection(el, position);
+		} else {
+			// Will be flushed at end of _buildSidebarDOM()
+			this._additiveSidebarSections.push({ el, position });
+		}
+
+		return {
+			id,
+			remove: () => {
+				if (el._parent) {
+					el._parent.removeChild(el);
+				} else if (el.parentNode) {
+					el.parentNode.removeChild(el);
+				}
+				// Also remove from queue if not yet mounted
+				const qi = this._additiveSidebarSections.findIndex((e) => e.el === el);
+				if (qi !== -1) this._additiveSidebarSections.splice(qi, 1);
+				// Decrement live count
+				if (this._sidebarSectionCount > 0) this._sidebarSectionCount--;
+			},
+		};
+	}
+
+	/**
+	 * Insert a sidebar section element at the given position in _contentEl.
+	 * @param {HTMLElement} el
+	 * @param {'start'|'end'} position
+	 * @private
+	 */
+	_insertSidebarSection(el, position) {
+		if (!this._contentEl) return;
+		if (position === 'start') {
+			// Insert before the first existing child (or append if empty)
+			const first = this._contentEl.firstChild || null;
+			this._contentEl.insertBefore(el, first);
+		} else {
+			this._contentEl.appendChild(el);
+		}
+	}
+
+	/**
+	 * Set (or clear) an element at one of the three info-bar slots.
+	 *
+	 * Slots are persistent `div.p360-info-slot` containers built inside the
+	 * info bar during _buildInfoBar(). Each slot holds at most one child at a
+	 * time; setting a new element replaces any existing one.
+	 *
+	 * @param {'left'|'center'|'right'} position  Which slot to target.
+	 * @param {HTMLElement|null} el                Element to set, or null to clear.
+	 * @returns {void}  (Not a SlotHandle — caller already owns the element reference.)
+	 * @since 5.0.0
+	 */
+	setInfoBarSlot(position, el) {
+		const VALID = ['left', 'center', 'right'];
+		if (!VALID.includes(position)) {
+			console.warn(`Phong360LibraryUI.setInfoBarSlot: unknown position "${position}"`);
+			return;
+		}
+
+		// Always update the backing store (needed if bar not yet built)
+		this._infoBarSlots[position] = el;
+
+		// Apply immediately if the slot container exists
+		this._applyInfoBarSlot(position, el);
+	}
+
+	/**
+	 * Apply a slot element to its container, replacing any previous child.
+	 * @param {'left'|'center'|'right'} position
+	 * @param {HTMLElement|null} el
+	 * @private
+	 */
+	_applyInfoBarSlot(position, el) {
+		const slotMap = {
+			left: '_infoSlotLeft',
+			center: '_infoSlotCenter',
+			right: '_infoSlotRight',
+		};
+		const container = this[slotMap[position]];
+		if (!container) return; // bar not yet built — flush happens in _buildInfoBar()
+
+		// Remove existing children
+		const existing = container._children
+			? [...container._children]
+			: (container.childNodes ? [...container.childNodes] : []);
+		for (const child of existing) {
+			try { container.removeChild(child); } catch (_) {}
+		}
+
+		if (el) {
+			container.appendChild(el);
+		}
+	}
+
+	/**
+	 * Mount a custom button in the toolbar.
+	 *
+	 * The button is injected immediately if the toolbar is already built.
+	 * If the toolbar is not yet built the button is queued and injected at
+	 * the end of _buildToolbar().
+	 *
+	 * @param {Object} spec
+	 * @param {string}   spec.id        Unique id for this button.
+	 * @param {string}   spec.label     Accessible label / title.
+	 * @param {string}  [spec.icon]     Phosphor icon class (e.g. 'ph ph-star').
+	 * @param {Function} spec.onClick   Called with the click Event.
+	 * @param {string}  [spec.position] 'leading' | 'trailing' (default 'trailing').
+	 *                                   'leading' → before the first existing toolbar child;
+	 *                                   'trailing' → after the last toolbar child (additive
+	 *                                   buttons are appended but remain before built-in
+	 *                                   nav buttons if those are appended after this call).
+	 * @returns {{ id: string, remove(): void }}  SlotHandle.
+	 * @since 5.0.0
+	 */
+	addToolbarButton(spec) {
+		const kind = 'toolbar-button';
+		const MAX_WARN = Phong360LibraryUI.MAX_DECORATORS_WARN;
+		const MAX_HARD = Phong360LibraryUI.MAX_DECORATORS_HARD;
+		const id = 'toolbar-btn-' + (++this._decoratorIdCounter);
+		// Lazy-init guard for bare prototype instances
+		if (!this._decoratorWarned)     this._decoratorWarned     = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		if (!this._decoratorErrored)    this._decoratorErrored    = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		if (this._toolbarButtonCount == null) this._toolbarButtonCount = 0;
+
+		// Hard cap
+		if (this._toolbarButtonCount >= MAX_HARD) {
+			if (!this._decoratorErrored[kind]) {
+				this._decoratorErrored[kind] = true;
+				console.error(
+					`Phong360LibraryUI: "${kind}" decorator hard cap (${MAX_HARD}) reached. ` +
+					`Additional decorators will be ignored. ` +
+					(new Error().stack || '')
+				);
+			}
+			return { id, remove: () => {} };
+		}
+
+		this._toolbarButtonCount++;
+
+		// Warn threshold
+		if (this._toolbarButtonCount > MAX_WARN && !this._decoratorWarned[kind]) {
+			this._decoratorWarned[kind] = true;
+			console.warn(
+				`Phong360LibraryUI: "${kind}" decorator count exceeded ${MAX_WARN}. ` +
+				`You now have ${this._toolbarButtonCount} registered. ` +
+				`Consider removing unused decorators. ` +
+				(new Error().stack || '')
+			);
+		}
+
+		const position = (spec && spec.position) || 'trailing';
+
+		// Build the button element
+		const btn = document.createElement('button');
+		btn.className = 'p360-toolbar-btn p360-additive-btn';
+		btn.title = (spec && spec.label) || '';
+		btn.type = 'button';
+		btn.dataset.additiveId = id;
+
+		if (spec && spec.icon) {
+			const icon = document.createElement('i');
+			icon.className = spec.icon;
+			btn.appendChild(icon);
+		} else if (spec && spec.label) {
+			btn.textContent = spec.label;
+		}
+
+		if (spec && typeof spec.onClick === 'function') {
+			btn.addEventListener('click', (e) => {
+				try {
+					spec.onClick(e);
+				} catch (err) {
+					console.warn(
+						`Phong360LibraryUI: addToolbarButton onClick for "${id}" threw:`,
+						err && err.message ? err.message : err
+					);
+				}
+			});
+		}
+
+		// Inject immediately if toolbar exists, otherwise queue
+		if (this._toolbar) {
+			this._insertToolbarButton(btn, position);
+		} else {
+			this._toolbarButtons.push({ btn, position });
+		}
+
+		return {
+			id,
+			remove: () => {
+				if (btn._parent) {
+					btn._parent.removeChild(btn);
+				} else if (btn.parentNode) {
+					btn.parentNode.removeChild(btn);
+				}
+				// Also remove from queue if not yet mounted
+				const qi = this._toolbarButtons.findIndex((e) => e.btn === btn);
+				if (qi !== -1) this._toolbarButtons.splice(qi, 1);
+				// Decrement live count
+				if (this._toolbarButtonCount > 0) this._toolbarButtonCount--;
+			},
+		};
+	}
+
+	/**
+	 * Insert a button element into the toolbar at the given position.
+	 * @param {HTMLElement} btn
+	 * @param {'leading'|'trailing'} position
+	 * @private
+	 */
+	_insertToolbarButton(btn, position) {
+		if (!this._toolbar) return;
+		if (position === 'leading') {
+			const first = this._toolbar.firstChild || null;
+			this._toolbar.insertBefore(btn, first);
+		} else {
+			this._toolbar.appendChild(btn);
+		}
+	}
+
+	/**
+	 * Render the engine's default content for a slot, with the current
+	 * slotProps (or an override). Lets consumer factories COMPOSE the
+	 * default with custom content rather than only REPLACE it.
+	 *
+	 * Returns a fresh DOM node each call (no shared instances), or null
+	 * if the slot has no engine default.
+	 *
+	 * @param {string} name         One of Phong360LibraryUI.SLOT_NAMES
+	 * @param {Object} [slotProps]  Optional; defaults to engine's current
+	 *                              slotProps for that slot
+	 * @returns {HTMLElement|null}
+	 * @throws {Error} if name is not a known slot
+	 * @since 4.2.0
+	 */
+	renderDefault(name, slotProps) {
+		if (!Phong360LibraryUI.SLOT_NAMES.includes(name)) {
+			throw new Error(
+				`Phong360LibraryUI.renderDefault: unknown slot "${name}"`,
+			);
+		}
+		const props = slotProps || this._buildSlotProps(name);
+		return this._defaultSlotContent(name, props);
+	}
+
+	/**
+	 * Render a single slot's content into its wrapper element.
+	 * Called internally during _buildSidebarDOM, on setSlot/clearSlot,
+	 * and on slot-specific state changes (toggle open/close, image change).
+	 *
+	 * @param {string} name  One of Phong360LibraryUI.SLOT_NAMES
+	 * @private
+	 */
+	_renderSlot(name) {
+		const wrapper = this._slotWrappers && this._slotWrappers[name];
+		if (!wrapper) return; // slot not yet built
+
+		// Context-load gating (see master plan "Context-load gating rule"):
+		//   - factory registered + context not loaded → defer
+		//   - no factory + context-dependent default + context not loaded → defer
+		//   - no factory + context-independent default → render immediately
+		const factoryRegistered = this._slots.has(name);
+		const defaultReadsContext = (name === 'toolbar-leading'); // brand pill reads context.brand
+		if (!this._contextLoaded && (factoryRegistered || defaultReadsContext)) {
+			return;
+		}
+
+		// Clear existing slot content
+		while (wrapper.firstChild) wrapper.removeChild(wrapper.firstChild);
+
+		const slotProps = this._buildSlotProps(name);
+		const factory = this._slots.get(name);
+		let node = null;
+
+		if (factory) {
+			try {
+				node = factory(slotProps);
+			} catch (err) {
+				console.warn(
+					`[Phong360LibraryUI] slot "${name}" factory threw, ` +
+					`falling back to default:`, err,
+				);
+				node = null;
+			}
+			// Validate return value: must be a Node or null/undefined.
+			// Strings, numbers, arrays, plain objects, Promises etc. are
+			// rejected with a warning and treated as null. Contains third-
+			// party bugs to a single warn instead of a thrown appendChild.
+			if (node != null && !(node instanceof Node)) {
+				console.warn(
+					`[Phong360LibraryUI] slot "${name}" factory returned ` +
+					`non-Node value (got ${typeof node}); ` +
+					`falling back to default`, node,
+				);
+				node = null;
+			}
+		}
+
+		// Engine defaults — if no factory or factory returned null
+		if (!node) {
+			node = this._defaultSlotContent(name, slotProps);
+		}
+
+		if (node) wrapper.appendChild(node);
+	}
+
+	/**
+	 * Build the props object passed to a slot's factory and to the
+	 * engine's own default renderer.
+	 *
+	 * @param {string} name
+	 * @returns {Object}
+	 * @private
+	 * @since 4.2.0
+	 */
+	_buildSlotProps(name) {
+		const props = { context: this._context || {} };
+		if (name === 'sidebar-toggle-icon') {
+			props.isOpen = !!this._sidebarOpen;
+		}
+		if (name === 'info-bar-leading' || name === 'info-bar-trailing') {
+			props.imageData = this._currentImageData || null;
+		}
+		return props;
+	}
+
+	/**
+	 * Render the engine's built-in default for a slot. Returns null
+	 * if the slot has no default content.
+	 *
+	 * @param {string} name
+	 * @param {Object} slotProps
+	 * @returns {HTMLElement|null}
+	 * @private
+	 * @since 4.2.0
+	 */
+	_defaultSlotContent(name, slotProps) {
+		if (name === 'toolbar-leading') {
+			return this._renderBrandPillDefault(slotProps);
+		}
+		if (name === 'sidebar-toggle-icon') {
+			return this._renderToggleIconDefault(slotProps);
+		}
+		// info-bar-leading, info-bar-trailing have no default
+		return null;
+	}
+
+	/**
+	 * Re-render every registered slot. Called from loadLibrary()
+	 * after data is processed (so context-dependent defaults pick up
+	 * the new context) and from reloadLibrary() after the reload completes.
+	 *
+	 * @private
+	 * @since 4.2.0
+	 */
+	_renderAllSlots() {
+		for (const name of Phong360LibraryUI.SLOT_NAMES) {
+			this._renderSlot(name);
+		}
+	}
+
+	/**
+	 * Default renderer for the toolbar-leading slot.
+	 * Reads context.brand = { logo, label, href } and produces a pill.
+	 * Returns null when context.brand is absent (slot stays empty).
+	 *
+	 * @param {Object} slotProps  { context }
+	 * @returns {HTMLElement|null}
+	 * @private
+	 * @since 4.2.0
+	 */
+	_renderBrandPillDefault(slotProps) {
+		const brand = slotProps.context.brand || null;
+		if (!brand || !brand.label) return null;
+
+		const tag = brand.href ? 'a' : 'span';
+		const el = document.createElement(tag);
+		el.className = 'p360-brand-pill';
+
+		// Heading semantics — pill becomes the primary heading ONLY when:
+		//   1. brand.label set (already guaranteed above)
+		//   2. context.suppressHeader === true (legacy <h2> being skipped)
+		//   3. context.type ∈ {discover, local} (the only types that emit
+		//      the legacy <h2>; profile has its own header layout)
+		const ctxType = slotProps.context.type;
+		const emitsLegacyH2 = (ctxType === 'discover' || ctxType === 'local');
+		if (slotProps.context.suppressHeader === true && emitsLegacyH2) {
+			el.setAttribute('role', 'heading');
+			el.setAttribute('aria-level', '1');
+		}
+
+		if (brand.href) {
+			el.href = brand.href;
+			el.setAttribute('aria-label', `Go to ${brand.label}`);
+		}
+
+		if (brand.logo) {
+			const img = document.createElement('img');
+			img.className = 'p360-brand-pill-logo';
+			img.src = brand.logo;
+			img.alt = '';
+			el.appendChild(img);
+		}
+
+		const label = document.createElement('span');
+		label.className = 'p360-brand-pill-label';
+		label.textContent = brand.label;
+		el.appendChild(label);
+
+		return el;
+	}
+
+	/**
+	 * Default renderer for the sidebar-toggle-icon slot.
+	 * State-aware: receives isOpen via slotProps.
+	 *
+	 * @param {Object} slotProps  { context, isOpen }
+	 * @returns {HTMLElement}
+	 * @private
+	 * @since 4.2.0
+	 */
+	_renderToggleIconDefault(slotProps) {
+		const i = document.createElement('i');
+		i.className = 'ph';
+		i.classList.add(slotProps.isOpen ? 'ph-caret-right' : 'ph-list');
+		return i;
+	}
+
+	// --------------------------------------------------------
+	// Manifest accessors (engine API — Phase 1)
+	// All return defensive copies; mutating return values does
+	// NOT mutate engine state. Never return DOM elements.
+	// --------------------------------------------------------
+
+	/**
+	 * @typedef {Object} LibraryContext
+	 * @property {'profile'|'discover'|'tag'|'collection'|'local'} type - Scope discriminator
+	 * @property {string} [title] - Display title shown in sidebar header
+	 * @property {string} [subtitle] - Secondary header line
+	 * @property {string} [avatar] - Header avatar URL (profile context)
+	 * @property {string} [theme] - 'auto' | 'light' | 'dark'
+	 * @property {string} [accent] - Hex color (e.g. "#e13e13")
+	 * @property {number} [panelWidth] - Sidebar pixel width
+	 * @property {string} [infoBar] - 'center' | 'left'
+	 * @property {string} [favicon] - Emoji or URL
+	 * @property {Array<{url: string, label: string}>} [links] - Header link list
+	 * @property {string} [autoload] - Initial image id/slug to display
+	 */
+
+	/**
+	 * @typedef {Object} ImageData
+	 * @property {string} id - Stable unique identifier
+	 * @property {string} [slug] - URL-friendly slug (used in deep links)
+	 * @property {string} [title] - Display title
+	 * @property {string} [description] - Long-form caption
+	 * @property {string} [section_id] - Owning section id (denormalized)
+	 * @property {Array<{id: string, label?: string, path: string, width: number, height: number, default?: boolean}>} resolutions - Available resolutions
+	 * @property {string} [thumbnail] - Thumbnail URL
+	 * @property {string} [status] - 'ready' | 'processing' | etc; non-'ready' is unloadable
+	 * @property {Object} [metadata] - Free-form caller metadata
+	 */
+
+	/**
+	 * @typedef {Object} SectionData
+	 * @property {string} id - Stable unique identifier
+	 * @property {string} [title] - Display heading
+	 * @property {string} [template] - Render template id ('grid', etc.)
+	 * @property {ImageData[]} [images] - Section's image list
+	 * @property {Object[]} [items] - Heterogeneous item list (avatar sections)
+	 * @property {Object} [metadata] - Free-form caller metadata
+	 */
+
+	/**
+	 * @typedef {Object} FacetsData
+	 * @property {Array<{id: string, label: string, count?: number}>} [model] - Model facet rows used by the model filter UI
+	 */
+
+	/**
+	 * @typedef {Object} LibraryManifest
+	 * @property {string} version - library.json schema version (e.g. '4.0')
+	 * @property {LibraryContext} [context] - Scope/branding metadata
+	 * @property {SectionData[]} [sections] - Ordered section list
+	 * @property {FacetsData} [facets] - Filterable facets
+	 * @property {Object} [meta] - Engine/build meta (totals, truncation flags)
+	 */
+
+	/**
+	 * Returns the library.json v4 context metadata (scope, profile,
+	 * collection, brand, theme, etc.) or null if no library loaded.
+	 * @returns {LibraryContext|null}
+	 */
+	getContext() {
+		if (!this._context) return null;
+		return { ...this._context };
+	}
+
+	/**
+	 * Returns parsed sections with their image arrays as defensive copies.
+	 * Each section object and its `images` array are shallow-copied so
+	 * callers can reorder without mutating engine state.
+	 * @returns {SectionData[]}
+	 */
+	getSections() {
+		return this._sections.map((s) => ({ ...s, images: [...(s.images || [])] }));
+	}
+
+	/**
+	 * Returns the flat list of all images across all sections.
+	 * Defensive copy — mutations to the returned array do NOT affect
+	 * the engine's internal `_allImages`.
+	 * @returns {ImageData[]}
+	 */
+	getImages() {
+		return [...this._allImages];
+	}
+
+	/**
+	 * Returns a deep clone of the full library.json v4 manifest, or
+	 * null if no library has been loaded. Use this when the consumer
+	 * needs the complete manifest including facets, meta, and other
+	 * top-level fields not exposed by narrower accessors.
+	 *
+	 * WARNING: Uses JSON round-trip for deep cloning. Large manifests
+	 * (~10K+ images) may incur noticeable cost. Prefer narrower
+	 * accessors (getContext / getSections / getImages) for targeted
+	 * data access.
+	 * @returns {LibraryManifest|null}
+	 */
+	getLibraryData() {
+		if (!this.libraryData) return null;
+		try {
+			return JSON.parse(JSON.stringify(this.libraryData));
+		} catch (e) {
+			return { ...this.libraryData };
+		}
+	}
+
+	/**
+	 * Returns the last successfully displayed image's data, or null
+	 * if no image has been loaded yet. After `image:error`, this still
+	 * returns the previously visible image, not the failed one.
+	 *
+	 * Returns null for raw `loadImage(url)` loads — those have no
+	 * ImageData and consumers must track raw URLs themselves.
+	 * @returns {ImageData|null}
+	 */
+	getCurrentImage() {
+		if (!this._currentImageData) return null;
+		return { ...this._currentImageData };
+	}
+
+	async reloadLibrary() {
+		if (this.libraryUrl) {
+			// Clear existing content
+			const headers = this._sidebar.querySelectorAll('.p360-header');
+			headers.forEach((h) => h.remove());
+			await this.loadLibrary();
+			// Refresh slot content with new context (since 4.2.0)
+			this._renderAllSlots();
+		} else if (this.libraryData) {
+			// Re-apply in-memory manifest (no URL fetch)
+			this.setLibrary(this.libraryData);
+		} else {
+			console.warn('[Phong360] reloadLibrary: no library data to reload');
+		}
+	}
+
+	// ------------------------------------------------------------------
+	// Event Emitter (Phase 1 — typed engine API)
+	// ------------------------------------------------------------------
+
+	/**
+	 * Register an event handler. Returns an unsubscribe function.
+	 *
+	 * See {@link Phong360MultiImage#on} for full event payload typedefs.
+	 *
+	 * @param {string} event - Engine event name (e.g. 'image:visible')
+	 * @param {Function} handler - Callback receiving the event payload
+	 * @returns {function(): void} Unsubscribe function (idempotent)
+	 */
+	/** Fires legacy callback (if registered) and emits matching engine event. */
+	_invokeCallback(name, ...args) {
+		// Guard against re-entry from the reverse bridge
+		if (this._suppressCallbackBridge) return;
+		this._suppressCallbackBridge = true;
+		try {
+			const cb = this.callbacks[name];
+			if (cb) cb.apply(this, args);
+			const mapping = Phong360LibraryUI.CALLBACK_EVENT_MAP[name];
+			if (mapping) {
+				const payload = mapping.buildPayload.apply(this, args);
+				if (mapping.compat) {
+					payload.__compat = true;
+				}
+				this.emit(mapping.event, payload);
+			}
+		} finally {
+			this._suppressCallbackBridge = false;
+		}
+	}
+
+	/**
+	 * Sets up the reverse bridge: when an engine event fires via emit(),
+	 * the matching legacy callback also runs. Prevents double-fire via
+	 * _suppressCallbackBridge guard.
+	 *
+	 * @private
+	 */
+	_setupCompatBridge() {
+		const map = Phong360LibraryUI.CALLBACK_EVENT_MAP;
+		for (const [cbName, cfg] of Object.entries(map)) {
+			const eventName = cfg.event;
+			this.on(eventName, (payload) => {
+				if (this._suppressCallbackBridge) return;
+				if (!this.callbacks || typeof this.callbacks[cbName] !== 'function') return;
+				this._suppressCallbackBridge = true;
+				try {
+					switch (cbName) {
+						case 'onLibraryLoad':
+							this.callbacks[cbName](payload.manifest || payload);
+							break;
+						case 'onImageLoad':
+							this.callbacks[cbName](payload.image, payload.resolution);
+							break;
+						case 'onThemeChange':
+							this.callbacks[cbName](payload.resolved);
+							break;
+						case 'onLinkClick':
+							this.callbacks[cbName](payload.url, payload.item);
+							break;
+						case 'onSectionToggle':
+							this.callbacks[cbName](payload.section, payload.expanded !== undefined ? payload.expanded : payload.open);
+							break;
+						case 'onSectionsRendered':
+							this.callbacks[cbName](payload.sections, payload.modelFilterActive !== undefined ? payload.modelFilterActive : payload.filterActive);
+							break;
+						case 'onBadgeClick':
+							this.callbacks[cbName](payload.image, payload.badge);
+							break;
+						case 'onHelpClick':
+							this.callbacks[cbName]();
+							break;
+						default:
+							this.callbacks[cbName](payload);
+					}
+				} finally {
+					this._suppressCallbackBridge = false;
+				}
+			});
+		}
+	}
+
+	on(event, handler) {
+		if (!this._listeners.has(event)) {
+			this._listeners.set(event, []);
+		}
+		this._listeners.get(event).push(handler);
+		return () => this.off(event, handler);
+	}
+
+	/**
+	 * Remove a previously registered event handler.
+	 *
+	 * @param {string} event
+	 * @param {Function} handler
+	 */
+	off(event, handler) {
+		const handlers = this._listeners.get(event);
+		if (!handlers) return;
+		const idx = handlers.indexOf(handler);
+		if (idx !== -1) handlers.splice(idx, 1);
+		if (handlers.length === 0) this._listeners.delete(event);
+	}
+
+	/**
+	 * Emit an event to all registered handlers. Handlers fire in
+	 * registration order; a throwing handler does not block subsequent
+	 * handlers (error is logged to console).
+	 *
+	 * @param {string} event
+	 * @param {*} [payload]
+	 */
+	emit(event, payload) {
+		const handlers = this._listeners.get(event);
+		if (!handlers || handlers.length === 0) return;
+		const copy = handlers.slice();
+		for (const handler of copy) {
+			try {
+				handler(payload);
+			} catch (e) {
+				console.error(`[Phong360] Error in "${event}" handler:`, e);
+			}
+		}
+	}
+}
+
+// Register globally for script-tag loading
+if (typeof window !== 'undefined') {
+	window.Phong360LibraryUI = Phong360LibraryUI;
+	window.BaseRenderer = BaseRenderer;
+}

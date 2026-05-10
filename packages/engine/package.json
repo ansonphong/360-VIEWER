@@ -1,0 +1,21 @@
+{
+  "name": "@phong/360-engine",
+  "version": "5.0.0-rc.1",
+  "description": "Headless 360 panorama renderer — no DOM beyond canvas",
+  "license": "MIT",
+  "main": "./dist/engine.umd.js",
+  "module": "./dist/engine.esm.js",
+  "types": "./dist/engine.d.ts",
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "import": "./dist/engine.esm.js",
+      "require": "./dist/engine.umd.js",
+      "types": "./dist/engine.d.ts"
+    },
+    "./engine.css": "./dist/engine.css"
+  },
+  "peerDependencies": {
+    "three": "^0.128.0"
+  }
+}

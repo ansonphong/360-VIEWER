@@ -1,0 +1,1829 @@
+/* Phong 360 Library UI — v4.0 Styles */
+
+/* ============================================================
+   BREAKPOINT CONTRACT — keep media queries below in sync with
+   Phong360LibraryUI.MOBILE_BREAKPOINT (currently 768).
+   The JS class constant is the source of truth; this CSS file
+   mirrors it because CSS @media queries cannot read custom
+   properties. If you change one, change both.
+   ============================================================ */
+
+/* ============================================================
+   CSS Custom Properties — Dark mode default
+   ============================================================ */
+
+:root {
+	--p360-bg: #1a1a1a;
+	--p360-bg-elevated: #242424;
+	--p360-text: #e2e8f0;
+	--p360-text-muted: #94a3b8;
+	--p360-text-dim: #64748b;
+	--p360-border: rgba(255, 255, 255, 0.08);
+	--p360-border-strong: rgba(255, 255, 255, 0.15);
+	--p360-accent: #e13e13;
+	--p360-accent-hover: #f06040;
+	--p360-accent-active: rgba(225, 62, 19, 0.25);
+	--p360-accent-border: rgba(225, 62, 19, 0.6);
+	--p360-hover-bg: rgba(255, 255, 255, 0.05);
+	--p360-thumbnail-radius: 4px;
+	--p360-sidebar-width: 320px;
+	--p360-badge-bg: rgba(0, 0, 0, 0.6);
+	--p360-badge-text: #ffffff;
+	--p360-overlay-bg: rgba(0, 0, 0, 0.5);
+	--p360-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+	--p360-transition: 0.2s ease;
+
+	/* Sidebar surface hooks (no-op defaults — consumers override via theming) */
+	--p360-sidebar-bg: var(--p360-bg);
+	--p360-sidebar-backdrop-filter: none;
+	--p360-sidebar-border-left: none;
+
+	/* Toolbar (top of sidebar — res/projection/theme/help buttons) */
+	--p360-toolbar-bg: transparent;
+	--p360-toolbar-border-bottom: 1px solid var(--p360-border);
+	--p360-toolbar-backdrop-filter: none;
+
+	/* Info bar (bottom floating prev/next) */
+	--p360-info-bar-bg: rgba(0, 0, 0, 0.45);
+	--p360-info-bar-backdrop-filter: blur(20px) saturate(1.4);
+	--p360-info-bar-border: 1px solid rgba(255, 255, 255, 0.08);
+
+	/* Sidebar toggle button (floating top-right) */
+	--p360-toggle-btn-bg: rgba(0, 0, 0, 0.5);
+	--p360-toggle-btn-border: 1px solid rgba(255, 255, 255, 0.2);
+	--p360-toggle-btn-backdrop-filter: blur(8px);
+}
+
+/* ============================================================
+   Light Theme
+   ============================================================ */
+
+[data-theme='light'] {
+	--p360-bg: #ffffff;
+	--p360-bg-elevated: #fafafa;
+	--p360-text: #1e293b;
+	--p360-text-muted: #64748b;
+	--p360-text-dim: #94a3b8;
+	--p360-border: rgba(0, 0, 0, 0.08);
+	--p360-border-strong: rgba(0, 0, 0, 0.15);
+	--p360-hover-bg: rgba(0, 0, 0, 0.05);
+	--p360-badge-bg: rgba(255, 255, 255, 0.85);
+	--p360-badge-text: #1e293b;
+	--p360-overlay-bg: rgba(0, 0, 0, 0.3);
+	--p360-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================================
+   Sidebar Container
+   ============================================================ */
+
+.p360-sidebar {
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	width: var(--p360-sidebar-width);
+	max-width: 90vw;
+	background: var(--p360-sidebar-bg);
+	backdrop-filter: var(--p360-sidebar-backdrop-filter);
+	-webkit-backdrop-filter: var(--p360-sidebar-backdrop-filter);
+	border-left: var(--p360-sidebar-border-left);
+	color: var(--p360-text);
+	z-index: 200;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	transform: translateX(100%);
+	transition: transform 0.3s ease-in-out;
+	box-shadow: var(--p360-shadow);
+	font-family:
+		system-ui,
+		-apple-system,
+		'Segoe UI',
+		sans-serif;
+}
+
+.p360-sidebar.p360-sidebar--open {
+	transform: translateX(0);
+}
+
+.p360-sidebar-backdrop {
+	position: fixed;
+	inset: 0;
+	background: var(--p360-overlay-bg);
+	z-index: 199;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.3s ease;
+}
+
+.p360-sidebar-backdrop.p360-sidebar-backdrop--visible {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.p360-sidebar-backdrop--visible ~ .p360-info-bar {
+	display: none !important;
+}
+
+/* ============================================================
+   Sidebar Toggle Button
+   ============================================================ */
+
+.p360-sidebar-toggle {
+	position: fixed;
+	top: 12px;
+	right: 12px;
+	z-index: 201;
+	width: 44px;
+	height: 44px;
+	border: var(--p360-toggle-btn-border);
+	border-radius: 999px;
+	background: var(--p360-toggle-btn-bg);
+	color: rgba(255, 255, 255, 0.8);
+	font-size: 20px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all var(--p360-transition);
+	backdrop-filter: var(--p360-toggle-btn-backdrop-filter);
+	-webkit-backdrop-filter: var(--p360-toggle-btn-backdrop-filter);
+}
+
+.p360-sidebar-toggle:hover {
+	color: #fff;
+	border-color: rgba(255, 255, 255, 0.4);
+	background: rgba(0, 0, 0, 0.7);
+}
+
+/* ============================================================
+   Context Header (profile / discover / local)
+   ============================================================ */
+
+.p360-header {
+	padding: 20px 16px 16px;
+	border-bottom: 1px solid var(--p360-border);
+	flex-shrink: 0;
+}
+
+.p360-header-profile {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	position: relative;
+}
+
+.p360-header-avatar {
+	width: 48px;
+	height: 48px;
+	border-radius: 50%;
+	object-fit: cover;
+	border: 2px solid var(--p360-border-strong);
+	flex-shrink: 0;
+}
+
+.p360-header-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.p360-header-title {
+	font-size: 16px;
+	font-weight: 700;
+	color: var(--p360-text);
+	margin: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.p360-header-subtitle {
+	font-size: 13px;
+	color: var(--p360-text-muted);
+	margin: 2px 0 0;
+}
+
+.p360-header-links {
+	display: flex;
+	gap: 8px;
+	margin-top: 10px;
+	flex-wrap: wrap;
+}
+
+.p360-header-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 10px;
+	font-size: 12px;
+	color: var(--p360-text-muted);
+	text-decoration: none;
+	border: 1px solid var(--p360-border);
+	border-radius: 12px;
+	transition: all var(--p360-transition);
+}
+
+.p360-header-link:hover {
+	color: var(--p360-accent);
+	border-color: var(--p360-accent-border);
+	background: var(--p360-accent-active);
+}
+
+.p360-header-link i {
+	font-size: 14px;
+}
+
+/* ============================================================
+   Scrollable Content Area
+   ============================================================ */
+
+.p360-content {
+	flex: 1;
+	overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.p360-content::-webkit-scrollbar {
+	width: 6px;
+}
+
+.p360-content::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.p360-content::-webkit-scrollbar-thumb {
+	background-color: rgba(255, 255, 255, 0.2);
+	border-radius: 3px;
+}
+
+[data-theme='light'] .p360-content {
+	scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+[data-theme='light'] .p360-content::-webkit-scrollbar-thumb {
+	background-color: rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================================
+   Section Headings
+   ============================================================ */
+
+.p360-section {
+	margin-bottom: 4px;
+}
+
+.p360-section-heading {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 16px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--p360-text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	cursor: pointer;
+	user-select: none;
+	transition: all var(--p360-transition);
+	border: none;
+	background: none;
+	width: 100%;
+	text-align: left;
+}
+
+.p360-section-heading:hover {
+	color: var(--p360-text);
+	background: var(--p360-hover-bg);
+}
+
+.p360-section-title-input {
+	flex: 1 1 auto;
+	min-width: 0;
+	margin: -4px 0;
+	padding: 4px 8px;
+	font: inherit;
+	font-size: inherit;
+	font-weight: inherit;
+	letter-spacing: inherit;
+	text-transform: inherit;
+	color: var(--p360-text);
+	background: var(--p360-bg-elevated);
+	border: 1px solid var(--p360-accent-border, var(--p360-border-strong));
+	border-radius: 6px;
+	outline: none;
+	box-shadow: 0 0 0 2px rgba(225, 62, 19, 0.15);
+}
+
+.p360-section-title-input:focus {
+	border-color: var(--p360-accent, #e13e13);
+	box-shadow: 0 0 0 2px rgba(225, 62, 19, 0.25);
+}
+
+.p360-section-title-input--busy {
+	opacity: 0.6;
+}
+
+.p360-section-title-input--error {
+	border-color: #d23a1f;
+	box-shadow: 0 0 0 2px rgba(210, 58, 31, 0.25);
+}
+
+.p360-owner-header-menu {
+	border: 1px solid var(--p360-border);
+	background: rgba(0, 0, 0, 0.45);
+	color: var(--p360-text);
+	border-radius: 8px;
+	height: 28px;
+	min-width: 32px;
+	padding: 0 8px;
+	font-size: 16px;
+	line-height: 1;
+	letter-spacing: 1px;
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: background var(--p360-transition), border-color var(--p360-transition);
+}
+
+.p360-owner-header-menu:hover,
+.p360-owner-header-menu:focus {
+	background: rgba(0, 0, 0, 0.65);
+	border-color: var(--p360-border-strong);
+	outline: none;
+}
+
+.p360-owner-section-menu,
+.p360-owner-thumb-menu {
+	border: 1px solid var(--p360-border);
+	background: rgba(0, 0, 0, 0.45);
+	color: var(--p360-text);
+	border-radius: 6px;
+	width: 28px;
+	height: 28px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.p360-owner-section-menu {
+	margin-left: 4px;
+}
+
+.p360-owner-menu {
+	position: absolute;
+	z-index: 260;
+	right: 8px;
+	top: 34px;
+	min-width: 160px;
+	padding: 6px;
+	border: 1px solid var(--p360-border-strong);
+	border-radius: 8px;
+	background: var(--p360-bg-elevated);
+	box-shadow: var(--p360-shadow);
+}
+
+.p360-owner-menu-item {
+	display: block;
+	width: 100%;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--p360-text);
+	text-align: left;
+	padding: 8px 10px;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.p360-owner-menu-item:hover {
+	background: var(--p360-hover-bg);
+}
+
+.p360-owner-menu-item--danger {
+	color: #ff8a70;
+}
+
+.p360-owner-add-collection {
+	width: calc(100% - 24px);
+	margin: 8px 12px 12px;
+	padding: 10px 12px;
+	border-radius: 8px;
+	border: 1px dashed var(--p360-border-strong);
+	background: var(--p360-hover-bg);
+	color: var(--p360-text);
+	cursor: pointer;
+	text-align: left;
+	font-weight: 600;
+}
+
+.p360-owner-add-collection:hover {
+	border-color: var(--p360-accent-border);
+	color: var(--p360-accent);
+}
+
+.p360-section-heading i {
+	font-size: 16px;
+	color: var(--p360-accent);
+}
+
+.p360-section-heading-count {
+	margin-left: auto;
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--p360-text-dim);
+	background: var(--p360-hover-bg);
+	padding: 2px 8px;
+	border-radius: 10px;
+}
+
+.p360-section-chevron {
+	margin-left: 4px;
+	font-size: 10px;
+	transition: transform 0.2s ease;
+	color: var(--p360-text-dim);
+}
+
+.p360-section--collapsed .p360-section-chevron {
+	transform: rotate(-90deg);
+}
+
+.p360-section-body {
+	overflow: visible;
+	transition: max-height 0.3s ease;
+}
+
+.p360-section--collapsed .p360-section-body {
+	overflow: hidden;
+	max-height: 0 !important;
+}
+
+/* ============================================================
+   Grid Template
+   ============================================================ */
+
+.p360-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(var(--p360-grid-min-width, 180px), 1fr));
+	gap: var(--p360-grid-gap, 6px);
+	padding: 4px 12px 12px;
+}
+
+/* ============================================================
+   Thumbnail (shared across templates)
+   ============================================================ */
+
+.p360-thumbnail {
+	position: relative;
+	border-radius: var(--p360-thumbnail-radius);
+	overflow: hidden;
+	cursor: pointer;
+	transition: all var(--p360-transition);
+	background: var(--p360-hover-bg);
+	aspect-ratio: 2 / 1;
+}
+
+.p360-owner-thumb-menu {
+	position: absolute;
+	top: 5px;
+	right: 5px;
+	z-index: 3;
+	opacity: 0;
+	transition: opacity var(--p360-transition);
+}
+
+.p360-thumbnail:hover .p360-owner-thumb-menu,
+.p360-owner-thumb-menu:focus {
+	opacity: 1;
+}
+
+.p360-owner-drag-handle {
+	position: absolute;
+	left: 10px;
+	right: 10px;
+	bottom: 5px;
+	height: 4px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.65);
+	opacity: 0.55;
+	pointer-events: none;
+}
+
+.p360-drag-in-flight .p360-thumbnail {
+	pointer-events: none;
+	opacity: 0.6;
+}
+
+.p360-thumbnail--selected-owner {
+	outline: 2px solid #e13e13;
+	outline-offset: -2px;
+}
+
+.p360-thumbnail--placeholder {
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	background: #1a1a1d;
+}
+
+.p360-placeholder-tile {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	color: var(--p360-text-muted);
+	text-align: center;
+	padding: 8px;
+}
+
+.p360-placeholder-icon {
+	width: 28px;
+	height: 28px;
+	border-radius: 999px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--p360-accent-border);
+	color: var(--p360-accent);
+	font-weight: 700;
+}
+
+.p360-placeholder-spinner {
+	border: 2px solid rgba(255, 255, 255, 0.14);
+	border-top-color: var(--p360-accent);
+	animation: p360-spin 0.9s linear infinite;
+}
+
+.p360-placeholder-caption {
+	font-size: 12px;
+	line-height: 1.2;
+}
+
+@keyframes p360-spin {
+	to { transform: rotate(360deg); }
+}
+
+.p360-toast-root {
+	position: fixed;
+	right: 16px;
+	bottom: 16px;
+	z-index: 500;
+	display: grid;
+	gap: 8px;
+	pointer-events: none;
+}
+
+.p360-toast {
+	max-width: 320px;
+	padding: 10px 12px;
+	border-radius: 8px;
+	border: 1px solid var(--p360-border-strong);
+	background: rgba(15, 15, 18, 0.94);
+	color: #fff;
+	box-shadow: var(--p360-shadow);
+	font-size: 13px;
+}
+
+.p360-toast--error {
+	border-color: rgba(225, 62, 19, 0.65);
+}
+
+.p360-toast--warn {
+	border-color: rgba(245, 158, 11, 0.65);
+}
+
+@media (hover: none) {
+	.p360-owner-thumb-menu {
+		opacity: 0.65;
+	}
+}
+
+.p360-thumbnail:hover {
+	transform: scale(1.03);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.p360-thumbnail:active {
+	transform: scale(0.98);
+}
+
+.p360-thumbnail--selected {
+	outline: 2px solid var(--p360-accent);
+	outline-offset: 1px;
+}
+
+.p360-thumbnail img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+	transition: opacity 0.3s ease;
+}
+
+.p360-thumbnail img[data-src] {
+	opacity: 0;
+}
+
+.p360-thumbnail img.p360-loaded {
+	opacity: 1;
+}
+
+/* ============================================================
+   Badges (emoji reaction overlays on thumbnails)
+   ============================================================ */
+
+.p360-badges {
+	position: absolute;
+	bottom: 4px;
+	left: 4px;
+	display: flex;
+	gap: 3px;
+	flex-wrap: wrap;
+	max-width: calc(100% - 8px);
+}
+
+.p360-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	padding: 2px 5px;
+	background: var(--p360-badge-bg);
+	color: var(--p360-badge-text);
+	border-radius: 8px;
+	font-size: 10px;
+	line-height: 1;
+	cursor: pointer;
+	transition: all var(--p360-transition);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+}
+
+.p360-badge:hover {
+	transform: scale(1.1);
+	background: rgba(0, 0, 0, 0.8);
+}
+
+.p360-badge-icon {
+	font-size: 12px;
+}
+
+.p360-badge-count {
+	font-size: 9px;
+	font-weight: 600;
+	font-family:
+		system-ui,
+		-apple-system,
+		sans-serif;
+}
+
+/* ============================================================
+   Feed Template
+   ============================================================ */
+
+.p360-feed {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 4px 12px 12px;
+}
+
+.p360-feed-item {
+	position: relative;
+	border-radius: 8px;
+	overflow: hidden;
+	cursor: pointer;
+	transition: all var(--p360-transition);
+	background: var(--p360-hover-bg);
+}
+
+.p360-feed-item:hover {
+	background: var(--p360-border);
+}
+
+.p360-feed-item img {
+	width: 100%;
+	aspect-ratio: 2 / 1;
+	object-fit: cover;
+	display: block;
+}
+
+.p360-feed-item-info {
+	padding: 8px 10px;
+}
+
+.p360-feed-item-title {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--p360-text);
+	margin: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.p360-feed-item-meta {
+	font-size: 11px;
+	color: var(--p360-text-muted);
+	margin: 2px 0 0;
+}
+
+/* ============================================================
+   Accordion Template
+   ============================================================ */
+
+.p360-accordion {
+	padding: 0 12px 8px;
+}
+
+.p360-accordion-trigger {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 12px 14px;
+	border: 1px solid var(--p360-border);
+	border-radius: 8px;
+	background: var(--p360-hover-bg);
+	color: var(--p360-text);
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	user-select: none;
+	transition: all var(--p360-transition);
+	text-align: left;
+	font-family: inherit;
+}
+
+.p360-accordion-trigger:hover {
+	background: var(--p360-border);
+	border-color: var(--p360-border-strong);
+}
+
+.p360-accordion-trigger i {
+	font-size: 18px;
+	color: var(--p360-accent);
+}
+
+.p360-accordion-chevron {
+	margin-left: auto;
+	font-size: 12px;
+	color: var(--p360-text-dim);
+	transition: transform 0.2s ease;
+}
+
+.p360-accordion--open .p360-accordion-chevron {
+	transform: rotate(180deg);
+}
+
+.p360-accordion-body {
+	overflow: hidden;
+	max-height: 0;
+	transition: max-height 0.3s ease;
+}
+
+.p360-accordion--open .p360-accordion-body {
+	max-height: 5000px;
+}
+
+.p360-accordion-inner {
+	padding: 8px 0 0;
+}
+
+/* ============================================================
+   Hero Template
+   ============================================================ */
+
+.p360-hero {
+	position: relative;
+	margin: 4px 12px 12px;
+	border-radius: 12px;
+	overflow: hidden;
+	cursor: pointer;
+	aspect-ratio: 16 / 9;
+}
+
+.p360-hero img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.p360-hero-overlay {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	padding: 32px 16px 16px;
+	background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+}
+
+.p360-hero-title {
+	font-size: 18px;
+	font-weight: 700;
+	color: #fff;
+	margin: 0;
+	text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.p360-hero-subtitle {
+	font-size: 13px;
+	color: rgba(255, 255, 255, 0.8);
+	margin: 4px 0 0;
+}
+
+/* ============================================================
+   List Template
+   ============================================================ */
+
+.p360-list {
+	display: flex;
+	flex-direction: column;
+	padding: 4px 12px 12px;
+}
+
+.p360-list-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all var(--p360-transition);
+}
+
+.p360-list-item:hover {
+	background: var(--p360-hover-bg);
+}
+
+.p360-list-item--selected {
+	background: var(--p360-accent-active);
+	border: 1px solid var(--p360-accent-border);
+}
+
+.p360-list-item-thumb {
+	width: 64px;
+	height: 32px;
+	border-radius: 4px;
+	object-fit: cover;
+	flex-shrink: 0;
+}
+
+.p360-list-item-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.p360-list-item-title {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--p360-text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.p360-list-item-meta {
+	font-size: 11px;
+	color: var(--p360-text-muted);
+}
+
+/* ============================================================
+   Carousel Template
+   ============================================================ */
+
+.p360-carousel {
+	padding: 4px 0 12px;
+}
+
+.p360-carousel-track {
+	display: flex;
+	gap: 8px;
+	overflow-x: auto;
+	overflow-y: hidden;
+	padding: 4px 12px;
+	scroll-snap-type: x mandatory;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+
+.p360-carousel-track::-webkit-scrollbar {
+	display: none;
+}
+
+.p360-carousel-item {
+	flex: 0 0 200px;
+	scroll-snap-align: start;
+}
+
+.p360-carousel-item .p360-thumbnail {
+	width: 200px;
+	height: 100px;
+}
+
+/* ============================================================
+   Avatar Row Template (horizontal circular avatars)
+   ============================================================ */
+
+.p360-avatar-row {
+	display: flex;
+	gap: 12px;
+	padding: 8px 12px 12px;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+.p360-avatar-row::-webkit-scrollbar {
+	display: none;
+}
+
+.p360-avatar-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: all var(--p360-transition);
+}
+
+.p360-avatar-item:hover {
+	transform: scale(1.05);
+}
+
+.p360-avatar {
+	width: 56px;
+	height: 56px;
+	border-radius: 50%;
+	object-fit: cover;
+	border: 2px solid var(--p360-border-strong);
+	transition: border-color var(--p360-transition);
+}
+
+.p360-avatar-item:hover .p360-avatar {
+	border-color: var(--p360-accent);
+}
+
+.p360-avatar-name {
+	font-size: 11px;
+	color: var(--p360-text-muted);
+	text-align: center;
+	max-width: 64px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* ============================================================
+   Avatar Grid Template (grid of avatar cards)
+   ============================================================ */
+
+.p360-avatar-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+	gap: 8px;
+	padding: 4px 12px 12px;
+}
+
+.p360-avatar-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 12px 8px;
+	border-radius: 8px;
+	border: 1px solid var(--p360-border);
+	background: var(--p360-hover-bg);
+	cursor: pointer;
+	transition: all var(--p360-transition);
+	gap: 8px;
+}
+
+.p360-avatar-card:hover {
+	border-color: var(--p360-accent-border);
+	background: var(--p360-accent-active);
+}
+
+.p360-avatar-card .p360-avatar {
+	width: 48px;
+	height: 48px;
+}
+
+.p360-avatar-card-name {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--p360-text);
+	text-align: center;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100%;
+}
+
+.p360-avatar-card-meta {
+	font-size: 11px;
+	color: var(--p360-text-muted);
+}
+
+/* ============================================================
+   Empty State
+   ============================================================ */
+
+.p360-empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 40px 20px;
+	text-align: center;
+	gap: 12px;
+}
+
+.p360-empty-state i {
+	font-size: 48px;
+	color: var(--p360-text-dim);
+	opacity: 0.5;
+}
+
+.p360-empty-state-title {
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--p360-text-muted);
+}
+
+.p360-empty-state-message {
+	font-size: 13px;
+	color: var(--p360-text-dim);
+	max-width: 240px;
+	line-height: 1.5;
+}
+
+/* ============================================================
+   Toolbar (inside sidebar)
+   ============================================================ */
+
+.p360-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 14px 12px;
+	background: var(--p360-toolbar-bg);
+	border-bottom: var(--p360-toolbar-border-bottom);
+	backdrop-filter: var(--p360-toolbar-backdrop-filter);
+	-webkit-backdrop-filter: var(--p360-toolbar-backdrop-filter);
+	flex-shrink: 0;
+}
+
+.p360-toolbar-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 42px;
+	height: 42px;
+	border: 1px solid var(--p360-border);
+	border-radius: 8px;
+	background: transparent;
+	color: var(--p360-text-muted);
+	cursor: pointer;
+	font-size: 18px;
+	transition: all var(--p360-transition);
+	flex-shrink: 0;
+}
+
+.p360-toolbar-btn:hover {
+	color: var(--p360-text);
+	border-color: var(--p360-border-strong);
+	background: var(--p360-hover-bg);
+}
+
+.p360-toolbar-btn.active {
+	color: var(--p360-accent);
+	border-color: var(--p360-accent-border);
+	background: var(--p360-accent-bg, transparent);
+}
+
+/* ============================================================
+   Resolution Dropdown
+   ============================================================ */
+
+.p360-res-wrapper {
+	position: relative;
+}
+
+.p360-res-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 42px;
+	height: 42px;
+	border: 1px solid var(--p360-border);
+	border-radius: 8px;
+	background: transparent;
+	color: var(--p360-text-muted);
+	cursor: pointer;
+	font-size: 11px;
+	font-weight: 700;
+	font-family: inherit;
+	letter-spacing: 0.5px;
+	transition: all var(--p360-transition);
+	flex-shrink: 0;
+	padding: 0;
+}
+
+.p360-res-btn:hover {
+	color: var(--p360-text);
+	border-color: var(--p360-border-strong);
+	background: var(--p360-hover-bg);
+}
+
+.p360-res-dropdown {
+	position: absolute;
+	top: calc(100% + 4px);
+	left: 0;
+	background: var(--p360-bg-elevated);
+	border: 1px solid var(--p360-border-strong);
+	border-radius: 8px;
+	padding: 4px;
+	min-width: 80px;
+	z-index: 300;
+	box-shadow: var(--p360-shadow);
+	display: none;
+}
+
+.p360-res-dropdown.open {
+	display: block;
+}
+
+.p360-res-option {
+	display: block;
+	width: 100%;
+	padding: 6px 12px;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--p360-text-muted);
+	font-size: 12px;
+	font-weight: 600;
+	font-family: inherit;
+	cursor: pointer;
+	text-align: left;
+	transition: all var(--p360-transition);
+}
+
+.p360-res-option:hover {
+	background: var(--p360-hover-bg);
+	color: var(--p360-text);
+}
+
+.p360-res-option.active {
+	color: var(--p360-accent);
+}
+
+/* ============================================================
+   Info Bar (glassmorphic bottom panel)
+   ============================================================ */
+
+.p360-info-bar {
+	position: fixed;
+	bottom: 16px;
+	z-index: 200;
+	display: none;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	background: var(--p360-info-bar-bg);
+	backdrop-filter: var(--p360-info-bar-backdrop-filter);
+	-webkit-backdrop-filter: var(--p360-info-bar-backdrop-filter);
+	border: var(--p360-info-bar-border);
+	border-radius: 14px;
+	color: rgba(255, 255, 255, 0.85);
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	pointer-events: auto;
+	max-width: calc(100vw - 32px);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.p360-info-bar.visible {
+	display: flex;
+}
+
+/* Alignment variants */
+.p360-info-bar.p360-info-left {
+	left: 16px;
+}
+
+.p360-info-bar.p360-info-center {
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+/* Nav buttons */
+.p360-info-nav {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.06);
+	color: rgba(255, 255, 255, 0.6);
+	cursor: pointer;
+	font-size: 14px;
+	transition: all 0.15s ease;
+	flex-shrink: 0;
+	padding: 0;
+}
+
+.p360-info-nav:hover {
+	background: rgba(255, 255, 255, 0.12);
+	color: #fff;
+	border-color: rgba(255, 255, 255, 0.25);
+}
+
+.p360-info-nav:disabled {
+	opacity: 0.25;
+	cursor: default;
+	pointer-events: none;
+}
+
+/* Text area */
+.p360-info-text {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+	padding: 0 6px;
+	text-align: center;
+}
+
+.p360-info-title {
+	font-size: 13px;
+	font-weight: 600;
+	color: rgba(255, 255, 255, 0.9);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: 1.2;
+}
+
+.p360-info-subtitle {
+	font-size: 11px;
+	font-weight: 400;
+	color: rgba(255, 255, 255, 0.45);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: 1.3;
+}
+
+/* Mobile: dock the info bar flat to the bottom edge.
+   On phones the floating-pill metaphor wastes ~44px of usable width
+   (outer margin + rounded corners). Anchoring edge-to-edge gives
+   contents the full viewport and reads as a native bottom toolbar. */
+@media (max-width: 480px) {
+	.p360-info-bar,
+	.p360-info-bar.p360-info-center,
+	.p360-info-bar.p360-info-left {
+		left: 0;
+		right: 0;
+		bottom: 0;
+		transform: none;
+		width: 100%;
+		max-width: none;
+		margin: 0;
+		border-radius: 0;
+		border: 0;
+		border-top: 1px solid rgba(255, 255, 255, 0.08);
+		box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35);
+		padding: 6px 8px calc(6px + env(safe-area-inset-bottom)) 8px;
+		gap: 6px;
+		justify-content: space-between;
+	}
+
+	.p360-info-bar .p360-info-text {
+		display: none;
+	}
+
+	body[data-theme="light"] .p360-info-bar,
+	.p360-info-bar[data-theme="light"] {
+		border-top-color: rgba(15, 23, 42, 0.10);
+	}
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 480px) {
+	.p360-sidebar {
+		width: 100vw;
+		max-width: 100vw;
+	}
+
+	.p360-grid {
+		grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+		gap: 4px;
+		padding: 4px 8px 8px;
+	}
+
+	.p360-carousel-item {
+		flex: 0 0 160px;
+	}
+
+	.p360-carousel-item .p360-thumbnail {
+		width: 160px;
+		height: 80px;
+	}
+
+	.p360-hero {
+		margin: 4px 8px 8px;
+	}
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+	.p360-sidebar {
+		width: 80vw;
+	}
+}
+
+/* ============================================================
+   Fullscreen — hide overlays for pristine view
+   ============================================================ */
+
+:fullscreen .p360-sidebar-toggle,
+:fullscreen .p360-sidebar,
+:fullscreen .p360-sidebar-backdrop,
+:fullscreen .p360-info-bar {
+	display: none !important;
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+
+@keyframes p360-fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes p360-slide-up {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.p360-section {
+	animation: p360-slide-up 0.2s ease-out;
+}
+
+/* ============================================================
+   Brand pill — default renderer for toolbar-leading slot
+   Minimal sensible default; consumers override with their own
+   CSS or replace via setSlot('toolbar-leading', ...).
+   @since 4.2.0
+   ============================================================ */
+
+.p360-brand-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 12px;
+	border-radius: 999px;
+	color: var(--p360-text);
+	text-decoration: none;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1;
+}
+
+.p360-brand-pill-logo {
+	width: 20px;
+	height: 20px;
+	object-fit: contain;
+	flex-shrink: 0;
+}
+
+/* Slot wrapper — invisible by default, gives the engine a
+   stable handle for content-replacement. */
+.p360-slot {
+	display: contents;
+}
+
+/* ============================================================
+   Filter Bar — sits at top of sidebar content (above sections)
+   Contains: trigger button + active pill chips + dropdown panel
+   ============================================================ */
+
+.p360-filter-bar {
+	position: relative;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--p360-border);
+}
+
+.p360-filter-trigger {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 30px;
+	box-sizing: border-box;
+	padding: 0 11px;
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1;
+	color: var(--p360-text);
+	background: var(--p360-hover-bg);
+	border: 1px solid var(--p360-border-strong);
+	border-radius: 999px;
+	cursor: pointer;
+	user-select: none;
+	transition: background var(--p360-transition), border-color var(--p360-transition), color var(--p360-transition);
+}
+
+.p360-filter-trigger:hover {
+	background: rgba(255, 255, 255, 0.10);
+	border-color: var(--p360-text-muted);
+}
+
+[data-theme='light'] .p360-filter-trigger:hover {
+	background: rgba(0, 0, 0, 0.08);
+}
+
+.p360-filter-trigger[aria-expanded='true'] {
+	color: var(--p360-accent-hover);
+	background: var(--p360-accent-active);
+	border-color: var(--p360-accent-border);
+}
+
+.p360-filter-trigger > i.ph {
+	font-size: 14px;
+	line-height: 1;
+}
+
+.p360-filter-trigger-caret {
+	transition: transform var(--p360-transition);
+	opacity: 0.7;
+}
+
+.p360-filter-trigger[aria-expanded='true'] .p360-filter-trigger-caret {
+	transform: rotate(180deg);
+}
+
+.p360-filter-trigger-count {
+	display: none;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	border-radius: 999px;
+	background: var(--p360-accent);
+	color: #fff;
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 18px;
+	text-align: center;
+	flex-shrink: 0;
+}
+
+.p360-filter-trigger-count[data-count]:not([data-count='0']) {
+	display: inline-block;
+}
+
+/* Active pills sit inline within the bar (display: contents lifts them
+   into the bar's flex layout); when there are none the wrapper hides. */
+.p360-active-filters {
+	display: contents;
+}
+
+.p360-active-filters:empty {
+	display: none;
+}
+
+/* Dropdown panel — anchored under the bar, full sidebar width */
+.p360-filter-dropdown {
+	position: absolute;
+	top: calc(100% - 1px);
+	left: 12px;
+	right: 12px;
+	max-height: 60vh;
+	overflow-y: auto;
+	background: var(--p360-bg-elevated);
+	border: 1px solid var(--p360-border-strong);
+	border-radius: 12px;
+	box-shadow: var(--p360-shadow);
+	padding: 12px 14px;
+	z-index: 300;
+	transform: translateY(-6px);
+	opacity: 0;
+	pointer-events: none;
+	transition: transform 150ms ease, opacity 150ms ease;
+}
+
+.p360-filter-dropdown[data-state='open'] {
+	transform: translateY(0);
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.p360-active-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 30px;
+	box-sizing: border-box;
+	padding: 0 4px 0 11px;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1;
+	color: var(--p360-accent-hover);
+	background: var(--p360-accent-active);
+	border: 1px solid var(--p360-accent-border);
+	border-radius: 999px;
+	cursor: pointer;
+	font-family: inherit;
+	transition: background var(--p360-transition), color var(--p360-transition);
+}
+
+.p360-active-pill:hover {
+	background: rgba(225, 62, 19, 0.32);
+	color: #fff;
+}
+
+.p360-active-pill-x {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	border-radius: 999px;
+	opacity: 0.7;
+	font-size: 11px;
+}
+
+.p360-active-pill:hover .p360-active-pill-x {
+	opacity: 1;
+	background: rgba(255, 255, 255, 0.12);
+}
+
+/* ============================================================
+   Model Filter — pill toggles (inside filter dropdown)
+   ============================================================ */
+
+.p360-model-filter {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.p360-model-filter-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--p360-text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.6px;
+	margin-bottom: 2px;
+}
+
+.p360-model-filter-clear {
+	background: transparent;
+	border: none;
+	color: var(--p360-accent-hover);
+	font: inherit;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.4px;
+	cursor: pointer;
+	padding: 2px 4px;
+	border-radius: 4px;
+	transition: background var(--p360-transition);
+}
+
+.p360-model-filter-clear:hover {
+	background: var(--p360-hover-bg);
+}
+
+.p360-model-filter-arch {
+	display: flex;
+	flex-direction: column;
+}
+
+.p360-model-filter-sublist {
+	display: flex;
+	flex-direction: column;
+	margin: 2px 0 4px 10px;
+	padding-left: 8px;
+	border-left: 1px solid var(--p360-border);
+}
+
+/* shadcn-style checkbox rows inside the filter dropdown */
+.p360-model-filter label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+	font-size: 13px;
+	font-weight: 500;
+	line-height: 1.3;
+	color: var(--p360-text);
+	border-radius: 6px;
+	cursor: pointer;
+	user-select: none;
+	transition: background var(--p360-transition);
+}
+
+.p360-model-filter-arch > label {
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.p360-model-filter-sublist label {
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--p360-text-muted);
+	padding: 5px 8px;
+}
+
+.p360-model-filter label:hover {
+	background: var(--p360-hover-bg);
+}
+
+.p360-model-filter label:has(input:checked) {
+	color: var(--p360-text);
+}
+
+.p360-model-filter-sublist label:has(input:checked) {
+	color: var(--p360-text);
+}
+
+/* Custom checkbox visual — replace native control */
+.p360-model-filter input[type='checkbox'] {
+	appearance: none;
+	-webkit-appearance: none;
+	width: 16px;
+	height: 16px;
+	margin: 0;
+	flex-shrink: 0;
+	border: 1.5px solid var(--p360-border-strong);
+	border-radius: 4px;
+	background: transparent;
+	cursor: pointer;
+	display: inline-grid;
+	place-content: center;
+	transition:
+		background var(--p360-transition),
+		border-color var(--p360-transition);
+}
+
+.p360-model-filter input[type='checkbox']::before {
+	content: '';
+	width: 9px;
+	height: 9px;
+	transform: scale(0);
+	transition: transform 120ms ease;
+	background-color: #fff;
+	clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.p360-model-filter input[type='checkbox']:checked {
+	background: var(--p360-accent);
+	border-color: var(--p360-accent);
+}
+
+.p360-model-filter input[type='checkbox']:checked::before {
+	transform: scale(1);
+}
+
+.p360-model-filter input[type='checkbox']:hover {
+	border-color: var(--p360-text-muted);
+}
+
+.p360-model-filter input[type='checkbox']:focus-visible {
+	outline: 2px solid var(--p360-accent);
+	outline-offset: 2px;
+}
+
+.p360-model-filter-bucket {
+	display: flex;
+	flex-direction: column;
+}
+
+.p360-model-filter-bucket > label {
+	font-size: 13px;
+	font-weight: 600;
+}
+
+/* Visual divider between groups */
+.p360-model-filter-arch + .p360-model-filter-arch,
+.p360-model-filter-arch + .p360-model-filter-bucket,
+.p360-model-filter-bucket + .p360-model-filter-bucket {
+	margin-top: 4px;
+	padding-top: 4px;
+	border-top: 1px solid var(--p360-border);
+}
+
+/* Owner-mode inline forms + confirm dialogs (Phase 5 follow-up) */
+.p360-owner-inline-form {
+	background: var(--p360-bg-elevated);
+	border: 1px solid var(--p360-border-strong);
+	border-radius: 8px;
+	padding: 10px 12px;
+	margin: 6px 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.p360-owner-inline-form__label { font-size: 12px; color: var(--p360-text-muted); }
+.p360-owner-inline-form__input {
+	width: 100%;
+	background: var(--p360-bg);
+	color: var(--p360-text);
+	border: 1px solid var(--p360-border);
+	border-radius: 6px;
+	padding: 8px 10px;
+	font-size: 14px;
+}
+.p360-owner-inline-form__error { color: #ff8a70; font-size: 12px; min-height: 14px; }
+.p360-owner-inline-form__actions { display: flex; gap: 6px; justify-content: flex-end; }
+.p360-owner-inline-form__cancel,
+.p360-owner-inline-form__save {
+	border-radius: 6px;
+	padding: 6px 10px;
+	border: 1px solid var(--p360-border);
+	background: transparent;
+	color: var(--p360-text);
+	cursor: pointer;
+}
+.p360-owner-inline-form__save { background: var(--p360-accent); border-color: var(--p360-accent); color: #fff; }
+.p360-owner-inline-form--busy * { opacity: 0.7; pointer-events: none; }
+
+.p360-owner-dialog-overlay {
+	position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+	display: flex; align-items: center; justify-content: center;
+	z-index: 9999;
+}
+.p360-owner-dialog {
+	background: var(--p360-bg-elevated);
+	border: 1px solid var(--p360-border-strong);
+	border-radius: 10px;
+	padding: 18px 20px;
+	min-width: 320px; max-width: 480px;
+	box-shadow: var(--p360-shadow);
+}
+.p360-owner-dialog__title { margin: 0 0 8px 0; font-size: 16px; }
+.p360-owner-dialog__body { margin: 0 0 14px 0; color: var(--p360-text-muted); font-size: 13px; }
+.p360-owner-dialog__actions { display: flex; gap: 8px; justify-content: flex-end; }
+.p360-owner-dialog__cancel, .p360-owner-dialog__confirm {
+	border-radius: 6px; padding: 8px 14px;
+	border: 1px solid var(--p360-border); background: transparent;
+	color: var(--p360-text); cursor: pointer; font-weight: 600;
+}
+.p360-owner-dialog__confirm--danger { background: #d23a1f; border-color: #d23a1f; color: #fff; }
+
+/* Owner-mode move-image picker (Phase 5 follow-up) */
+.p360-owner-move-picker {
+	background: var(--p360-bg-elevated);
+	border: 1px solid var(--p360-border-strong);
+	border-radius: 8px;
+	padding: 4px;
+	max-height: 240px;
+	overflow-y: auto;
+	min-width: 200px;
+	z-index: 270;
+	position: absolute;
+	right: 8px;
+	top: 36px;
+}
+.p360-owner-move-picker__item {
+	display: block;
+	width: 100%;
+	text-align: left;
+	background: transparent;
+	border: 0;
+	color: var(--p360-text);
+	padding: 8px 10px;
+	border-radius: 6px;
+	font-size: 13px;
+	cursor: pointer;
+}
+.p360-owner-move-picker__item:hover:not([disabled]) { background: var(--p360-hover-bg); }
+.p360-owner-move-picker__item[disabled] { opacity: 0.5; cursor: default; }

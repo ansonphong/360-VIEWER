@@ -1,0 +1,7 @@
+{
+  "name": "phong-360-gallery-template",
+  "private": true,
+  "dependencies": {
+    "@phong/360-library-ui": "5.0.0-rc.1"
+  }
+}
