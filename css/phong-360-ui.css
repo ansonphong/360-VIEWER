@@ -299,11 +299,6 @@
 	background: var(--p360-hover-bg);
 }
 
-.p360-sidebar--owner .p360-section-heading {
-	position: relative;
-	cursor: grab;
-}
-
 .p360-section-title-input {
 	flex: 1 1 auto;
 	min-width: 0;
@@ -334,11 +329,6 @@
 .p360-section-title-input--error {
 	border-color: #d23a1f;
 	box-shadow: 0 0 0 2px rgba(210, 58, 31, 0.25);
-}
-
-.p360-sidebar--owner .p360-section-heading[aria-disabled='true'] {
-	cursor: not-allowed;
-	opacity: 0.75;
 }
 
 .p360-owner-header-menu {
@@ -495,10 +485,6 @@
 	transition: all var(--p360-transition);
 	background: var(--p360-hover-bg);
 	aspect-ratio: 2 / 1;
-}
-
-.p360-sidebar--owner .p360-thumbnail {
-	overflow: visible;
 }
 
 .p360-owner-thumb-menu {
