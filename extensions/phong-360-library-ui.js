@@ -865,6 +865,16 @@ class Phong360LibraryUI {
 		this._headingDecorators = [];
 		this._decoratorIdCounter = 0;
 
+		// Additive slot state (Phase 2 — Task 2.3)
+		// _contentEl, _toolbar, and _infoBar are built during init() → _buildSidebarDOM().
+		// These arrays/maps hold registrations made BEFORE or AFTER the DOM is built.
+		// Injection strategy: if the target container already exists, inject immediately;
+		// otherwise the _buildSidebarDOM / _buildInfoBar / _buildToolbar methods check
+		// these lists at the end and inject any pending registrations.
+		this._additiveSidebarSections = [];
+		this._toolbarButtons = [];
+		this._infoBarSlots = { left: null, center: null, right: null };
+
 		// Initialize
 		this.init();
 		this._bindOwnerModeEvents();
@@ -1203,12 +1213,34 @@ class Phong360LibraryUI {
 		trailingWrapper.className = 'p360-slot';
 		this._slotWrappers['info-bar-trailing'] = trailingWrapper;
 
+		// Additive info-bar slots (Phase 2 — Task 2.3).
+		// Three dedicated containers sit at the left, center, and right positions
+		// in the bar's flex row. setInfoBarSlot(position, el) swaps their child.
+		// 'left' is before prevBtn; 'center' overlays the info-text area; 'right' is after nextBtn.
+		this._infoSlotLeft = document.createElement('div');
+		this._infoSlotLeft.className = 'p360-info-slot p360-info-slot--left';
+
+		this._infoSlotCenter = document.createElement('div');
+		this._infoSlotCenter.className = 'p360-info-slot p360-info-slot--center';
+
+		this._infoSlotRight = document.createElement('div');
+		this._infoSlotRight.className = 'p360-info-slot p360-info-slot--right';
+
+		this._infoBar.appendChild(this._infoSlotLeft);
 		this._infoBar.appendChild(this._prevBtn);
 		this._infoBar.appendChild(leadingWrapper);
 		this._infoBar.appendChild(this._infoText);
+		this._infoBar.appendChild(this._infoSlotCenter);
 		this._infoBar.appendChild(trailingWrapper);
 		this._infoBar.appendChild(this._nextBtn);
+		this._infoBar.appendChild(this._infoSlotRight);
 		document.body.appendChild(this._infoBar);
+
+		// Flush any pending setInfoBarSlot() calls made before the DOM was ready.
+		for (const pos of ['left', 'center', 'right']) {
+			const el = this._infoBarSlots[pos];
+			if (el) this._applyInfoBarSlot(pos, el);
+		}
 	}
 
 	_updateInfoBar(imageData, resolution) {
@@ -4089,6 +4121,234 @@ class Phong360LibraryUI {
 					err && err.message ? err.message : err
 				);
 			}
+		}
+	}
+
+	// --------------------------------------------------------
+	// Phase 2 Task 2.3 — Additive structural decorators
+	// --------------------------------------------------------
+
+	/**
+	 * Mount a custom section in the sidebar's content area.
+	 *
+	 * The section is injected immediately if the sidebar is already built
+	 * (i.e. after init() has completed). If the sidebar is not yet built
+	 * the section is queued and injected at the end of _buildSidebarDOM().
+	 *
+	 * @param {Object} spec
+	 * @param {string}   spec.id       Unique id for this section.
+	 * @param {string}  [spec.title]   Optional visible title (informational only — caller
+	 *                                 sets up title markup via render()).
+	 * @param {Function} spec.render   Called once with the section's root HTMLElement.
+	 *                                 The caller populates the element inside this callback.
+	 * @param {string}  [spec.position] 'start' | 'end' (default 'end').
+	 *                                  'start' → before the first existing .p360-section;
+	 *                                  'end'   → after the last existing .p360-section.
+	 * @returns {{ id: string, remove(): void }}  SlotHandle.
+	 * @since 5.0.0
+	 */
+	addSidebarSection(spec) {
+		const id = 'sidebar-sec-' + (++this._decoratorIdCounter);
+		const position = (spec && spec.position) || 'end';
+
+		// Build the section container
+		const el = document.createElement('div');
+		el.className = 'p360-section p360-additive-section';
+		el.dataset.additiveId = id;
+
+		// Call the render callback — errors are caught so callers can't break the engine
+		if (spec && typeof spec.render === 'function') {
+			try {
+				spec.render(el);
+			} catch (err) {
+				console.warn(
+					`Phong360LibraryUI: addSidebarSection render for "${id}" threw:`,
+					err && err.message ? err.message : err
+				);
+			}
+		}
+
+		// Inject into _contentEl if already built; otherwise queue
+		if (this._contentEl) {
+			this._insertSidebarSection(el, position);
+		} else {
+			// Will be flushed at end of _buildSidebarDOM()
+			this._additiveSidebarSections.push({ el, position });
+		}
+
+		return {
+			id,
+			remove: () => {
+				if (el._parent) {
+					el._parent.removeChild(el);
+				} else if (el.parentNode) {
+					el.parentNode.removeChild(el);
+				}
+				// Also remove from queue if not yet mounted
+				const qi = this._additiveSidebarSections.findIndex((e) => e.el === el);
+				if (qi !== -1) this._additiveSidebarSections.splice(qi, 1);
+			},
+		};
+	}
+
+	/**
+	 * Insert a sidebar section element at the given position in _contentEl.
+	 * @param {HTMLElement} el
+	 * @param {'start'|'end'} position
+	 * @private
+	 */
+	_insertSidebarSection(el, position) {
+		if (!this._contentEl) return;
+		if (position === 'start') {
+			// Insert before the first existing child (or append if empty)
+			const first = this._contentEl.firstChild || null;
+			this._contentEl.insertBefore(el, first);
+		} else {
+			this._contentEl.appendChild(el);
+		}
+	}
+
+	/**
+	 * Set (or clear) an element at one of the three info-bar slots.
+	 *
+	 * Slots are persistent `div.p360-info-slot` containers built inside the
+	 * info bar during _buildInfoBar(). Each slot holds at most one child at a
+	 * time; setting a new element replaces any existing one.
+	 *
+	 * @param {'left'|'center'|'right'} position  Which slot to target.
+	 * @param {HTMLElement|null} el                Element to set, or null to clear.
+	 * @returns {void}  (Not a SlotHandle — caller already owns the element reference.)
+	 * @since 5.0.0
+	 */
+	setInfoBarSlot(position, el) {
+		const VALID = ['left', 'center', 'right'];
+		if (!VALID.includes(position)) {
+			console.warn(`Phong360LibraryUI.setInfoBarSlot: unknown position "${position}"`);
+			return;
+		}
+
+		// Always update the backing store (needed if bar not yet built)
+		this._infoBarSlots[position] = el;
+
+		// Apply immediately if the slot container exists
+		this._applyInfoBarSlot(position, el);
+	}
+
+	/**
+	 * Apply a slot element to its container, replacing any previous child.
+	 * @param {'left'|'center'|'right'} position
+	 * @param {HTMLElement|null} el
+	 * @private
+	 */
+	_applyInfoBarSlot(position, el) {
+		const slotMap = {
+			left: '_infoSlotLeft',
+			center: '_infoSlotCenter',
+			right: '_infoSlotRight',
+		};
+		const container = this[slotMap[position]];
+		if (!container) return; // bar not yet built — flush happens in _buildInfoBar()
+
+		// Remove existing children
+		const existing = container._children
+			? [...container._children]
+			: (container.childNodes ? [...container.childNodes] : []);
+		for (const child of existing) {
+			try { container.removeChild(child); } catch (_) {}
+		}
+
+		if (el) {
+			container.appendChild(el);
+		}
+	}
+
+	/**
+	 * Mount a custom button in the toolbar.
+	 *
+	 * The button is injected immediately if the toolbar is already built.
+	 * If the toolbar is not yet built the button is queued and injected at
+	 * the end of _buildToolbar().
+	 *
+	 * @param {Object} spec
+	 * @param {string}   spec.id        Unique id for this button.
+	 * @param {string}   spec.label     Accessible label / title.
+	 * @param {string}  [spec.icon]     Phosphor icon class (e.g. 'ph ph-star').
+	 * @param {Function} spec.onClick   Called with the click Event.
+	 * @param {string}  [spec.position] 'leading' | 'trailing' (default 'trailing').
+	 *                                   'leading' → before the first existing toolbar child;
+	 *                                   'trailing' → after the last toolbar child (additive
+	 *                                   buttons are appended but remain before built-in
+	 *                                   nav buttons if those are appended after this call).
+	 * @returns {{ id: string, remove(): void }}  SlotHandle.
+	 * @since 5.0.0
+	 */
+	addToolbarButton(spec) {
+		const id = 'toolbar-btn-' + (++this._decoratorIdCounter);
+		const position = (spec && spec.position) || 'trailing';
+
+		// Build the button element
+		const btn = document.createElement('button');
+		btn.className = 'p360-toolbar-btn p360-additive-btn';
+		btn.title = (spec && spec.label) || '';
+		btn.type = 'button';
+		btn.dataset.additiveId = id;
+
+		if (spec && spec.icon) {
+			const icon = document.createElement('i');
+			icon.className = spec.icon;
+			btn.appendChild(icon);
+		} else if (spec && spec.label) {
+			btn.textContent = spec.label;
+		}
+
+		if (spec && typeof spec.onClick === 'function') {
+			btn.addEventListener('click', (e) => {
+				try {
+					spec.onClick(e);
+				} catch (err) {
+					console.warn(
+						`Phong360LibraryUI: addToolbarButton onClick for "${id}" threw:`,
+						err && err.message ? err.message : err
+					);
+				}
+			});
+		}
+
+		// Inject immediately if toolbar exists, otherwise queue
+		if (this._toolbar) {
+			this._insertToolbarButton(btn, position);
+		} else {
+			this._toolbarButtons.push({ btn, position });
+		}
+
+		return {
+			id,
+			remove: () => {
+				if (btn._parent) {
+					btn._parent.removeChild(btn);
+				} else if (btn.parentNode) {
+					btn.parentNode.removeChild(btn);
+				}
+				// Also remove from queue if not yet mounted
+				const qi = this._toolbarButtons.findIndex((e) => e.btn === btn);
+				if (qi !== -1) this._toolbarButtons.splice(qi, 1);
+			},
+		};
+	}
+
+	/**
+	 * Insert a button element into the toolbar at the given position.
+	 * @param {HTMLElement} btn
+	 * @param {'leading'|'trailing'} position
+	 * @private
+	 */
+	_insertToolbarButton(btn, position) {
+		if (!this._toolbar) return;
+		if (position === 'leading') {
+			const first = this._toolbar.firstChild || null;
+			this._toolbar.insertBefore(btn, first);
+		} else {
+			this._toolbar.appendChild(btn);
 		}
 	}
 
