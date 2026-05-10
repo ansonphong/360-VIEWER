@@ -1112,6 +1112,12 @@ class Phong360LibraryUI {
 		this._contentEl.className = 'p360-content';
 		this._sidebar.appendChild(this._contentEl);
 
+		// Flush any pending addSidebarSection() calls made before the DOM was ready.
+		for (const { el, position } of this._additiveSidebarSections) {
+			this._insertSidebarSection(el, position);
+		}
+		this._additiveSidebarSections = [];
+
 		document.body.appendChild(this._sidebar);
 		this._buildInfoBar();
 		this._updateToggleIcon();
@@ -1190,6 +1196,12 @@ class Phong360LibraryUI {
 		document.addEventListener('click', () => {
 			if (this._resDropdown) this._resDropdown.classList.remove('open');
 		});
+
+		// Flush any pending addToolbarButton() calls made before the DOM was ready.
+		for (const { btn, position } of this._toolbarButtons) {
+			this._insertToolbarButton(btn, position);
+		}
+		this._toolbarButtons = [];
 	}
 
 	_buildInfoBar() {

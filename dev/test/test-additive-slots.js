@@ -690,6 +690,105 @@ console.log('T12: handle.remove() un-mounts the button');
 }
 
 // ================================================================
+// Queued-then-flushed regression tests (code-review fix for missing flush)
+// ================================================================
+
+console.log('\n--- Queued flush (pre-DOM registration) ---');
+
+// T13: addSidebarSection called before _contentEl exists → queued, flushed when DOM built
+console.log('T13: addSidebarSection queued before _contentEl → flushed after DOM built');
+
+{
+	const engine = makeBareInstance();
+	// Simulate pre-DOM state — no _contentEl yet
+	engine._contentEl = null;
+	engine._additiveSidebarSections = [];
+
+	let renderCalled = 0;
+	const handle = engine.addSidebarSection({
+		id: 'queued-section',
+		render: (root) => { renderCalled++; },
+		position: 'start',
+	});
+
+	// Should be queued, not injected (no _contentEl)
+	assert.strictEqual(engine._additiveSidebarSections.length, 1,
+		'T13: section must be queued when _contentEl is null');
+	assert.strictEqual(renderCalled, 1,
+		'T13: render() still called at registration time (builds the section DOM eagerly)');
+
+	// Simulate _buildSidebarDOM completing
+	const contentEl = mkTrackedContainer('p360-content');
+	engine._contentEl = contentEl;
+
+	// Flush — identical to what _buildSidebarDOM now does
+	for (const { el, position } of engine._additiveSidebarSections) {
+		engine._insertSidebarSection(el, position);
+	}
+	engine._additiveSidebarSections = [];
+
+	assert.strictEqual(contentEl._children.length, 1,
+		'T13: section must be in _contentEl after flush');
+	assert.strictEqual(contentEl._children[0], engine._additiveSidebarSections.length === 0
+		? contentEl._children[0] : null,
+		'T13: flushed section is first child');
+
+	// Remove via handle — must clear from DOM
+	handle.remove();
+	assert.strictEqual(contentEl._children.length, 0,
+		'T13: handle.remove() must un-mount flushed section');
+
+	console.log('  T13: PASS — section queued, flushed, and removable');
+}
+
+// T14: addToolbarButton called before _toolbar exists → queued, flushed when DOM built
+console.log('T14: addToolbarButton queued before _toolbar → flushed after DOM built');
+
+{
+	const engine = makeBareInstance();
+	engine._toolbar = null;
+	engine._toolbarButtons = [];
+
+	let clicked = 0;
+	const handle = engine.addToolbarButton({
+		id: 'queued-btn',
+		label: 'Queued',
+		onClick: () => { clicked++; },
+		position: 'leading',
+	});
+
+	assert.strictEqual(engine._toolbarButtons.length, 1,
+		'T14: button must be queued when _toolbar is null');
+
+	// Simulate _buildToolbar completing
+	const toolbar = mkTrackedContainer('p360-toolbar');
+	engine._toolbar = toolbar;
+
+	// Flush — identical to what _buildToolbar now does
+	for (const { btn, position } of engine._toolbarButtons) {
+		engine._insertToolbarButton(btn, position);
+	}
+	engine._toolbarButtons = [];
+
+	assert.strictEqual(toolbar._children.length, 1,
+		'T14: button must be in toolbar after flush');
+	assert.strictEqual(toolbar._children[0].className, 'p360-toolbar-btn p360-additive-btn',
+		'T14: flushed button is first child');
+
+	// Click must still work after flush
+	toolbar._children[0].dispatchEvent(new global.CustomEvent('click'));
+	assert.strictEqual(clicked, 1,
+		'T14: onClick fires after flush');
+
+	// Remove via handle
+	handle.remove();
+	assert.strictEqual(toolbar._children.length, 0,
+		'T14: handle.remove() must un-mount flushed button');
+
+	console.log('  T14: PASS — button queued, flushed, clickable, and removable');
+}
+
+// ================================================================
 // Done
 // ================================================================
 
