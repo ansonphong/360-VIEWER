@@ -766,6 +766,7 @@ class Phong360LibraryUI {
 
 		// Engine control options (Phase 1 — constructor API)
 		this._keyboardShortcuts = options.keyboardShortcuts !== false; // default true
+		this._legacyModelFilter = options.legacyModelFilter !== false; // default true
 		this._fov = options.fov || null;
 		this._controls = options.controls || null;
 		this._autoRotationRate = options.autoRotationRate !== undefined ? options.autoRotationRate : null;
@@ -1542,7 +1543,7 @@ class Phong360LibraryUI {
 		this._applyPanelConfig();
 
 		// Build the model filter block before sections render (appears above them)
-		this._buildModelFilter(data.facets && data.facets.model);
+		if (this._legacyModelFilter) { this._buildModelFilter(data.facets && data.facets.model); }
 
 		// Render (sections first since it clears innerHTML, then context prepends header)
 		this._renderSections(this._sections);
