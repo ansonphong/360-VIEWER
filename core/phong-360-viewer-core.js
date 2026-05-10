@@ -4,7 +4,7 @@
  * Pure 360° image rendering with controls. No library management, no multi-image support.
  * Just load ONE image and view it. Perfect for embedding anywhere.
  *
- * @version 5.0.0-alpha.1
+ * @version 5.0.0-alpha.2
  * @author Phong
  * @license MIT
  * @size ~30KB minified

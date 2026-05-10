@@ -5,7 +5,7 @@
  * Supports v4.0 library.json format with context, sections, badges,
  * theme management, accent colors, and deep-linking.
  *
- * @version 5.0.0-alpha.1
+ * @version 5.0.0-alpha.2
  * @author Phong
  * @license MIT
  */
@@ -705,7 +705,7 @@ class Phong360LibraryUI {
 		onLinkClick:       { event: 'link:click',       compat: true,  buildPayload: function(url, it)  { return { url, item: it }; } },
 		onSectionToggle:   { event: 'section:toggle',   compat: true,  buildPayload: function(sec, exp) { return { section: sec, expanded: exp }; } },
 		onSectionsRendered:{ event: 'sections:render',  compat: true,  buildPayload: function(flt, mfa) { return { sections: flt, modelFilterActive: mfa }; } },
-		onThemeChange:     { event: 'theme:change',     compat: false, buildPayload: function(resolved) { return { resolved }; } },
+		onThemeChange:     { event: 'theme:change',     compat: false, buildPayload: function(resolved) { return { resolved, choice: this._theme }; } },
 		onBadgeClick:      { event: 'badge:click',      compat: true,  buildPayload: function(img, b)   { return { image: img, badge: b }; } },
 		onHelpClick:       { event: 'help:open',        compat: true,  buildPayload: function()         { return {}; } },
 	};
@@ -859,6 +859,14 @@ class Phong360LibraryUI {
 		this.init();
 		this._bindOwnerModeEvents();
 		this._setupCompatBridge();
+	}
+
+	get container() {
+		return this._containerEl;
+	}
+
+	get canvas() {
+		return this.core?.renderer?.domElement || null;
 	}
 
 	async init() {

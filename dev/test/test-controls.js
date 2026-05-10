@@ -433,7 +433,7 @@ instance.multiViewer = null;
 instance._theme = 'auto';
 instance._accent = null;
 instance._sidebar = null;
-instance.container = null;
+instance._containerEl = null;
 instance._sections = [];
 instance._allImages = [];
 instance._context = null;
@@ -686,7 +686,6 @@ function makeBareInstance() {
 	i._accent = null;
 	i._sidebar = null;
 	i._containerEl = null;
-	i.container = null;
 	i._sections = [];
 	i._allImages = [];
 	i._context = null;
