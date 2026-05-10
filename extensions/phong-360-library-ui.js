@@ -862,6 +862,7 @@ class Phong360LibraryUI {
 
 		// Decorator lists (Phase 2)
 		this._thumbnailDecorators = [];
+		this._headingDecorators = [];
 		this._decoratorIdCounter = 0;
 
 		// Initialize
@@ -2227,6 +2228,9 @@ class Phong360LibraryUI {
 			}
 
 			sectionEl.appendChild(heading);
+
+			// Run heading decorators registered on the engine (Phase 2).
+			this._runHeadingDecorators(heading, section);
 
 			// Apply initial collapsed state
 			if (collapsible && section.collapsed) {
@@ -4031,6 +4035,57 @@ class Phong360LibraryUI {
 			} catch (err) {
 				console.warn(
 					`Phong360LibraryUI: thumbnail decorator "${entry.id}" threw:`,
+					err && err.message ? err.message : err
+				);
+			}
+		}
+	}
+
+	/**
+	 * Register a decorator that runs after every section heading is rendered.
+	 *
+	 * The decorator receives the fully-assembled heading Element and the section
+	 * data object. It is called once per renderSection() invocation for sections
+	 * that have a title. Errors are caught per-decorator and console.warn'd so
+	 * subsequent decorators are not blocked.
+	 *
+	 * @param {Function} fn  (headingEl: Element, section: Object) => void
+	 * @returns {{ id: string, remove(): void }}  SlotHandle — call remove() to un-register.
+	 * @since 5.0.0
+	 */
+	addSectionHeadingDecorator(fn) {
+		if (typeof fn !== 'function') {
+			throw new TypeError('Phong360LibraryUI.addSectionHeadingDecorator: fn must be a function');
+		}
+		const id = 'heading-' + (++this._decoratorIdCounter);
+		const entry = { id, fn };
+		this._headingDecorators.push(entry);
+		return {
+			id,
+			remove: () => {
+				const idx = this._headingDecorators.indexOf(entry);
+				if (idx !== -1) this._headingDecorators.splice(idx, 1);
+			},
+		};
+	}
+
+	/**
+	 * Run all registered heading decorators in order for a single rendered
+	 * section heading element. Called by renderSection() after the heading
+	 * element is fully assembled and appended to the section container.
+	 *
+	 * @param {Element} el       The heading DOM element.
+	 * @param {Object}  section  The section data object from the manifest.
+	 * @private
+	 */
+	_runHeadingDecorators(el, section) {
+		if (!Array.isArray(this._headingDecorators)) return;
+		for (const entry of this._headingDecorators) {
+			try {
+				entry.fn(el, section);
+			} catch (err) {
+				console.warn(
+					`Phong360LibraryUI: heading decorator "${entry.id}" threw:`,
 					err && err.message ? err.message : err
 				);
 			}
