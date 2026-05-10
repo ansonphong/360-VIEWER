@@ -589,9 +589,9 @@
 												})
 											);
 										}
+										resolve(texture);
 									});
 
-									resolve(texture);
 								});
 							});
 						});

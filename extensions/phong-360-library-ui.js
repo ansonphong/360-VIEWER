@@ -829,6 +829,8 @@ class Phong360LibraryUI {
 
 	async init() {
 		this._initCore();
+		// Emit ready after core initialized + canvas mounted + multiViewer wired
+		this.emit('ready');
 		this._buildSidebarDOM();
 		this._setupLazyLoading();
 		this._applyTheme(this._theme);
@@ -1304,11 +1306,19 @@ class Phong360LibraryUI {
 		if (!this.libraryUrl) return;
 		this._isLoading = true;
 		this._loadingPhase = 'library';
+		this._abortController = new AbortController();
+		const controller = this._abortController;
 		this.emit('loading:start', { source: 'library' });
 		try {
-			const resp = await fetch(this.libraryUrl);
+			const resp = await fetch(this.libraryUrl, { signal: controller.signal });
+			// Check if aborted or preempted during fetch
+			if (controller.signal.aborted || this._abortController !== controller) {
+				return; // setLibrary() preempted us — don't emit further events
+			}
 			if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 			const data = await resp.json();
+			// Re-check after json parse (setLibrary may have fired during)
+			if (controller.signal.aborted || this._abortController !== controller) return;
 			this._processLibraryData(data);
 			this.emit('library:load', {
 				manifest: data,
@@ -1324,6 +1334,9 @@ class Phong360LibraryUI {
 			this._loadingPhase = 'idle';
 			this.emit('loading:end', { source: 'library', success: true });
 		} catch (error) {
+			// AbortError means setLibrary() preempted us — setLibrary already
+			// emitted its own library:load + context:ready, so stay silent.
+			if (error.name === 'AbortError' || controller.signal.aborted) return;
 			console.error('Error loading library:', error);
 			this.emit('library:error', {
 				error: error.message,
@@ -1333,6 +1346,10 @@ class Phong360LibraryUI {
 			this._isLoading = false;
 			this._loadingPhase = 'idle';
 			this.emit('loading:end', { source: 'library', success: false });
+		} finally {
+			if (this._abortController === controller) {
+				this._abortController = null;
+			}
 		}
 	}
 
@@ -3646,12 +3663,9 @@ class Phong360LibraryUI {
 			return;
 		}
 
-		// Cancel previous in-flight load
-		if (this._abortController) {
-			this._abortController.abort();
-		}
-		this._abortController = new AbortController();
-		this._loadToken++;
+		// Save previous image for error rollback
+		const prevImageData = this._currentImageData;
+		const prevImageId = this._currentImageId;
 
 		// Emit image:select
 		this._currentImageId = found.id;
@@ -3663,19 +3677,28 @@ class Phong360LibraryUI {
 		this._loadingPhase = 'image';
 		this.emit('loading:start', { source: 'image' });
 
-		// Load via multiViewer
+		// Load via multiViewer (emits image:load-request before load, image:visible after)
 		try {
-			this.multiViewer.loadImageById(found.id);
-			// Stale check
+			const resolution = this.multiViewer.selectOptimalResolution(found.resolutions);
+			await this.multiViewer.loadImageWithResolution(found, resolution);
 			if (this._selectToken !== token) return;
-			this.emit('image:load-request', { image: { ...found }, resolution: this.getResolution() });
+			this._isLoading = false;
+			this._loadingPhase = 'idle';
+			this.emit('loading:end', { source: 'image', success: true });
 		} catch (e) {
 			if (this._selectToken !== token) return;
-			this.emit('image:error', { image: { ...found }, error: e.message });
+			// Roll back current image on error
+			this._currentImageData = prevImageData;
+			this._currentImageId = prevImageId;
+			// image:error is already emitted by multi-image layer
+			this._isLoading = false;
+			this._loadingPhase = 'idle';
+			this.emit('loading:end', { source: 'image', success: false });
+			throw e;
 		}
 	}
 
-	/**
+	/***
 	 * Load the next image in the manifest. No-op if no library loaded or
 	 * only raw loadImage(url) calls have been made.
 	 * @returns {Promise<void>}

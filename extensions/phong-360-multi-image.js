@@ -91,7 +91,7 @@ class Phong360MultiImage {
 			if (this.callbacks.onImageError) {
 				this.callbacks.onImageError(new Error(`Image not found: ${id}`));
 			}
-			return;
+			return Promise.reject(new Error(`Image not found: ${id}`));
 		}
 
 		const resolution = this.selectOptimalResolution(imageData.resolutions);
@@ -100,16 +100,17 @@ class Phong360MultiImage {
 			if (this.callbacks.onImageError) {
 				this.callbacks.onImageError(new Error('No suitable resolution found'));
 			}
-			return;
+			return Promise.reject(new Error('No suitable resolution found'));
 		}
 
-		this.loadImageWithResolution(imageData, resolution);
+		return this.loadImageWithResolution(imageData, resolution);
 	}
 
-	loadImageWithResolution(imageData, resolution) {
+	async loadImageWithResolution(imageData, resolution) {
 		if (!imageData || !resolution) {
-			console.error('Invalid image data or resolution');
-			return;
+			const err = new Error('Invalid image data or resolution');
+			console.error(err.message);
+			return Promise.reject(err);
 		}
 
 		this.currentImageId = imageData.id;
@@ -120,15 +121,43 @@ class Phong360MultiImage {
 			this.callbacks.onLoadStart();
 		}
 
-		const imagePath = this.baseUrl + resolution.path;
-		this.core.loadImage(imagePath, resolution.width, resolution.height);
+		// Emit image:load-request before handing texture to core renderer
+		this.emit('image:load-request', {
+			image: imageData,
+			resolution: resolution.id
+		});
 
-		// Pass full image data object through callback
-		if (this.callbacks.onImageLoad) {
-			this.callbacks.onImageLoad(imageData, resolution);
-		}
-		if (this.callbacks.onLoadComplete) {
-			this.callbacks.onLoadComplete();
+		const imagePath = this.baseUrl + resolution.path;
+
+		try {
+			await this.core.loadImage(imagePath, resolution.width, resolution.height);
+
+			// Emit image:visible AFTER texture load + material apply + hideLoading fade-out
+			this.emit('image:visible', {
+				image: imageData,
+				resolution: resolution.id
+			});
+
+			// Backward-compat: fire onImageLoad AFTER image:visible (same post-visible timing)
+			if (this.callbacks.onImageLoad) {
+				this.callbacks.onImageLoad(imageData, resolution);
+			}
+		} catch (error) {
+			this.emit('image:error', {
+				image: imageData,
+				resolution: resolution.id,
+				error: error.message || String(error)
+			});
+
+			if (this.callbacks.onImageError) {
+				this.callbacks.onImageError(error);
+			}
+
+			throw error;
+		} finally {
+			if (this.callbacks.onLoadComplete) {
+				this.callbacks.onLoadComplete();
+			}
 		}
 	}
 
