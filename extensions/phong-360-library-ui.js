@@ -704,8 +704,8 @@ class Phong360LibraryUI {
 	 */
 	constructor(options = {}) {
 		this.containerId = options.containerId;
-		this.container = document.getElementById(options.containerId);
-		if (!this.container) {
+		this._containerEl = document.getElementById(options.containerId);
+		if (!this._containerEl) {
 			throw new Error(`Container element "${options.containerId}" not found`);
 		}
 
@@ -726,6 +726,21 @@ class Phong360LibraryUI {
 		this._sensitivity = options.sensitivity || null;
 		this._grid = options.grid || null;
 		this._desktopOpenByDefault = options.desktopOpenByDefault === true;
+
+		// Engine control options (Phase 1 — constructor API)
+		this._keyboardShortcuts = options.keyboardShortcuts !== false; // default true
+		this._fov = options.fov || null;
+		this._controls = options.controls || null;
+		this._autoRotationRate = options.autoRotationRate !== undefined ? options.autoRotationRate : null;
+		this._transition = options.transition || null;
+		this._autoRotate = options.autoRotate !== undefined ? options.autoRotate : null;
+
+		// Loading state (Phase 1 — engine API)
+		this._isLoading = false;
+		this._loadingPhase = 'idle'; // 'idle' | 'library' | 'image'
+		this._abortController = null;
+		this._loadToken = 0;
+		this._resolutionMode = 'auto'; // 'auto' | 'manual'
 
 		// Core viewer instances (created internally)
 		this.core = null;
@@ -870,24 +885,63 @@ class Phong360LibraryUI {
 	// --------------------------------------------------------
 
 	_initCore() {
-		// Auto-rotate preference
-		let autoRotate = false;
-		try {
-			const saved = localStorage.getItem('phong360.preferences.autoRotate');
-			if (saved !== null) autoRotate = saved === 'true';
-		} catch (e) {
-			/* ignore */
+		// Auto-rotate: constructor option takes precedence; fall back to localStorage for
+		// backward compatibility during migration. The engine API contract says engine does
+		// NOT read localStorage — the consumer seeds autoRotate via the constructor option.
+		let autoRotate = this._autoRotate !== null ? this._autoRotate : false;
+		if (this._autoRotate === null) {
+			try {
+				const saved = localStorage.getItem('phong360.preferences.autoRotate');
+				if (saved !== null) autoRotate = saved === 'true';
+			} catch (e) {
+				/* ignore */
+			}
 		}
 
 		if (typeof Phong360ViewerCore !== 'undefined') {
 			const coreConfig = {
-				viewRotation: { autoRotate, autoRotationRate: 1 }
+				viewRotation: { autoRotate, autoRotationRate: this._autoRotationRate !== null ? this._autoRotationRate : 1 }
 			};
 			if (this._sensitivity) coreConfig.sensitivity = this._sensitivity;
+
+			// Apply fov option to core config
+			if (this._fov) {
+				if (this._fov.init !== undefined) {
+					coreConfig.fov = coreConfig.fov || {};
+					coreConfig.fov.init = this._fov.init;
+					coreConfig.fov.initTarget = this._fov.initTarget !== undefined ? this._fov.initTarget : this._fov.init;
+				} else if (this._fov.initTarget !== undefined) {
+					coreConfig.fov = coreConfig.fov || {};
+					coreConfig.fov.initTarget = this._fov.initTarget;
+				}
+			}
+
+			// Apply controls option to core config
+			if (this._controls) {
+				coreConfig.controls = coreConfig.controls || {};
+				if (this._controls.enableZoom !== undefined) coreConfig.controls.enableZoom = this._controls.enableZoom;
+				if (this._controls.enablePan !== undefined) coreConfig.controls.enablePan = this._controls.enablePan;
+			}
+
+			// Apply transition option to core config loading section
+			if (this._transition) {
+				coreConfig.loading = coreConfig.loading || {};
+				if (this._transition.fadeInDuration !== undefined) coreConfig.loading.fadeInDuration = this._transition.fadeInDuration;
+				if (this._transition.fadeOutDuration !== undefined) coreConfig.loading.fadeOutDuration = this._transition.fadeOutDuration;
+			}
+
 			this.core = new Phong360ViewerCore({
 				containerId: this.containerId,
 				config: coreConfig
 			});
+
+			// Suppress keyboard shortcuts if disabled (Phase 1 — keyboardShortcuts option)
+			if (!this._keyboardShortcuts) {
+				if (this.core.boundHandlers && this.core.boundHandlers.onKeyDown) {
+					document.removeEventListener('keydown', this.core.boundHandlers.onKeyDown);
+					document.removeEventListener('keyup', this.core.boundHandlers.onKeyUp);
+				}
+			}
 		}
 
 		if (typeof Phong360MultiImage !== 'undefined' && this.core) {
@@ -1248,13 +1302,37 @@ class Phong360LibraryUI {
 
 	async loadLibrary() {
 		if (!this.libraryUrl) return;
+		this._isLoading = true;
+		this._loadingPhase = 'library';
+		this.emit('loading:start', { source: 'library' });
 		try {
 			const resp = await fetch(this.libraryUrl);
 			if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 			const data = await resp.json();
 			this._processLibraryData(data);
+			this.emit('library:load', {
+				manifest: data,
+				context: data.context || null,
+				sections: this._sections,
+				images: this._allImages,
+				facets: data.facets || null,
+			});
+			if (data.context) {
+				this.emit('context:ready', data.context);
+			}
+			this._isLoading = false;
+			this._loadingPhase = 'idle';
+			this.emit('loading:end', { source: 'library', success: true });
 		} catch (error) {
 			console.error('Error loading library:', error);
+			this.emit('library:error', {
+				error: error.message,
+				url: this.libraryUrl,
+				code: error.name === 'SyntaxError' ? 'parse' : 'network',
+			});
+			this._isLoading = false;
+			this._loadingPhase = 'idle';
+			this.emit('loading:end', { source: 'library', success: false });
 		}
 	}
 
@@ -2182,7 +2260,25 @@ class Phong360LibraryUI {
 	// Owner-mode gallery management
 	// --------------------------------------------------------
 
-	setLibrary(data) { this._processLibraryData(data); }
+	setLibrary(manifest) {
+		// Cancel in-flight fetch if any
+		if (this._abortController) {
+			this._abortController.abort();
+			this._abortController = null;
+		}
+		this.libraryData = manifest;
+		this._processLibraryData(manifest);
+		this.emit('library:load', {
+			manifest,
+			context: manifest.context || null,
+			sections: this._sections,
+			images: this._allImages,
+			facets: manifest.facets || null,
+		});
+		if (manifest.context) {
+			this.emit('context:ready', manifest.context);
+		}
+	}
 	loadLibraryData(data) { this.setLibrary(data); }
 
 	_bindOwnerModeEvents() {
@@ -3066,11 +3162,11 @@ class Phong360LibraryUI {
 		this._refreshOwnerLibraryData();
 	}
 
-	selectImage(imageId) {
+	_ownerSelectImage(imageId) {
 		this._ownerState.selectedImages.add(imageId);
 		this._contentEl?.querySelector(`[data-image-id="${CSS.escape(imageId)}"]`)?.classList.add('p360-thumbnail--selected-owner');
 	}
-	deselectImage(imageId) {
+	_ownerDeselectImage(imageId) {
 		this._ownerState.selectedImages.delete(imageId);
 		this._contentEl?.querySelector(`[data-image-id="${CSS.escape(imageId)}"]`)?.classList.remove('p360-thumbnail--selected-owner');
 	}
@@ -3247,12 +3343,23 @@ class Phong360LibraryUI {
 
 	_applyTheme(theme) {
 		const resolved = this._resolveTheme(theme);
+		const choice = theme || this._theme;
+
+		// CSS variable contract (Phase 1 — engine API):
+		// Set data-theme attribute AND --p360-canvas-bg on the container element.
+		if (this._containerEl) {
+			this._containerEl.setAttribute('data-theme', resolved);
+			this._containerEl.style.setProperty('--p360-canvas-bg', resolved === 'dark' ? '#000000' : '#f0f0f0');
+		}
 		this._sidebar?.setAttribute('data-theme', resolved);
 		this._updateThemeButton(resolved);
 
+		// Compatibility callback
 		if (this.callbacks.onThemeChange) {
 			this.callbacks.onThemeChange(resolved);
 		}
+		// Engine event
+		this.emit('theme:change', { resolved, choice });
 	}
 
 	_resolveTheme(theme) {
@@ -3278,6 +3385,10 @@ class Phong360LibraryUI {
 		// Lighten ~15% for hover
 		const lighten = (v) => Math.min(255, Math.round(v + (255 - v) * 0.15));
 
+		// Set --p360-accent on container (engine CSS var contract)
+		if (this._containerEl) {
+			this._containerEl.style.setProperty('--p360-accent', hex);
+		}
 		this._sidebar.style.setProperty('--p360-accent', hex);
 		this._sidebar.style.setProperty(
 			'--p360-accent-hover',
@@ -3285,6 +3396,355 @@ class Phong360LibraryUI {
 		);
 		this._sidebar.style.setProperty('--p360-accent-active', `rgba(${r},${g},${b},0.25)`);
 		this._sidebar.style.setProperty('--p360-accent-border', `rgba(${r},${g},${b},0.6)`);
+
+		// Engine event
+		this.emit('accent:change', { color: hex });
+	}
+
+	// --------------------------------------------------------
+	// Engine API — View control (Phase 1)
+	// --------------------------------------------------------
+
+	/**
+	 * Enable or disable auto-rotation.
+	 * @param {boolean} enabled
+	 */
+	setAutoRotate(enabled) {
+		if (this.core && this.core.config && this.core.config.viewRotation) {
+			this.core.config.viewRotation.autoRotate = !!enabled;
+		}
+		this.emit('autorotate:change', { enabled: !!enabled });
+	}
+
+	/**
+	 * Get current auto-rotation state.
+	 * @returns {boolean}
+	 */
+	getAutoRotate() {
+		if (this.core && this.core.config && this.core.config.viewRotation) {
+			return this.core.config.viewRotation.autoRotate;
+		}
+		return false;
+	}
+
+	/**
+	 * Set projection mode by string identifier.
+	 * @param {'gnomonic'|'stereographic'} projection
+	 */
+	setProjection(projection) {
+		if (!this.core) return;
+		const type = projection === 'gnomonic' ? 0 : projection === 'stereographic' ? 1 : null;
+		if (type === null) {
+			console.warn('[Phong360] setProjection: invalid projection "' + projection + '". Expected "gnomonic" or "stereographic".');
+			return;
+		}
+		this.core.switchProjection(type);
+		this._updateProjectionButton(type);
+		this.emit('projection:change', { projection });
+	}
+
+	/**
+	 * Get current projection as string identifier.
+	 * @returns {'gnomonic'|'stereographic'}
+	 */
+	getProjection() {
+		if (!this.core) return 'stereographic';
+		return this.core.projectionType === 0 ? 'gnomonic' : 'stereographic';
+	}
+
+	/**
+	 * Select an image resolution by id. Pass 'auto' to return to auto mode.
+	 * @param {string|'auto'} level — resolution id (e.g. '2k', '4k', '8k') or 'auto'
+	 */
+	setResolution(level) {
+		if (level === 'auto') {
+			this._resolutionMode = 'auto';
+			this.emit('resolution:change', { id: 'auto', label: 'Auto' });
+			return;
+		}
+		this._resolutionMode = 'manual';
+		if (this.multiViewer) {
+			this.multiViewer.switchResolution(level);
+		}
+	}
+
+	/**
+	 * Get the currently active resolution id (never returns 'auto').
+	 * Use getResolutionMode() to check if auto mode is active.
+	 * @returns {string}
+	 */
+	getResolution() {
+		if (this.multiViewer && this.multiViewer.getCurrentResolution) {
+			const res = this.multiViewer.getCurrentResolution();
+			if (res) return res.id;
+		}
+		return this._activeResolution || '';
+	}
+
+	/**
+	 * Get the current resolution mode.
+	 * @returns {'auto'|'manual'}
+	 */
+	getResolutionMode() {
+		return this._resolutionMode;
+	}
+
+	/**
+	 * Get available resolutions for the current image.
+	 * Passthrough to Phong360MultiImage.
+	 * @returns {Array<{id: string, label: string, width: number, height: number}>}
+	 */
+	getAvailableResolutions() {
+		if (this.multiViewer && this.multiViewer.getAvailableResolutions) {
+			return this.multiViewer.getAvailableResolutions();
+		}
+		return [];
+	}
+
+	// --------------------------------------------------------
+	// Engine API — Loading state queries (Phase 1)
+	// --------------------------------------------------------
+
+	/**
+	 * Whether a load is currently in progress.
+	 * @returns {boolean}
+	 */
+	isLoading() {
+		return this._isLoading;
+	}
+
+	/**
+	 * Get the current loading phase.
+	 * @returns {'idle'|'library'|'image'}
+	 */
+	getLoadingPhase() {
+		return this._loadingPhase;
+	}
+
+	// --------------------------------------------------------
+	// Engine API — Lifecycle + fullscreen (Phase 1)
+	// --------------------------------------------------------
+
+	/**
+	 * Dispose the engine completely. Safe to call at any lifecycle stage.
+	 * Idempotent — subsequent calls are no-ops.
+	 */
+	destroy() {
+		if (this._destroyed) return;
+		this._destroyed = true;
+
+		// Cancel in-flight network requests
+		if (this._abortController) {
+			this._abortController.abort();
+			this._abortController = null;
+		}
+
+		// Cancel in-flight load (latest-wins token bump)
+		this._loadToken++;
+		this._isLoading = false;
+		this._loadingPhase = 'idle';
+
+		// Dispose core renderer (Three.js cleanup, canvas removal, event listeners)
+		if (this.core && this.core.destroy) {
+			this.core.destroy();
+		}
+		this.core = null;
+		this.multiViewer = null;
+
+		// Remove all DOM children from container
+		if (this._containerEl) {
+			while (this._containerEl.firstChild || (this._containerEl._children && this._containerEl._children.length)) {
+				const child = this._containerEl.firstChild || (this._containerEl._children && this._containerEl._children[0]);
+				if (child) this._containerEl.removeChild(child);
+			}
+			this._containerEl = null;
+		}
+
+		// Remove sidebar and backdrop from document body
+		if (this._sidebar) {
+			if (this._sidebar.parentNode) this._sidebar.parentNode.removeChild(this._sidebar);
+			this._sidebar = null;
+		}
+		if (this._backdrop) {
+			if (this._backdrop.parentNode) this._backdrop.parentNode.removeChild(this._backdrop);
+			this._backdrop = null;
+		}
+		if (this._toggle) {
+			if (this._toggle.parentNode) this._toggle.parentNode.removeChild(this._toggle);
+			this._toggle = null;
+		}
+		if (this._infoBar) {
+			if (this._infoBar.parentNode) this._infoBar.parentNode.removeChild(this._infoBar);
+			this._infoBar = null;
+		}
+
+		// Null remaining refs
+		this._contentEl = null;
+		this._observer = null;
+		this._listeners.clear();
+		this._sections = [];
+		this._allImages = [];
+		this._currentImageData = null;
+		this._currentImageId = null;
+		this.libraryData = null;
+		this._context = null;
+	}
+
+	/**
+	 * Toggle fullscreen mode.
+	 * @param {boolean} on
+	 * @returns {Promise<void>}
+	 */
+	async setFullscreen(on) {
+		if (on) {
+			if (!document.fullscreenElement) {
+				try {
+					await document.documentElement.requestFullscreen();
+				} catch (e) {
+					// Fullscreen may be denied by browser policy
+				}
+			}
+		} else {
+			if (document.fullscreenElement && document.exitFullscreen) {
+				try {
+					await document.exitFullscreen();
+				} catch (e) {
+					/* ignore */
+				}
+			}
+		}
+		this.emit('fullscreen:change', { isFullscreen: !!document.fullscreenElement });
+	}
+
+	// --------------------------------------------------------
+	// Engine API — Image navigation (Phase 1)
+	// --------------------------------------------------------
+
+	/**
+	 * Select an image by id or slug. Last-write-wins concurrency.
+	 * Throws if no library data exists.
+	 * @param {string} idOrSlug
+	 * @returns {Promise<void>}
+	 */
+	async selectImage(idOrSlug) {
+		if (!this.libraryData && (!this._allImages || this._allImages.length === 0)) {
+			throw new Error('Phong360: no library data loaded. Call loadLibrary() or setLibrary() first.');
+		}
+		if (!this.multiViewer) return;
+
+		// Last-write-wins: cancel any in-flight select
+		this._selectToken = (this._selectToken || 0) + 1;
+		const token = this._selectToken;
+
+		// Find the image by id or slug
+		let found = this._allImages.find((img) => img.id === idOrSlug);
+		if (!found) {
+			found = this._allImages.find((img) => img.slug === idOrSlug);
+		}
+		if (!found) {
+			console.warn('[Phong360] selectImage: image not found:', idOrSlug);
+			return;
+		}
+
+		// Cancel previous in-flight load
+		if (this._abortController) {
+			this._abortController.abort();
+		}
+		this._abortController = new AbortController();
+		this._loadToken++;
+
+		// Emit image:select
+		this._currentImageId = found.id;
+		this._currentImageData = found;
+		this.emit('image:select', { ...found });
+
+		// Set loading state
+		this._isLoading = true;
+		this._loadingPhase = 'image';
+		this.emit('loading:start', { source: 'image' });
+
+		// Load via multiViewer
+		try {
+			this.multiViewer.loadImageById(found.id);
+			// Stale check
+			if (this._selectToken !== token) return;
+			this.emit('image:load-request', { image: { ...found }, resolution: this.getResolution() });
+		} catch (e) {
+			if (this._selectToken !== token) return;
+			this.emit('image:error', { image: { ...found }, error: e.message });
+		}
+	}
+
+	/**
+	 * Load the next image in the manifest. No-op if no library loaded or
+	 * only raw loadImage(url) calls have been made.
+	 * @returns {Promise<void>}
+	 */
+	async next() {
+		if (!this.multiViewer || !this._allImages || this._allImages.length === 0) return;
+		if (!this._currentImageId) {
+			this.multiViewer.loadFirstImage();
+			return;
+		}
+		const idx = this._allImages.findIndex((img) => img.id === this._currentImageId);
+		if (idx === -1) return;
+		// Wrap around: if at last, go to first
+		if (idx >= this._allImages.length - 1) {
+			this.multiViewer.loadImageById(this._allImages[0].id);
+		} else {
+			this.multiViewer.loadImageById(this._allImages[idx + 1].id);
+		}
+	}
+
+	/**
+	 * Load the previous image in the manifest. No-op if no library loaded or
+	 * only raw loadImage(url) calls have been made.
+	 * @returns {Promise<void>}
+	 */
+	async prev() {
+		if (!this.multiViewer || !this._allImages || this._allImages.length === 0) return;
+		if (!this._currentImageId) {
+			this.multiViewer.loadFirstImage();
+			return;
+		}
+		const idx = this._allImages.findIndex((img) => img.id === this._currentImageId);
+		if (idx === -1) return;
+		// Wrap around: if at first, go to last
+		if (idx <= 0) {
+			this.multiViewer.loadImageById(this._allImages[this._allImages.length - 1].id);
+		} else {
+			this.multiViewer.loadImageById(this._allImages[idx - 1].id);
+		}
+	}
+
+	// --------------------------------------------------------
+	// Engine API — Public lifecycle wrappers (Phase 1)
+	// --------------------------------------------------------
+
+	/**
+	 * Load a raw panorama URL without a manifest.
+	 * No ImageData generated; image:visible payload is { url }.
+	 * @param {string} url
+	 * @returns {Promise<void>}
+	 */
+	async loadImage(url) {
+		if (!this.core) throw new Error('Phong360: core not initialized');
+		this._isLoading = true;
+		this._loadingPhase = 'image';
+		this.emit('loading:start', { source: 'image', url });
+		try {
+			await this.core.loadImage(url);
+			this.emit('image:load-request', { url });
+			this.emit('image:visible', { url });
+			this._isLoading = false;
+			this._loadingPhase = 'idle';
+			this.emit('loading:end', { source: 'image', success: true });
+		} catch (e) {
+			this.emit('image:error', { url, error: e.message });
+			this._isLoading = false;
+			this._loadingPhase = 'idle';
+			this.emit('loading:end', { source: 'image', success: false });
+		}
 	}
 
 	// --------------------------------------------------------
@@ -3732,6 +4192,11 @@ class Phong360LibraryUI {
 			await this.loadLibrary();
 			// Refresh slot content with new context (since 4.2.0)
 			this._renderAllSlots();
+		} else if (this.libraryData) {
+			// Re-apply in-memory manifest (no URL fetch)
+			this.setLibrary(this.libraryData);
+		} else {
+			console.warn('[Phong360] reloadLibrary: no library data to reload');
 		}
 	}
 
