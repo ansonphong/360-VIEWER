@@ -666,6 +666,12 @@ function detectLinkIcon(url) {
 class Phong360LibraryUI {
 	static MOBILE_BREAKPOINT = 768;
 
+	/** Maximum decorators per kind before a warn is logged (inclusive — 21st triggers). */
+	static MAX_DECORATORS_WARN = 20;
+
+	/** Hard cap per kind — 101st add*Decorator call returns a no-op handle and logs an error. */
+	static MAX_DECORATORS_HARD = 100;
+
 	/**
 	 * Names of all UI slots a consumer may register a factory for.
 	 * Frozen to prevent runtime mutation. Renaming any of these is a
@@ -864,6 +870,30 @@ class Phong360LibraryUI {
 		this._thumbnailDecorators = [];
 		this._headingDecorators = [];
 		this._decoratorIdCounter = 0;
+
+		// Memory-bounds state (Task 2.4)
+		// Per-kind flags: warn fires once when count exceeds MAX_DECORATORS_WARN;
+		// error fires once when count exceeds MAX_DECORATORS_HARD.
+		this._decoratorWarned  = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		this._decoratorErrored = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		// Per-kind live counts for sidebar-section and toolbar-button (mounted-once decorators
+		// whose instances don't live in a persistent array like _thumbnailDecorators).
+		this._sidebarSectionCount  = 0;
+		this._toolbarButtonCount   = 0;
+
+		// Idempotency state (Task 2.4)
+		// Per-kind WeakMaps track which (handleId) sets have already run on each target element.
+		// Used for target-only mutators (no injected child) to prevent re-runs on the same node.
+		this._thumbnailDecoratorTargets = new WeakMap(); // Element → Set<handleId> (skipped)
+		this._headingDecoratorTargets   = new WeakMap(); // Element → Set<handleId> (skipped)
+
+		// Tracks "has ran at least once on target" for child-injecting decorators,
+		// to detect second-run of same decorator on same element (used for missing-marker warn).
+		this._thumbnailDecoratorFirstRun = new WeakMap(); // Element → Set<handleId>
+		this._headingDecoratorFirstRun   = new WeakMap(); // Element → Set<handleId>
+
+		// Missing-marker warn dedup: Set<"<handleId>:UID"> fired per (handleId, target) pair.
+		this._missingMarkerWarned = new Set();
 
 		// Additive slot state (Phase 2 — Task 2.3)
 		// _contentEl, _toolbar, and _infoBar are built during init() → _buildSidebarDOM().
@@ -4038,9 +4068,42 @@ class Phong360LibraryUI {
 		if (typeof fn !== 'function') {
 			throw new TypeError('Phong360LibraryUI.addThumbnailDecorator: fn must be a function');
 		}
+		const kind = 'thumbnail';
+		const MAX_WARN = Phong360LibraryUI.MAX_DECORATORS_WARN;
+		const MAX_HARD = Phong360LibraryUI.MAX_DECORATORS_HARD;
 		const id = 'thumb-' + (++this._decoratorIdCounter);
+		// Lazy-init guard for bare prototype instances (tests create these without a constructor call)
+		if (!this._decoratorWarned)  this._decoratorWarned  = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		if (!this._decoratorErrored) this._decoratorErrored = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+
+		// Hard cap: reject if at limit
+		if (this._thumbnailDecorators.length >= MAX_HARD) {
+			if (!this._decoratorErrored[kind]) {
+				this._decoratorErrored[kind] = true;
+				console.error(
+					`Phong360LibraryUI: "${kind}" decorator hard cap (${MAX_HARD}) reached. ` +
+					`Additional decorators will be ignored. ` +
+					(new Error().stack || '')
+				);
+			}
+			// Return a no-op SlotHandle
+			return { id, remove: () => {} };
+		}
+
 		const entry = { id, fn };
 		this._thumbnailDecorators.push(entry);
+
+		// Warn threshold: fire once when list exceeds MAX_WARN
+		if (this._thumbnailDecorators.length > MAX_WARN && !this._decoratorWarned[kind]) {
+			this._decoratorWarned[kind] = true;
+			console.warn(
+				`Phong360LibraryUI: "${kind}" decorator count exceeded ${MAX_WARN}. ` +
+				`You now have ${this._thumbnailDecorators.length} registered. ` +
+				`Consider removing unused decorators. ` +
+				(new Error().stack || '')
+			);
+		}
+
 		return {
 			id,
 			remove: () => {
@@ -4061,14 +4124,84 @@ class Phong360LibraryUI {
 	 * @private
 	 */
 	_runThumbnailDecorators(el, image, section) {
+		// Ensure the target element has a stable UID for marker-warn dedup.
+		if (!el._p360DecoratorUid) {
+			el._p360DecoratorUid = 'uid-' + (++this._decoratorIdCounter);
+		}
+		// Ensure per-element WeakMap entries exist (WeakMaps may be absent on bare prototype instances)
+		if (!this._thumbnailDecoratorTargets) this._thumbnailDecoratorTargets = new WeakMap();
+		if (!this._thumbnailDecoratorFirstRun) this._thumbnailDecoratorFirstRun = new WeakMap();
+		if (!this._missingMarkerWarned) this._missingMarkerWarned = new Set();
+		if (!this._thumbnailDecoratorTargets.has(el)) {
+			this._thumbnailDecoratorTargets.set(el, new Set());
+		}
+		if (!this._thumbnailDecoratorFirstRun.has(el)) {
+			this._thumbnailDecoratorFirstRun.set(el, new Set());
+		}
+		const seen     = this._thumbnailDecoratorTargets.get(el);    // ids that are fully skipped
+		const hasRan   = this._thumbnailDecoratorFirstRun.get(el);   // ids that have run at least once
+
 		for (const entry of this._thumbnailDecorators) {
+			const { id, fn } = entry;
+
+			// Skip 1: child-marker check — injected child with our id already exists
+			if (el.querySelector && el.querySelector(`[data-p360-decorator-id="${id}"]`)) {
+				continue;
+			}
+
+			// Skip 2: WeakMap check — target-only mutator already ran on this element
+			if (seen.has(id)) {
+				continue;
+			}
+
+			// Snapshot children count before call to detect new child injection
+			const childCountBefore = el._children ? el._children.length : -1;
+
 			try {
-				entry.fn(el, image, section);
+				fn(el, image, section);
 			} catch (err) {
 				console.warn(
-					`Phong360LibraryUI: thumbnail decorator "${entry.id}" threw:`,
+					`Phong360LibraryUI: thumbnail decorator "${id}" threw:`,
 					err && err.message ? err.message : err
 				);
+				// Record in both sets so we don't retry a broken decorator
+				seen.add(id);
+				hasRan.add(id);
+				continue;
+			}
+
+			// Post-call: check if fn injected children
+			const childCountAfter = el._children ? el._children.length : -1;
+			const childrenAdded = childCountAfter > childCountBefore;
+
+			if (childrenAdded) {
+				// Check if newly injected children carry the marker for this handle
+				const markerChild = el.querySelector ? el.querySelector(`[data-p360-decorator-id="${id}"]`) : null;
+				if (!markerChild) {
+					// Injected without marker: if this is the SECOND run on this target, warn.
+					// First run is fine — warn only when re-run is detected (hasRan already set).
+					if (hasRan.has(id)) {
+						const warnKey = id + ':' + el._p360DecoratorUid;
+						if (!this._missingMarkerWarned.has(warnKey)) {
+							this._missingMarkerWarned.add(warnKey);
+							console.warn(
+								`Phong360LibraryUI: thumbnail decorator "${id}" injected child elements ` +
+								`but did not set data-p360-decorator-id="${id}" on any of them. ` +
+								`Without this marker the engine cannot detect duplicate renders and may ` +
+								`call this decorator multiple times on the same target. ` +
+								`Add data-p360-decorator-id="${id}" to the outermost injected element.`
+							);
+						}
+					} else {
+						// First run — record so second run can detect the issue
+						hasRan.add(id);
+					}
+				}
+				// Don't add to seen — the child-marker check handles future skips for proper injectors
+			} else {
+				// Target-only mutator: record in seen so next render is skipped
+				seen.add(id);
+				hasRan.add(id);
 			}
 		}
 	}
@@ -4089,9 +4222,41 @@ class Phong360LibraryUI {
 		if (typeof fn !== 'function') {
 			throw new TypeError('Phong360LibraryUI.addSectionHeadingDecorator: fn must be a function');
 		}
+		const kind = 'heading';
+		const MAX_WARN = Phong360LibraryUI.MAX_DECORATORS_WARN;
+		const MAX_HARD = Phong360LibraryUI.MAX_DECORATORS_HARD;
 		const id = 'heading-' + (++this._decoratorIdCounter);
+		// Lazy-init guard for bare prototype instances
+		if (!this._decoratorWarned)  this._decoratorWarned  = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		if (!this._decoratorErrored) this._decoratorErrored = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+
+		// Hard cap: reject if at limit
+		if (this._headingDecorators.length >= MAX_HARD) {
+			if (!this._decoratorErrored[kind]) {
+				this._decoratorErrored[kind] = true;
+				console.error(
+					`Phong360LibraryUI: "${kind}" decorator hard cap (${MAX_HARD}) reached. ` +
+					`Additional decorators will be ignored. ` +
+					(new Error().stack || '')
+				);
+			}
+			return { id, remove: () => {} };
+		}
+
 		const entry = { id, fn };
 		this._headingDecorators.push(entry);
+
+		// Warn threshold
+		if (this._headingDecorators.length > MAX_WARN && !this._decoratorWarned[kind]) {
+			this._decoratorWarned[kind] = true;
+			console.warn(
+				`Phong360LibraryUI: "${kind}" decorator count exceeded ${MAX_WARN}. ` +
+				`You now have ${this._headingDecorators.length} registered. ` +
+				`Consider removing unused decorators. ` +
+				(new Error().stack || '')
+			);
+		}
+
 		return {
 			id,
 			remove: () => {
@@ -4112,14 +4277,76 @@ class Phong360LibraryUI {
 	 */
 	_runHeadingDecorators(el, section) {
 		if (!Array.isArray(this._headingDecorators)) return;
+
+		// Ensure the target element has a stable UID for marker-warn dedup.
+		if (!el._p360DecoratorUid) {
+			el._p360DecoratorUid = 'uid-' + (++this._decoratorIdCounter);
+		}
+		// Ensure per-element WeakMap entries exist (WeakMaps may be absent on bare prototype instances)
+		if (!this._headingDecoratorTargets) this._headingDecoratorTargets = new WeakMap();
+		if (!this._headingDecoratorFirstRun) this._headingDecoratorFirstRun = new WeakMap();
+		if (!this._missingMarkerWarned) this._missingMarkerWarned = new Set();
+		if (!this._headingDecoratorTargets.has(el)) {
+			this._headingDecoratorTargets.set(el, new Set());
+		}
+		if (!this._headingDecoratorFirstRun.has(el)) {
+			this._headingDecoratorFirstRun.set(el, new Set());
+		}
+		const seen   = this._headingDecoratorTargets.get(el);
+		const hasRan = this._headingDecoratorFirstRun.get(el);
+
 		for (const entry of this._headingDecorators) {
+			const { id, fn } = entry;
+
+			// Skip 1: child-marker check
+			if (el.querySelector && el.querySelector(`[data-p360-decorator-id="${id}"]`)) {
+				continue;
+			}
+
+			// Skip 2: WeakMap check for target-only mutators
+			if (seen.has(id)) {
+				continue;
+			}
+
+			const childCountBefore = el._children ? el._children.length : -1;
+
 			try {
-				entry.fn(el, section);
+				fn(el, section);
 			} catch (err) {
 				console.warn(
-					`Phong360LibraryUI: heading decorator "${entry.id}" threw:`,
+					`Phong360LibraryUI: heading decorator "${id}" threw:`,
 					err && err.message ? err.message : err
 				);
+				seen.add(id);
+				hasRan.add(id);
+				continue;
+			}
+
+			const childCountAfter = el._children ? el._children.length : -1;
+			const childrenAdded = childCountAfter > childCountBefore;
+
+			if (childrenAdded) {
+				const markerChild = el.querySelector ? el.querySelector(`[data-p360-decorator-id="${id}"]`) : null;
+				if (!markerChild) {
+					if (hasRan.has(id)) {
+						const warnKey = id + ':' + el._p360DecoratorUid;
+						if (!this._missingMarkerWarned.has(warnKey)) {
+							this._missingMarkerWarned.add(warnKey);
+							console.warn(
+								`Phong360LibraryUI: heading decorator "${id}" injected child elements ` +
+								`but did not set data-p360-decorator-id="${id}" on any of them. ` +
+								`Without this marker the engine cannot detect duplicate renders and may ` +
+								`call this decorator multiple times on the same target. ` +
+								`Add data-p360-decorator-id="${id}" to the outermost injected element.`
+							);
+						}
+					} else {
+						hasRan.add(id);
+					}
+				}
+			} else {
+				seen.add(id);
+				hasRan.add(id);
 			}
 		}
 	}
@@ -4148,7 +4375,41 @@ class Phong360LibraryUI {
 	 * @since 5.0.0
 	 */
 	addSidebarSection(spec) {
+		const kind = 'sidebar-section';
+		const MAX_WARN = Phong360LibraryUI.MAX_DECORATORS_WARN;
+		const MAX_HARD = Phong360LibraryUI.MAX_DECORATORS_HARD;
 		const id = 'sidebar-sec-' + (++this._decoratorIdCounter);
+		// Lazy-init guard for bare prototype instances
+		if (!this._decoratorWarned)     this._decoratorWarned     = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		if (!this._decoratorErrored)    this._decoratorErrored    = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		if (this._sidebarSectionCount == null) this._sidebarSectionCount = 0;
+
+		// Hard cap
+		if (this._sidebarSectionCount >= MAX_HARD) {
+			if (!this._decoratorErrored[kind]) {
+				this._decoratorErrored[kind] = true;
+				console.error(
+					`Phong360LibraryUI: "${kind}" decorator hard cap (${MAX_HARD}) reached. ` +
+					`Additional decorators will be ignored. ` +
+					(new Error().stack || '')
+				);
+			}
+			return { id, remove: () => {} };
+		}
+
+		this._sidebarSectionCount++;
+
+		// Warn threshold
+		if (this._sidebarSectionCount > MAX_WARN && !this._decoratorWarned[kind]) {
+			this._decoratorWarned[kind] = true;
+			console.warn(
+				`Phong360LibraryUI: "${kind}" decorator count exceeded ${MAX_WARN}. ` +
+				`You now have ${this._sidebarSectionCount} registered. ` +
+				`Consider removing unused decorators. ` +
+				(new Error().stack || '')
+			);
+		}
+
 		const position = (spec && spec.position) || 'end';
 
 		// Build the section container
@@ -4187,6 +4448,8 @@ class Phong360LibraryUI {
 				// Also remove from queue if not yet mounted
 				const qi = this._additiveSidebarSections.findIndex((e) => e.el === el);
 				if (qi !== -1) this._additiveSidebarSections.splice(qi, 1);
+				// Decrement live count
+				if (this._sidebarSectionCount > 0) this._sidebarSectionCount--;
 			},
 		};
 	}
@@ -4283,7 +4546,41 @@ class Phong360LibraryUI {
 	 * @since 5.0.0
 	 */
 	addToolbarButton(spec) {
+		const kind = 'toolbar-button';
+		const MAX_WARN = Phong360LibraryUI.MAX_DECORATORS_WARN;
+		const MAX_HARD = Phong360LibraryUI.MAX_DECORATORS_HARD;
 		const id = 'toolbar-btn-' + (++this._decoratorIdCounter);
+		// Lazy-init guard for bare prototype instances
+		if (!this._decoratorWarned)     this._decoratorWarned     = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		if (!this._decoratorErrored)    this._decoratorErrored    = { thumbnail: false, heading: false, 'sidebar-section': false, 'toolbar-button': false };
+		if (this._toolbarButtonCount == null) this._toolbarButtonCount = 0;
+
+		// Hard cap
+		if (this._toolbarButtonCount >= MAX_HARD) {
+			if (!this._decoratorErrored[kind]) {
+				this._decoratorErrored[kind] = true;
+				console.error(
+					`Phong360LibraryUI: "${kind}" decorator hard cap (${MAX_HARD}) reached. ` +
+					`Additional decorators will be ignored. ` +
+					(new Error().stack || '')
+				);
+			}
+			return { id, remove: () => {} };
+		}
+
+		this._toolbarButtonCount++;
+
+		// Warn threshold
+		if (this._toolbarButtonCount > MAX_WARN && !this._decoratorWarned[kind]) {
+			this._decoratorWarned[kind] = true;
+			console.warn(
+				`Phong360LibraryUI: "${kind}" decorator count exceeded ${MAX_WARN}. ` +
+				`You now have ${this._toolbarButtonCount} registered. ` +
+				`Consider removing unused decorators. ` +
+				(new Error().stack || '')
+			);
+		}
+
 		const position = (spec && spec.position) || 'trailing';
 
 		// Build the button element
@@ -4332,6 +4629,8 @@ class Phong360LibraryUI {
 				// Also remove from queue if not yet mounted
 				const qi = this._toolbarButtons.findIndex((e) => e.btn === btn);
 				if (qi !== -1) this._toolbarButtons.splice(qi, 1);
+				// Decrement live count
+				if (this._toolbarButtonCount > 0) this._toolbarButtonCount--;
 			},
 		};
 	}
