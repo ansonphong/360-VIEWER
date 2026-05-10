@@ -199,9 +199,7 @@ class BaseRenderer {
 			b.addEventListener('click', (ev) => {
 				ev.stopPropagation();
 				const imageData = this.engine._findImageInSections(el.dataset.imageId);
-				if (this.engine.callbacks.onBadgeClick) {
-					this.engine.callbacks.onBadgeClick(imageData, badge);
-				}
+				this.engine._invokeCallback('onBadgeClick', imageData, badge);
 			});
 
 			container.appendChild(b);
@@ -511,11 +509,7 @@ class AvatarRowRenderer extends BaseRenderer {
 
 			avatar.addEventListener('click', (e) => {
 				e.stopPropagation();
-				if (item.url && this.engine.callbacks.onLinkClick) {
-					this.engine.callbacks.onLinkClick(item.url, item);
-				} else if (item.id) {
-					this.engine.onImageClick(item);
-				}
+				if (item.url) this.engine._invokeCallback('onLinkClick', item.url, item);
 			});
 
 			el.appendChild(avatar);
@@ -556,11 +550,7 @@ class AvatarGridRenderer extends BaseRenderer {
 
 			card.addEventListener('click', (e) => {
 				e.stopPropagation();
-				if (item.url && this.engine.callbacks.onLinkClick) {
-					this.engine.callbacks.onLinkClick(item.url, item);
-				} else if (item.id) {
-					this.engine.onImageClick(item);
-				}
+				if (item.url) this.engine._invokeCallback('onLinkClick', item.url, item);
 			});
 
 			el.appendChild(card);
@@ -706,6 +696,20 @@ class Phong360LibraryUI {
 		'p360-help',
 	]);
 
+	/** Maps legacy callback names to engine events with payload builders. */
+	static CALLBACK_EVENT_MAP = {
+		onLibraryLoad:     { event: 'library:load',     compat: false, buildPayload: function(data)     { return { manifest: this.libraryData, context: this._context, sections: this.getSections(), images: this.getImages(), facets: this.libraryData?.facets || null }; } },
+		onContextReady:    { event: 'context:ready',    compat: false, buildPayload: function(ctx)      { return Object.assign({}, ctx); } },
+		onImageSelect:     { event: 'image:select',     compat: false, buildPayload: function(image)    { return Object.assign({}, image); } },
+		onImageLoad:       { event: 'image:visible',    compat: false, buildPayload: function(img, res) { return { image: img ? Object.assign({}, img) : null, resolution: res || null }; } },
+		onLinkClick:       { event: 'link:click',       compat: true,  buildPayload: function(url, it)  { return { url, item: it }; } },
+		onSectionToggle:   { event: 'section:toggle',   compat: true,  buildPayload: function(sec, exp) { return { section: sec, expanded: exp }; } },
+		onSectionsRendered:{ event: 'sections:render',  compat: true,  buildPayload: function(flt, mfa) { return { sections: flt, modelFilterActive: mfa }; } },
+		onThemeChange:     { event: 'theme:change',     compat: false, buildPayload: function(resolved) { return { resolved }; } },
+		onBadgeClick:      { event: 'badge:click',      compat: true,  buildPayload: function(img, b)   { return { image: img, badge: b }; } },
+		onHelpClick:       { event: 'help:open',        compat: true,  buildPayload: function()         { return {}; } },
+	};
+
 	/**
 	 * @param {Object} options
 	 * @param {string} options.containerId - DOM element ID for the 360 viewer canvas
@@ -788,12 +792,15 @@ class Phong360LibraryUI {
 			onLibraryLoad: null,
 			onSectionToggle: null,
 			onLinkClick: null,
-			onThemeChange: null
+			onSectionsRendered: null,
+			onThemeChange: null,
+			onHelpClick: null
 		};
 
 		// Typed event emitter (Phase 1 — engine API)
 		/** @type {Map<string, Function[]>} */
 		this._listeners = new Map();
+		this._suppressCallbackBridge = false;
 
 		// State
 		this._sections = [];
@@ -851,6 +858,7 @@ class Phong360LibraryUI {
 		// Initialize
 		this.init();
 		this._bindOwnerModeEvents();
+		this._setupCompatBridge();
 	}
 
 	async init() {
@@ -1116,7 +1124,7 @@ class Phong360LibraryUI {
 		this._helpBtn.innerHTML = '<i class="ph ph-question"></i>';
 		this._helpBtn.addEventListener('click', () => {
 			document.dispatchEvent(new CustomEvent('p360-help'));
-			if (this.callbacks.onHelpClick) this.callbacks.onHelpClick();
+			this._invokeCallback('onHelpClick');
 		});
 		this._toolbar.appendChild(this._helpBtn);
 
@@ -1450,16 +1458,7 @@ class Phong360LibraryUI {
 		this._syncOwnerDecorations();
 
 		// Callbacks
-		if (this.callbacks.onLibraryLoad) {
-			this.callbacks.onLibraryLoad(data);
-		}
-		this.emit('library:load', {
-			manifest: this.libraryData,
-			context: this._context,
-			sections: this.getSections(),
-			images: this.getImages(),
-			facets: this.libraryData?.facets || null,
-		});
+		this._invokeCallback('onLibraryLoad', data);
 		// Mark context as loaded BEFORE firing onContextReady. Until this
 		// flips, all _renderSlot calls (from setSlot/clearSlot/state changes)
 		// are deferred. Guarantees factories never see an empty context.
@@ -1469,12 +1468,7 @@ class Phong360LibraryUI {
 		// with context-aware defaults / registered factories.
 		this._renderAllSlots();
 
-		if (this._context && this.callbacks.onContextReady) {
-			this.callbacks.onContextReady(this._context);
-		}
-		if (this._context) {
-			this.emit('context:ready', Object.assign({}, this._context));
-		}
+		this._invokeCallback('onContextReady', this._context);
 
 		// Handle URL params or autoload
 		this._handleUrlParameters();
@@ -1539,10 +1533,7 @@ class Phong360LibraryUI {
 					a.appendChild(label);
 
 					a.addEventListener('click', (e) => {
-						if (this.callbacks.onLinkClick) {
-							e.preventDefault();
-							this.callbacks.onLinkClick(link.url, link);
-						}
+						this._invokeCallback('onLinkClick', link.url, link);
 					});
 
 					linksEl.appendChild(a);
@@ -1640,9 +1631,7 @@ class Phong360LibraryUI {
 		// Notify consumers (e.g. gallery-integration's teaser-row injector)
 		// that section DOM has just been rebuilt. `filtered` is the array
 		// that was actually rendered — already model-filtered.
-		if (this.callbacks && typeof this.callbacks.onSectionsRendered === 'function') {
-			this.callbacks.onSectionsRendered(filtered, this._isModelFilterActive());
-		}
+		this._invokeCallback('onSectionsRendered', filtered, this._isModelFilterActive());
 		this._syncOwnerDecorations();
 	}
 
@@ -2216,12 +2205,7 @@ class Phong360LibraryUI {
 					if (body && !sectionEl.classList.contains('p360-section--collapsed')) {
 						body.style.maxHeight = body.scrollHeight + 'px';
 					}
-					if (this.callbacks.onSectionToggle) {
-						this.callbacks.onSectionToggle(
-							section,
-							!sectionEl.classList.contains('p360-section--collapsed')
-						);
-					}
+					this._invokeCallback('onSectionToggle', section, !sectionEl.classList.contains('p360-section--collapsed'));
 				});
 			}
 
@@ -2267,9 +2251,7 @@ class Phong360LibraryUI {
 			}
 			this._highlightImage(image.id);
 
-			if (this.callbacks.onImageSelect) {
-				this.callbacks.onImageSelect(image);
-			}
+			this._invokeCallback('onImageSelect', image);
 		}, 200);
 	}
 
@@ -2287,13 +2269,7 @@ class Phong360LibraryUI {
 		this._renderSlot('info-bar-leading');
 		this._renderSlot('info-bar-trailing');
 
-		if (this.callbacks.onImageLoad) {
-			this.callbacks.onImageLoad(imageData, resolution);
-		}
-		this.emit('image:visible', {
-			image: imageData ? Object.assign({}, imageData) : null,
-			resolution: resolution || null,
-		});
+		this._invokeCallback('onImageLoad', imageData, resolution);
 
 		this._urlSyncWrite(imageData);
 	}
@@ -3299,9 +3275,7 @@ class Phong360LibraryUI {
 					b.addEventListener('click', (ev) => {
 						ev.stopPropagation();
 						const imageData = this._findImageInSections(imageId);
-						if (this.callbacks.onBadgeClick) {
-							this.callbacks.onBadgeClick(imageData, badge);
-						}
+						this._invokeCallback('onBadgeClick', imageData, badge);
 					});
 
 					container.appendChild(b);
@@ -3417,11 +3391,7 @@ class Phong360LibraryUI {
 		this._updateThemeButton(resolved);
 
 		// Compatibility callback
-		if (this.callbacks.onThemeChange) {
-			this.callbacks.onThemeChange(resolved);
-		}
-		// Engine event
-		this.emit('theme:change', { resolved, choice });
+		this._invokeCallback('onThemeChange', resolved);
 	}
 
 	_resolveTheme(theme) {
@@ -4354,6 +4324,78 @@ class Phong360LibraryUI {
 	 * @param {Function} handler - Callback receiving the event payload
 	 * @returns {function(): void} Unsubscribe function (idempotent)
 	 */
+	/** Fires legacy callback (if registered) and emits matching engine event. */
+	_invokeCallback(name, ...args) {
+		// Guard against re-entry from the reverse bridge
+		if (this._suppressCallbackBridge) return;
+		this._suppressCallbackBridge = true;
+		try {
+			const cb = this.callbacks[name];
+			if (cb) cb.apply(this, args);
+			const mapping = Phong360LibraryUI.CALLBACK_EVENT_MAP[name];
+			if (mapping) {
+				const payload = mapping.buildPayload.apply(this, args);
+				if (mapping.compat) {
+					payload.__compat = true;
+				}
+				this.emit(mapping.event, payload);
+			}
+		} finally {
+			this._suppressCallbackBridge = false;
+		}
+	}
+
+	/**
+	 * Sets up the reverse bridge: when an engine event fires via emit(),
+	 * the matching legacy callback also runs. Prevents double-fire via
+	 * _suppressCallbackBridge guard.
+	 *
+	 * @private
+	 */
+	_setupCompatBridge() {
+		const map = Phong360LibraryUI.CALLBACK_EVENT_MAP;
+		for (const [cbName, cfg] of Object.entries(map)) {
+			const eventName = cfg.event;
+			this.on(eventName, (payload) => {
+				if (this._suppressCallbackBridge) return;
+				if (!this.callbacks || typeof this.callbacks[cbName] !== 'function') return;
+				this._suppressCallbackBridge = true;
+				try {
+					switch (cbName) {
+						case 'onLibraryLoad':
+							this.callbacks[cbName](payload.manifest || payload);
+							break;
+						case 'onImageLoad':
+							this.callbacks[cbName](payload.image, payload.resolution);
+							break;
+						case 'onThemeChange':
+							this.callbacks[cbName](payload.resolved);
+							break;
+						case 'onLinkClick':
+							this.callbacks[cbName](payload.url, payload.item);
+							break;
+						case 'onSectionToggle':
+							this.callbacks[cbName](payload.section, payload.expanded !== undefined ? payload.expanded : payload.open);
+							break;
+						case 'onSectionsRendered':
+							this.callbacks[cbName](payload.sections, payload.modelFilterActive !== undefined ? payload.modelFilterActive : payload.filterActive);
+							break;
+						case 'onBadgeClick':
+							this.callbacks[cbName](payload.image, payload.badge);
+							break;
+						case 'onHelpClick':
+							this.callbacks[cbName]();
+							break;
+						default:
+							this.callbacks[cbName](payload);
+					}
+				} finally {
+					this._suppressCallbackBridge = false;
+				}
+			});
+		}
+	}
+
 	on(event, handler) {
 		if (!this._listeners.has(event)) {
 			this._listeners.set(event, []);
