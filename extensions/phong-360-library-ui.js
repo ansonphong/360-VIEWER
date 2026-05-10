@@ -3654,11 +3654,74 @@ class Phong360LibraryUI {
 	}
 
 	// --------------------------------------------------------
-	// Public getters
+	// Manifest accessors (engine API — Phase 1)
+	// All return defensive copies; mutating return values does
+	// NOT mutate engine state. Never return DOM elements.
 	// --------------------------------------------------------
 
+	/**
+	 * Returns the library.json v4 context metadata (scope, profile,
+	 * collection, brand, theme, etc.) or null if no library loaded.
+	 * @returns {Object|null}
+	 */
+	getContext() {
+		if (!this._context) return null;
+		return { ...this._context };
+	}
+
+	/**
+	 * Returns parsed sections with their image arrays as defensive copies.
+	 * Each section object and its `images` array are shallow-copied so
+	 * callers can reorder without mutating engine state.
+	 * @returns {Object[]}
+	 */
+	getSections() {
+		return this._sections.map((s) => ({ ...s, images: [...(s.images || [])] }));
+	}
+
+	/**
+	 * Returns the flat list of all images across all sections.
+	 * Defensive copy — mutations to the returned array do NOT affect
+	 * the engine's internal `_allImages`.
+	 * @returns {Object[]}
+	 */
+	getImages() {
+		return [...this._allImages];
+	}
+
+	/**
+	 * Returns a deep clone of the full library.json v4 manifest, or
+	 * null if no library has been loaded. Use this when the consumer
+	 * needs the complete manifest including facets, meta, and other
+	 * top-level fields not exposed by narrower accessors.
+	 *
+	 * WARNING: Uses JSON round-trip for deep cloning. Large manifests
+	 * (~10K+ images) may incur noticeable cost. Prefer narrower
+	 * accessors (getContext / getSections / getImages) for targeted
+	 * data access.
+	 * @returns {Object|null}
+	 */
 	getLibraryData() {
-		return this.libraryData;
+		if (!this.libraryData) return null;
+		try {
+			return JSON.parse(JSON.stringify(this.libraryData));
+		} catch (e) {
+			return { ...this.libraryData };
+		}
+	}
+
+	/**
+	 * Returns the last successfully displayed image's data, or null
+	 * if no image has been loaded yet. After `image:error`, this still
+	 * returns the previously visible image, not the failed one.
+	 *
+	 * Returns null for raw `loadImage(url)` loads — those have no
+	 * ImageData and consumers must track raw URLs themselves.
+	 * @returns {Object|null}
+	 */
+	getCurrentImage() {
+		if (!this._currentImageData) return null;
+		return { ...this._currentImageData };
 	}
 
 	async reloadLibrary() {

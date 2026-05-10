@@ -17,118 +17,123 @@ const savedGlobals = {};
 
 // ---- Internal mocks ----
 
+function _mkStyle() {
+	return {
+		setProperty(name, value) { this['_' + name] = value; },
+		getPropertyValue(name) { return this['_' + name] || ''; },
+		removeProperty(name) { const v = this['_' + name]; delete this['_' + name]; return v || ''; },
+	};
+}
+
+function _mkClassList() {
+	return {
+		_list: [],
+		add(...names) { for (const n of names) { if (!this._list.includes(n)) this._list.push(n); } },
+		remove(...names) { this._list = this._list.filter((c) => !names.includes(c)); },
+		contains(name) { return this._list.includes(name); },
+		toggle(name) {
+			if (this._list.includes(name)) { this._list = this._list.filter((c) => c !== name); return false; }
+			this._list.push(name); return true;
+		},
+		replace(oldClass, newClass) {
+			const idx = this._list.indexOf(oldClass);
+			if (idx !== -1) this._list[idx] = newClass;
+		},
+	};
+}
+
+function _mkElement(tag) {
+	return {
+		tagName: (tag || 'div').toUpperCase(),
+		id: '',
+		className: '',
+		textContent: '',
+		innerHTML: '',
+		style: _mkStyle(),
+		dataset: {},
+		type: '',
+		href: '',
+		src: '',
+		alt: '',
+		title: '',
+		disabled: false,
+		checked: false,
+		value: '',
+		placeholder: '',
+		clientWidth: 0,
+		clientHeight: 0,
+		_parent: null,
+		_listeners: {},
+
+		appendChild(child) { child._parent = this; return child; },
+		removeChild(child) { child._parent = null; return child; },
+		remove() { if (this._parent) this._parent.removeChild(this); },
+		insertBefore(newChild, refChild) { newChild._parent = this; return newChild; },
+		replaceChild(newChild, oldChild) { oldChild._parent = null; newChild._parent = this; return oldChild; },
+		querySelector() { return null; },
+		querySelectorAll() { return []; },
+		closest() { return null; },
+		contains(child) { return child === this; },
+		getBoundingClientRect() { return { x: 0, y: 0, width: 1920, height: 1080, top: 0, left: 0, right: 0, bottom: 0 }; },
+		focus() {},
+		blur() {},
+		click() {},
+		addEventListener(event, fn) {
+			if (!this._listeners[event]) this._listeners[event] = [];
+			this._listeners[event].push(fn);
+		},
+		removeEventListener(event, fn) {
+			if (!this._listeners[event]) return;
+			this._listeners[event] = this._listeners[event].filter((f) => f !== fn);
+		},
+		dispatchEvent(event) {
+			const handlers = this._listeners[event.type];
+			if (handlers) handlers.forEach((fn) => fn(event));
+		},
+		setAttribute(name, value) { this[name] = value; },
+		getAttribute(name) { return this[name] || null; },
+		hasAttribute(name) { return name in this; },
+		removeAttribute(name) { delete this[name]; },
+		classList: _mkClassList(),
+	};
+}
+
+function _mkBodyLike() {
+	// body / head / documentElement — lightweight containers that hold children
+	const el = _mkElement('body');
+	el._children = [];
+	el.appendChild = function(child) { child._parent = this; this._children.push(child); return child; };
+	el.removeChild = function(child) {
+		child._parent = null;
+		const idx = this._children.indexOf(child);
+		if (idx !== -1) this._children.splice(idx, 1);
+		return child;
+	};
+	el.querySelector = function() { return null; };
+	el.querySelectorAll = function() { return []; };
+	return el;
+}
+
 function createMockDocument() {
 	const doc = {
-		_bodyClass: '',
-		_bodyStyle: {},
-		_bodyDataset: {},
-		_title: '',
-		_faviconHref: '',
-
-		getElementById(id) {
-			return {
-				id,
-				style: {},
-				classList: {
-					_list: [],
-					add(...names) { for (const n of names) { if (!this._list.includes(n)) this._list.push(n); } },
-					remove(...names) { this._list = this._list.filter((c) => !names.includes(c)); },
-					contains(name) { return this._list.includes(name); },
-					toggle(name) {
-						if (this._list.includes(name)) { this._list = this._list.filter((c) => c !== name); return false; }
-						this._list.push(name); return true;
-					},
-				},
-				querySelector() { return null; },
-				querySelectorAll() { return []; },
-				appendChild() {},
-				addEventListener() {},
-				removeEventListener() {},
-				getBoundingClientRect() { return { x: 0, y: 0, width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0 }; },
-			};
-		},
-
-		createElement(tag) {
-			const el = {
-				tagName: tag.toUpperCase(),
-				id: '',
-				className: '',
-				textContent: '',
-				innerHTML: '',
-				style: {},
-				dataset: {},
-				type: '',
-				href: '',
-				src: '',
-				alt: '',
-				title: '',
-				disabled: false,
-				checked: false,
-				value: '',
-				placeholder: '',
-				_parent: null,
-				_listeners: {},
-
-				appendChild(child) { child._parent = this; return child; },
-				removeChild(child) { child._parent = null; return child; },
-				remove() { if (this._parent) this._parent.removeChild(this); },
-				insertBefore(newChild, refChild) { newChild._parent = this; return newChild; },
-				replaceChild(newChild, oldChild) { oldChild._parent = null; newChild._parent = this; return oldChild; },
-				querySelector() { return null; },
-				querySelectorAll() { return []; },
-				closest() { return null; },
-				contains(child) { return child === this; },
-				getBoundingClientRect() { return { x: 0, y: 0, width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0 }; },
-				focus() {},
-				blur() {},
-				click() {},
-				addEventListener(event, fn) {
-					if (!this._listeners[event]) this._listeners[event] = [];
-					this._listeners[event].push(fn);
-				},
-				removeEventListener(event, fn) {
-					if (!this._listeners[event]) return;
-					this._listeners[event] = this._listeners[event].filter((f) => f !== fn);
-				},
-				dispatchEvent(event) {
-					const handlers = this._listeners[event.type];
-					if (handlers) handlers.forEach((fn) => fn(event));
-				},
-				setAttribute(name, value) { this[name] = value; },
-				getAttribute(name) { return this[name] || null; },
-				hasAttribute(name) { return name in this; },
-				removeAttribute(name) { delete this[name]; },
-				classList: {
-					_list: [],
-					add(...names) { for (const n of names) { if (!this._list.includes(n)) this._list.push(n); } },
-					remove(...names) { this._list = this._list.filter((c) => !names.includes(c)); },
-					contains(name) { return this._list.includes(name); },
-					toggle(name) {
-						if (this._list.includes(name)) { this._list = this._list.filter((c) => c !== name); return false; }
-						this._list.push(name); return true;
-					},
-					replace(oldClass, newClass) {
-						const idx = this._list.indexOf(oldClass);
-						if (idx !== -1) this._list[idx] = newClass;
-					},
-				},
-			};
-			return el;
-		},
-
-		createElementNS(_ns, tag) {
-			return this.createElement(tag);
-		},
-
-		createTextNode(text) {
-			return { nodeType: 3, textContent: text };
-		},
-
 		querySelector() { return null; },
 		querySelectorAll() { return []; },
 		addEventListener() {},
 		removeEventListener() {},
+		createElement(tag) { return _mkElement(tag); },
+		createElementNS(_ns, tag) { return _mkElement(tag); },
+		createTextNode(text) { return { nodeType: 3, textContent: text }; },
+		getElementById(id) {
+			const el = _mkElement('div');
+			el.id = id;
+			return el;
+		},
 	};
+
+	// Add body, head, documentElement (needed by library-ui constructor)
+	doc.body = _mkBodyLike();
+	doc.head = _mkBodyLike();
+	doc.documentElement = _mkBodyLike();
 
 	return doc;
 }
@@ -216,7 +221,13 @@ function setupMockDOM() {
 		Raycaster: class Raycaster {},
 		Spherical: class Spherical {},
 		PerspectiveCamera: class PerspectiveCamera {},
-		WebGLRenderer: class WebGLRenderer { constructor() { this.domElement = doc.createElement('canvas'); } },
+		WebGLRenderer: class WebGLRenderer {
+			constructor() { this.domElement = doc.createElement('canvas'); }
+			setSize() {}
+			setClearColor() {}
+			setPixelRatio() {}
+			clear() {}
+		},
 		Scene: class Scene {},
 		SphereGeometry: class SphereGeometry {},
 		MeshBasicMaterial: class MeshBasicMaterial {},
@@ -231,6 +242,9 @@ function setupMockDOM() {
 		RGBAFormat: 1023,
 		UnsignedByteType: 1009,
 		DoubleSide: 2,
+		Color: class Color { constructor(c) { this.c = c; } },
+		PlaneGeometry: class PlaneGeometry {},
+		OrthographicCamera: class OrthographicCamera {},
 	};
 
 	// Global localStorage alias
