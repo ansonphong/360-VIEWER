@@ -4,7 +4,7 @@
  * Wraps the core viewer to add multi-image and resolution management.
  * Handles adaptive resolution selection based on device and bandwidth.
  *
- * @version 4.0.0
+ * @version 5.0.0-alpha.1
  * @author Phong
  * @license MIT
  */
