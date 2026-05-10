@@ -669,6 +669,222 @@ console.log('    keyboardShortcuts default=true: OK');
 
 console.log('\nPart 3: All constructor option checks passed.\n');
 
-teardownMockDOM();
+// ============================================================================
+// Part 4: Behavioral assertions for code-review fixes
+// Replaces grep-based checks with real construct-call-assert tests for the
+// specific issues that slipped past Part 1 (string presence) and Part 2
+// (limited per-method coverage).
+// ============================================================================
 
-console.log('=== ALL CONTROL WRAPPER TESTS PASSED ===');
+console.log('Part 4: Behavioral assertions for code-review fixes');
+
+function makeBareInstance() {
+	const i = Object.create(Phong360LibraryUI.prototype);
+	i.core = null;
+	i.multiViewer = null;
+	i._theme = 'auto';
+	i._accent = null;
+	i._sidebar = null;
+	i._containerEl = null;
+	i.container = null;
+	i._sections = [];
+	i._allImages = [];
+	i._context = null;
+	i.libraryData = null;
+	i.libraryUrl = null;
+	i._currentImageId = null;
+	i._currentImageData = null;
+	i._listeners = new Map();
+	i._isLoading = false;
+	i._loadingPhase = 'idle';
+	i._resolutionMode = 'auto';
+	i._activeResolution = null;
+	i._abortController = null;
+	i._loadToken = 0;
+	i._selectToken = 0;
+	i._destroyed = false;
+	i.callbacks = {
+		onThemeChange: null, onImageSelect: null, onImageLoad: null, onContextReady: null,
+		onLibraryLoad: null, onSectionToggle: null, onLinkClick: null, onBadgeClick: null,
+	};
+	return i;
+}
+
+function makeStubContainer() {
+	const props = {};
+	return {
+		style: {
+			setProperty(name, value) { props[name] = value; },
+			removeProperty(name) { delete props[name]; },
+			getPropertyValue(name) { return props[name]; },
+			_props: props,
+		},
+		setAttribute(name, value) { this[name] = value; },
+		removeAttribute(name) { delete this[name]; },
+	};
+}
+
+// ---- M2: setProjection idempotency emits projection:change exactly once for repeats ----
+console.log('  M2: setProjection idempotency');
+{
+	const i = makeBareInstance();
+	const events = [];
+	i.on = Phong360LibraryUI.prototype.on;
+	i.emit = Phong360LibraryUI.prototype.emit;
+	i.on('projection:change', (p) => events.push(p));
+	i.core = {
+		projectionType: 1,
+		switchProjection(t) { this.projectionType = t; },
+	};
+	// _updateProjectionButton needs no DOM in this code path
+	i._updateProjectionButton = () => {};
+	i.setProjection('gnomonic');
+	i.setProjection('gnomonic');
+	i.setProjection('gnomonic');
+	assert.strictEqual(events.length, 1, 'setProjection should be idempotent — only one event for 3 identical sets');
+	i.setProjection('stereographic');
+	assert.strictEqual(events.length, 2, 'changing projection should emit a new event');
+	console.log('    setProjection idempotency: OK');
+}
+
+// ---- M2: setAutoRotate idempotency ----
+console.log('  M2: setAutoRotate idempotency');
+{
+	const i = makeBareInstance();
+	const events = [];
+	i.on = Phong360LibraryUI.prototype.on;
+	i.emit = Phong360LibraryUI.prototype.emit;
+	i.on('autorotate:change', (p) => events.push(p));
+	i.core = { config: { viewRotation: { autoRotate: false } } };
+	i.setAutoRotate(true);
+	i.setAutoRotate(true);
+	i.setAutoRotate(true);
+	assert.strictEqual(events.length, 1, 'setAutoRotate(true) thrice should emit once');
+	i.setAutoRotate(false);
+	assert.strictEqual(events.length, 2, 'changing rotation should emit a new event');
+	console.log('    setAutoRotate idempotency: OK');
+}
+
+// ---- M3: setAccent(null) does not crash ----
+console.log('  M3: setAccent(null) does not crash');
+{
+	const i = makeBareInstance();
+	i._sidebar = makeStubContainer();
+	i._containerEl = makeStubContainer();
+	i.emit = Phong360LibraryUI.prototype.emit;
+	i.on = Phong360LibraryUI.prototype.on;
+	const events = [];
+	i.on('accent:change', (p) => events.push(p));
+	// First set a real color
+	i.setAccent('#e13e13');
+	assert.strictEqual(i._sidebar.style._props['--p360-accent'], '#e13e13', 'sidebar gets accent set');
+	// Now revert with null — must not throw
+	let threw = false;
+	try { i.setAccent(null); } catch (e) { threw = true; }
+	assert.strictEqual(threw, false, 'setAccent(null) must not throw');
+	assert.strictEqual(i._sidebar.style._props['--p360-accent'], undefined, 'null clears --p360-accent');
+	assert.strictEqual(events.length, 2, 'two accent:change events emitted (set + clear)');
+	assert.strictEqual(events[1].color, null, 'clear event payload is { color: null }');
+	console.log('    setAccent(null): OK');
+}
+
+// ---- I2: setResolution emits resolution:change for non-auto path ----
+console.log('  I2: setResolution emits resolution:change');
+{
+	const i = makeBareInstance();
+	const events = [];
+	i.on = Phong360LibraryUI.prototype.on;
+	i.emit = Phong360LibraryUI.prototype.emit;
+	i.on('resolution:change', (p) => events.push(p));
+	i.multiViewer = {
+		currentImageData: {
+			id: 'img-1',
+			resolutions: [
+				{ id: '4k', label: '4K', width: 4096, height: 2048 },
+				{ id: '8k', label: '8K', width: 8192, height: 4096 },
+			],
+		},
+		switchResolution(id) { this._switched = id; },
+	};
+	i.setResolution('8k');
+	assert.strictEqual(events.length, 1, 'setResolution("8k") should emit resolution:change');
+	assert.strictEqual(events[0].id, '8k', 'event payload id matches');
+	assert.strictEqual(events[0].label, '8K', 'event payload label matches');
+	// Auto path
+	i.setResolution('auto');
+	assert.strictEqual(events.length, 2, 'auto switch emits another resolution:change');
+	assert.strictEqual(events[1].id, 'auto', 'auto event id is "auto"');
+	// Auto idempotency
+	i.setResolution('auto');
+	assert.strictEqual(events.length, 2, 'auto twice is idempotent');
+	console.log('    setResolution event emission: OK');
+}
+
+// ---- C1: loadImage(url) emits image:load-request BEFORE await (i.e. before image:visible) ----
+console.log('  C1: loadImage(url) event order');
+async function testLoadImageEventOrder() {
+	const i = makeBareInstance();
+	const order = [];
+	i.on = Phong360LibraryUI.prototype.on;
+	i.emit = Phong360LibraryUI.prototype.emit;
+	i.on('loading:start', () => order.push('loading:start'));
+	i.on('image:load-request', () => order.push('image:load-request'));
+	i.on('image:visible', () => order.push('image:visible'));
+	i.on('loading:end', () => order.push('loading:end'));
+	// Mock core.loadImage to defer resolve so we can observe the event order
+	let resolveCore;
+	i.core = {
+		loadImage() { return new Promise((r) => { resolveCore = r; }); },
+	};
+	const p = i.loadImage('http://example.com/pano.jpg');
+	// At this point, loading:start + image:load-request should have fired,
+	// image:visible MUST NOT have fired yet (still awaiting core.loadImage).
+	assert.deepStrictEqual(order, ['loading:start', 'image:load-request'],
+		'loading:start + image:load-request fire before await — image:visible NOT yet fired');
+	resolveCore();
+	await p;
+	assert.deepStrictEqual(order, [
+		'loading:start', 'image:load-request', 'image:visible', 'loading:end',
+	], 'full chain fires in correct order: load-request precedes visible');
+	console.log('    loadImage(url) event order: OK');
+}
+
+// ---- C2: loadLibrary accepts manifest argument and delegates to setLibrary ----
+console.log('  C2: loadLibrary(manifest) signature');
+async function testLoadLibrarySignature() {
+	const i = makeBareInstance();
+	const events = [];
+	i.on = Phong360LibraryUI.prototype.on;
+	i.emit = Phong360LibraryUI.prototype.emit;
+	i.on('library:load', (p) => events.push({ event: 'library:load', payload: p }));
+	// Stub _processLibraryData to avoid full DOM render path
+	let processed = null;
+	i._processLibraryData = function(data) {
+		processed = data;
+		this.libraryData = data;
+		this._sections = data.sections || [];
+		this._allImages = [];
+		this.emit('library:load', { manifest: data, context: data.context || null, sections: this._sections, images: this._allImages, facets: data.facets || null });
+	};
+	const manifest = { version: '4.0', context: { type: 'discover' }, sections: [{ id: 's1', images: [] }] };
+	await i.loadLibrary(manifest);
+	assert.strictEqual(processed, manifest, 'loadLibrary(manifest) routes through _processLibraryData');
+	assert.strictEqual(events.length, 1, 'loadLibrary(manifest) emits library:load once');
+	assert.strictEqual(events[0].payload.manifest, manifest, 'library:load carries the manifest');
+	console.log('    loadLibrary(manifest): OK');
+}
+
+(async () => {
+	try {
+		await testLoadImageEventOrder();
+		await testLoadLibrarySignature();
+		console.log('\nPart 4: All behavioral fix assertions passed.\n');
+		teardownMockDOM();
+		console.log('=== ALL CONTROL WRAPPER TESTS PASSED ===');
+	} catch (e) {
+		console.error('Part 4 FAILURE:', e.message);
+		console.error(e.stack);
+		process.exit(1);
+	}
+})();
+
