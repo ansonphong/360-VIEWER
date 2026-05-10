@@ -553,9 +553,12 @@
 					url,
 					(texture) => {
 						// Stale check #1: a newer loadImage call superseded this one.
+						// Per design contract: superseded promise resolves (does not reject)
+						// so awaiting selectImage() callers don't hang.
 						if (token !== this._loadToken) {
 							texture.dispose();
 							console.log('[Phong360ViewerCore] Stale load (token', token + '), discarding');
+							resolve(null);
 							return;
 						}
 
@@ -565,6 +568,7 @@
 							// Stale check #2: a newer load may have started while we awaited fade-in.
 							if (token !== this._loadToken) {
 								texture.dispose();
+								resolve(null);
 								return;
 							}
 
@@ -574,10 +578,16 @@
 							// the renderer has actually painted with it.
 							requestAnimationFrame(() => {
 								requestAnimationFrame(() => {
-									if (token !== this._loadToken) return;
+									if (token !== this._loadToken) {
+										resolve(null);
+										return;
+									}
 
 									this.hideLoading().then(() => {
-										if (token !== this._loadToken) return;
+										if (token !== this._loadToken) {
+											resolve(null);
+											return;
+										}
 										this.isLoading = false;
 										this.isFirstLoad = false;
 
@@ -600,7 +610,10 @@
 						// Optional: track loading progress
 					},
 					(error) => {
+						// Stale supersession during error path: resolve null (don't reject)
+						// so the superseded selectImage promise settles cleanly.
 						if (token !== this._loadToken) {
+							resolve(null);
 							return;
 						}
 						console.error('[Phong360ViewerCore] Error loading image:', url, error);

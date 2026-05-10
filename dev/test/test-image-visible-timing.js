@@ -437,16 +437,19 @@ async function runPart1() {
 	}
 
 	// Test 1.3: Last-write-wins at core level
+	// Per design § "selectImage: last-write-wins concurrency": superseded loads
+	// must RESOLVE (with null sentinel), not hang. Otherwise awaiting selectImage()
+	// callers (e.g. owner-mode batch loads) accumulate hung promises.
 	console.log('  Test 1.3: Last-write-wins (core level)');
 	{
 		const core = new Core({ containerId: 'test-container-3' });
 		sandbox._flushRAF(2);
 
-		let aResolved = false, bResolved = false;
-		core.loadImage('http://example.com/a.jpg', 4096, 2048).then(() => { aResolved = true; });
+		let aResolved = false, bResolved = false, aValue, bValue;
+		core.loadImage('http://example.com/a.jpg', 4096, 2048).then((v) => { aResolved = true; aValue = v; });
 		const loadA = getPendingLoad(sandbox);
 
-		core.loadImage('http://example.com/b.jpg', 4096, 2048).then(() => { bResolved = true; });
+		core.loadImage('http://example.com/b.jpg', 4096, 2048).then((v) => { bResolved = true; bValue = v; });
 		const loadB = getPendingLoad(sandbox);
 
 		loadB.onLoad(makeMockTexture(4096, 2048));
@@ -454,13 +457,16 @@ async function runPart1() {
 		sandbox._flushAll();
 		await yieldMicro();
 		assert.strictEqual(bResolved, true, 'B resolves');
-		assert.strictEqual(aResolved, false, 'A not resolved (stale)');
+		assert.notStrictEqual(bValue, null, 'B resolves with texture, not null');
+		assert.strictEqual(aResolved, false, 'A not resolved yet (no stale completion arrived)');
 
+		// A's texture finally arrives after B already won — must resolve(null), not hang.
 		loadA.onLoad(makeMockTexture(4096, 2048));
 		await yieldMicro();
 		sandbox._flushAll();
 		await yieldMicro();
-		assert.strictEqual(aResolved, false, 'A still not resolved after stale load');
+		assert.strictEqual(aResolved, true, 'A resolves on stale completion (must not hang)');
+		assert.strictEqual(aValue, null, 'A resolves with null sentinel for superseded load');
 		core.destroy();
 		console.log('    Test 1.3: PASS');
 	}

@@ -684,6 +684,28 @@ class Phong360LibraryUI {
 		'sidebar-toggle-icon',
 	]);
 
+	/** Events that exist for backward compatibility only and will be deleted in Phase 5. */
+	static COMPAT_EVENTS = new Set([
+		'link:click',
+		'section:toggle',
+		'sections:render',
+		'badge:click',
+		'help:open',
+		'owner:*',
+	]);
+
+	/** Document-dispatched CustomEvents bridging legacy library-ui owner DOM to gallery-integration.js. Deleted in Phase 5. */
+	static LEGACY_DOM_BRIDGE_EVENTS = new Set([
+		'p360-owner-mode',
+		'p360-owner-action',
+		'p360-library-replace',
+		'p360-rollback',
+		'p360-toast',
+		'p360-section-updated',
+		'p360-collections-reordered',
+		'p360-help',
+	]);
+
 	/**
 	 * @param {Object} options
 	 * @param {string} options.containerId - DOM element ID for the 360 viewer canvas
@@ -740,7 +762,11 @@ class Phong360LibraryUI {
 		this._loadingPhase = 'idle'; // 'idle' | 'library' | 'image'
 		this._abortController = null;
 		this._loadToken = 0;
+		this._selectToken = 0;
 		this._resolutionMode = 'auto'; // 'auto' | 'manual'
+
+		// Lifecycle
+		this._destroyed = false;
 
 		// Core viewer instances (created internally)
 		this.core = null;
@@ -1302,41 +1328,56 @@ class Phong360LibraryUI {
 	// Library loading
 	// --------------------------------------------------------
 
-	async loadLibrary() {
+	async loadLibrary(urlOrManifest) {
+		// Object form: delegate to setLibrary (synchronous, resolves immediately).
+		if (urlOrManifest && typeof urlOrManifest === 'object') {
+			this.setLibrary(urlOrManifest);
+			return;
+		}
+		// String form: treat as URL and update libraryUrl for future reloadLibrary().
+		if (typeof urlOrManifest === 'string') {
+			this.libraryUrl = urlOrManifest;
+		}
 		if (!this.libraryUrl) return;
 		this._isLoading = true;
 		this._loadingPhase = 'library';
 		this._abortController = new AbortController();
 		const controller = this._abortController;
 		this.emit('loading:start', { source: 'library' });
+		const _endPreempted = () => {
+			// Preempted by setLibrary(): match the loading:start with a failed end
+			// so consumers' spinners don't hang. setLibrary emits its own library:load.
+			this._isLoading = false;
+			this._loadingPhase = 'idle';
+			this.emit('loading:end', { source: 'library', success: false });
+		};
 		try {
 			const resp = await fetch(this.libraryUrl, { signal: controller.signal });
 			// Check if aborted or preempted during fetch
 			if (controller.signal.aborted || this._abortController !== controller) {
-				return; // setLibrary() preempted us — don't emit further events
+				_endPreempted();
+				return;
 			}
 			if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 			const data = await resp.json();
 			// Re-check after json parse (setLibrary may have fired during)
-			if (controller.signal.aborted || this._abortController !== controller) return;
-			this._processLibraryData(data);
-			this.emit('library:load', {
-				manifest: data,
-				context: data.context || null,
-				sections: this._sections,
-				images: this._allImages,
-				facets: data.facets || null,
-			});
-			if (data.context) {
-				this.emit('context:ready', data.context);
+			if (controller.signal.aborted || this._abortController !== controller) {
+				_endPreempted();
+				return;
 			}
+			// _processLibraryData emits library:load + context:ready
+			this._processLibraryData(data);
 			this._isLoading = false;
 			this._loadingPhase = 'idle';
 			this.emit('loading:end', { source: 'library', success: true });
 		} catch (error) {
 			// AbortError means setLibrary() preempted us — setLibrary already
-			// emitted its own library:load + context:ready, so stay silent.
-			if (error.name === 'AbortError' || controller.signal.aborted) return;
+			// emitted its own library:load + context:ready. Still emit our
+			// loading:end so the loading:start has a partner.
+			if (error.name === 'AbortError' || controller.signal.aborted) {
+				_endPreempted();
+				return;
+			}
 			console.error('Error loading library:', error);
 			this.emit('library:error', {
 				error: error.message,
@@ -1412,6 +1453,13 @@ class Phong360LibraryUI {
 		if (this.callbacks.onLibraryLoad) {
 			this.callbacks.onLibraryLoad(data);
 		}
+		this.emit('library:load', {
+			manifest: this.libraryData,
+			context: this._context,
+			sections: this.getSections(),
+			images: this.getImages(),
+			facets: this.libraryData?.facets || null,
+		});
 		// Mark context as loaded BEFORE firing onContextReady. Until this
 		// flips, all _renderSlot calls (from setSlot/clearSlot/state changes)
 		// are deferred. Guarantees factories never see an empty context.
@@ -1423,6 +1471,9 @@ class Phong360LibraryUI {
 
 		if (this._context && this.callbacks.onContextReady) {
 			this.callbacks.onContextReady(this._context);
+		}
+		if (this._context) {
+			this.emit('context:ready', Object.assign({}, this._context));
 		}
 
 		// Handle URL params or autoload
@@ -2239,6 +2290,10 @@ class Phong360LibraryUI {
 		if (this.callbacks.onImageLoad) {
 			this.callbacks.onImageLoad(imageData, resolution);
 		}
+		this.emit('image:visible', {
+			image: imageData ? Object.assign({}, imageData) : null,
+			resolution: resolution || null,
+		});
 
 		this._urlSyncWrite(imageData);
 	}
@@ -2278,23 +2333,13 @@ class Phong360LibraryUI {
 	// --------------------------------------------------------
 
 	setLibrary(manifest) {
-		// Cancel in-flight fetch if any
+		// Cancel in-flight fetch if any (preempted loadLibrary will emit its own loading:end)
 		if (this._abortController) {
 			this._abortController.abort();
 			this._abortController = null;
 		}
-		this.libraryData = manifest;
+		// _processLibraryData emits library:load + context:ready
 		this._processLibraryData(manifest);
-		this.emit('library:load', {
-			manifest,
-			context: manifest.context || null,
-			sections: this._sections,
-			images: this._allImages,
-			facets: manifest.facets || null,
-		});
-		if (manifest.context) {
-			this.emit('context:ready', manifest.context);
-		}
 	}
 	loadLibraryData(data) { this.setLibrary(data); }
 
@@ -3393,6 +3438,22 @@ class Phong360LibraryUI {
 
 	setAccent(hex) {
 		this._accent = hex;
+
+		// Null reverts to brand default — clear the custom properties.
+		if (hex === null) {
+			if (this._containerEl) {
+				this._containerEl.style.removeProperty('--p360-accent');
+			}
+			if (this._sidebar) {
+				this._sidebar.style.removeProperty('--p360-accent');
+				this._sidebar.style.removeProperty('--p360-accent-hover');
+				this._sidebar.style.removeProperty('--p360-accent-active');
+				this._sidebar.style.removeProperty('--p360-accent-border');
+			}
+			this.emit('accent:change', { color: null });
+			return;
+		}
+
 		if (!this._sidebar) return;
 
 		const r = parseInt(hex.slice(1, 3), 16);
@@ -3427,10 +3488,12 @@ class Phong360LibraryUI {
 	 * @param {boolean} enabled
 	 */
 	setAutoRotate(enabled) {
+		const next = !!enabled;
 		if (this.core && this.core.config && this.core.config.viewRotation) {
-			this.core.config.viewRotation.autoRotate = !!enabled;
+			if (this.core.config.viewRotation.autoRotate === next) return;
+			this.core.config.viewRotation.autoRotate = next;
 		}
-		this.emit('autorotate:change', { enabled: !!enabled });
+		this.emit('autorotate:change', { enabled: next });
 	}
 
 	/**
@@ -3455,6 +3518,7 @@ class Phong360LibraryUI {
 			console.warn('[Phong360] setProjection: invalid projection "' + projection + '". Expected "gnomonic" or "stereographic".');
 			return;
 		}
+		if (this.core.projectionType === type) return;
 		this.core.switchProjection(type);
 		this._updateProjectionButton(type);
 		this.emit('projection:change', { projection });
@@ -3475,13 +3539,21 @@ class Phong360LibraryUI {
 	 */
 	setResolution(level) {
 		if (level === 'auto') {
+			if (this._resolutionMode === 'auto') return;
 			this._resolutionMode = 'auto';
 			this.emit('resolution:change', { id: 'auto', label: 'Auto' });
 			return;
 		}
 		this._resolutionMode = 'manual';
-		if (this.multiViewer) {
-			this.multiViewer.switchResolution(level);
+		if (!this.multiViewer) return;
+		this.multiViewer.switchResolution(level);
+		// Emit resolution:change with the resolved label.
+		const cur = this.multiViewer.currentImageData;
+		if (cur && Array.isArray(cur.resolutions)) {
+			const res = cur.resolutions.find((r) => r.id === level);
+			if (res) {
+				this.emit('resolution:change', { id: res.id, label: res.label || res.id });
+			}
 		}
 	}
 
@@ -3705,39 +3777,33 @@ class Phong360LibraryUI {
 	 */
 	async next() {
 		if (!this.multiViewer || !this._allImages || this._allImages.length === 0) return;
+		// No-op if no library loaded or only raw loadImage(url) calls have been made
 		if (!this._currentImageId) {
-			this.multiViewer.loadFirstImage();
-			return;
+			return this.selectImage(this._allImages[0].id);
 		}
 		const idx = this._allImages.findIndex((img) => img.id === this._currentImageId);
 		if (idx === -1) return;
 		// Wrap around: if at last, go to first
-		if (idx >= this._allImages.length - 1) {
-			this.multiViewer.loadImageById(this._allImages[0].id);
-		} else {
-			this.multiViewer.loadImageById(this._allImages[idx + 1].id);
-		}
+		const nextIdx = (idx >= this._allImages.length - 1) ? 0 : idx + 1;
+		return this.selectImage(this._allImages[nextIdx].id);
 	}
 
 	/**
 	 * Load the previous image in the manifest. No-op if no library loaded or
 	 * only raw loadImage(url) calls have been made.
+	 * Delegates to selectImage() so the full event chain fires.
 	 * @returns {Promise<void>}
 	 */
 	async prev() {
 		if (!this.multiViewer || !this._allImages || this._allImages.length === 0) return;
 		if (!this._currentImageId) {
-			this.multiViewer.loadFirstImage();
-			return;
+			return this.selectImage(this._allImages[0].id);
 		}
 		const idx = this._allImages.findIndex((img) => img.id === this._currentImageId);
 		if (idx === -1) return;
 		// Wrap around: if at first, go to last
-		if (idx <= 0) {
-			this.multiViewer.loadImageById(this._allImages[this._allImages.length - 1].id);
-		} else {
-			this.multiViewer.loadImageById(this._allImages[idx - 1].id);
-		}
+		const prevIdx = (idx <= 0) ? this._allImages.length - 1 : idx - 1;
+		return this.selectImage(this._allImages[prevIdx].id);
 	}
 
 	// --------------------------------------------------------
@@ -3755,9 +3821,9 @@ class Phong360LibraryUI {
 		this._isLoading = true;
 		this._loadingPhase = 'image';
 		this.emit('loading:start', { source: 'image', url });
+		this.emit('image:load-request', { url });
 		try {
 			await this.core.loadImage(url);
-			this.emit('image:load-request', { url });
 			this.emit('image:visible', { url });
 			this._isLoading = false;
 			this._loadingPhase = 'idle';
@@ -4143,9 +4209,61 @@ class Phong360LibraryUI {
 	// --------------------------------------------------------
 
 	/**
+	 * @typedef {Object} LibraryContext
+	 * @property {'profile'|'discover'|'tag'|'collection'|'local'} type - Scope discriminator
+	 * @property {string} [title] - Display title shown in sidebar header
+	 * @property {string} [subtitle] - Secondary header line
+	 * @property {string} [avatar] - Header avatar URL (profile context)
+	 * @property {string} [theme] - 'auto' | 'light' | 'dark'
+	 * @property {string} [accent] - Hex color (e.g. "#e13e13")
+	 * @property {number} [panelWidth] - Sidebar pixel width
+	 * @property {string} [infoBar] - 'center' | 'left'
+	 * @property {string} [favicon] - Emoji or URL
+	 * @property {Array<{url: string, label: string}>} [links] - Header link list
+	 * @property {string} [autoload] - Initial image id/slug to display
+	 */
+
+	/**
+	 * @typedef {Object} ImageData
+	 * @property {string} id - Stable unique identifier
+	 * @property {string} [slug] - URL-friendly slug (used in deep links)
+	 * @property {string} [title] - Display title
+	 * @property {string} [description] - Long-form caption
+	 * @property {string} [section_id] - Owning section id (denormalized)
+	 * @property {Array<{id: string, label?: string, path: string, width: number, height: number, default?: boolean}>} resolutions - Available resolutions
+	 * @property {string} [thumbnail] - Thumbnail URL
+	 * @property {string} [status] - 'ready' | 'processing' | etc; non-'ready' is unloadable
+	 * @property {Object} [metadata] - Free-form caller metadata
+	 */
+
+	/**
+	 * @typedef {Object} SectionData
+	 * @property {string} id - Stable unique identifier
+	 * @property {string} [title] - Display heading
+	 * @property {string} [template] - Render template id ('grid', etc.)
+	 * @property {ImageData[]} [images] - Section's image list
+	 * @property {Object[]} [items] - Heterogeneous item list (avatar sections)
+	 * @property {Object} [metadata] - Free-form caller metadata
+	 */
+
+	/**
+	 * @typedef {Object} FacetsData
+	 * @property {Array<{id: string, label: string, count?: number}>} [model] - Model facet rows used by the model filter UI
+	 */
+
+	/**
+	 * @typedef {Object} LibraryManifest
+	 * @property {string} version - library.json schema version (e.g. '4.0')
+	 * @property {LibraryContext} [context] - Scope/branding metadata
+	 * @property {SectionData[]} [sections] - Ordered section list
+	 * @property {FacetsData} [facets] - Filterable facets
+	 * @property {Object} [meta] - Engine/build meta (totals, truncation flags)
+	 */
+
+	/**
 	 * Returns the library.json v4 context metadata (scope, profile,
 	 * collection, brand, theme, etc.) or null if no library loaded.
-	 * @returns {Object|null}
+	 * @returns {LibraryContext|null}
 	 */
 	getContext() {
 		if (!this._context) return null;
@@ -4156,7 +4274,7 @@ class Phong360LibraryUI {
 	 * Returns parsed sections with their image arrays as defensive copies.
 	 * Each section object and its `images` array are shallow-copied so
 	 * callers can reorder without mutating engine state.
-	 * @returns {Object[]}
+	 * @returns {SectionData[]}
 	 */
 	getSections() {
 		return this._sections.map((s) => ({ ...s, images: [...(s.images || [])] }));
@@ -4166,7 +4284,7 @@ class Phong360LibraryUI {
 	 * Returns the flat list of all images across all sections.
 	 * Defensive copy — mutations to the returned array do NOT affect
 	 * the engine's internal `_allImages`.
-	 * @returns {Object[]}
+	 * @returns {ImageData[]}
 	 */
 	getImages() {
 		return [...this._allImages];
@@ -4182,7 +4300,7 @@ class Phong360LibraryUI {
 	 * (~10K+ images) may incur noticeable cost. Prefer narrower
 	 * accessors (getContext / getSections / getImages) for targeted
 	 * data access.
-	 * @returns {Object|null}
+	 * @returns {LibraryManifest|null}
 	 */
 	getLibraryData() {
 		if (!this.libraryData) return null;
@@ -4200,7 +4318,7 @@ class Phong360LibraryUI {
 	 *
 	 * Returns null for raw `loadImage(url)` loads — those have no
 	 * ImageData and consumers must track raw URLs themselves.
-	 * @returns {Object|null}
+	 * @returns {ImageData|null}
 	 */
 	getCurrentImage() {
 		if (!this._currentImageData) return null;
