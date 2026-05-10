@@ -750,6 +750,10 @@ class Phong360LibraryUI {
 			onThemeChange: null
 		};
 
+		// Typed event emitter (Phase 1 — engine API)
+		/** @type {Map<string, Function[]>} */
+		this._listeners = new Map();
+
 		// State
 		this._sections = [];
 		this._allImages = [];
@@ -3665,6 +3669,62 @@ class Phong360LibraryUI {
 			await this.loadLibrary();
 			// Refresh slot content with new context (since 4.2.0)
 			this._renderAllSlots();
+		}
+	}
+
+	// ------------------------------------------------------------------
+	// Event Emitter (Phase 1 — typed engine API)
+	// ------------------------------------------------------------------
+
+	/**
+	 * Register an event handler. Returns an unsubscribe function.
+	 *
+	 * See {@link Phong360MultiImage#on} for full event payload typedefs.
+	 *
+	 * @param {string} event - Engine event name (e.g. 'image:visible')
+	 * @param {Function} handler - Callback receiving the event payload
+	 * @returns {function(): void} Unsubscribe function (idempotent)
+	 */
+	on(event, handler) {
+		if (!this._listeners.has(event)) {
+			this._listeners.set(event, []);
+		}
+		this._listeners.get(event).push(handler);
+		return () => this.off(event, handler);
+	}
+
+	/**
+	 * Remove a previously registered event handler.
+	 *
+	 * @param {string} event
+	 * @param {Function} handler
+	 */
+	off(event, handler) {
+		const handlers = this._listeners.get(event);
+		if (!handlers) return;
+		const idx = handlers.indexOf(handler);
+		if (idx !== -1) handlers.splice(idx, 1);
+		if (handlers.length === 0) this._listeners.delete(event);
+	}
+
+	/**
+	 * Emit an event to all registered handlers. Handlers fire in
+	 * registration order; a throwing handler does not block subsequent
+	 * handlers (error is logged to console).
+	 *
+	 * @param {string} event
+	 * @param {*} [payload]
+	 */
+	emit(event, payload) {
+		const handlers = this._listeners.get(event);
+		if (!handlers || handlers.length === 0) return;
+		const copy = handlers.slice();
+		for (const handler of copy) {
+			try {
+				handler(payload);
+			} catch (e) {
+				console.error(`[Phong360] Error in "${event}" handler:`, e);
+			}
 		}
 	}
 }

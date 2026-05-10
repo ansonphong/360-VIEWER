@@ -46,6 +46,10 @@ class Phong360MultiImage {
 			},
 			options.callbacks || {}
 		);
+
+		// Typed event emitter (Phase 1 — engine API)
+		/** @type {Map<string, Function[]>} */
+		this._listeners = new Map();
 	}
 
 	setImages(images) {
@@ -236,6 +240,80 @@ class Phong360MultiImage {
 
 	clearResolutionPreference() {
 		this.userPreferredResolution = null;
+	}
+
+	// ------------------------------------------------------------------
+	// Event Emitter (Phase 1 — typed engine API)
+	// ------------------------------------------------------------------
+
+	/**
+	 * Register an event handler. Returns an unsubscribe function.
+	 *
+	 * @template {keyof EngineEventPayload} E
+	 * @param {E} event - Engine event name (e.g. 'image:visible')
+	 * @param {function(EngineEventPayload[E]): void} handler
+	 * @returns {function(): void} Unsubscribe function (idempotent)
+	 *
+	 * @typedef {Object} EngineEventPayload
+	 * @property {void} ready - Engine mounted, canvas in DOM.
+	 * @property {{ source: 'library'|'image', url?: string }} loading:start - Network fetch or texture load begun.
+	 * @property {{ source: 'library'|'image', loaded: number, total?: number }} loading:progress - Optional progress update.
+	 * @property {{ source: 'library'|'image', success: boolean }} loading:end - Fetch/texture load completed.
+	 * @property {LibraryManifest} library:load - Manifest parsed successfully.
+	 * @property {{ error: string, url: string, status?: number, code: 'network'|'auth'|'parse'|'timeout'|'unknown' }} library:error - Manifest fetch/parse failed.
+	 * @property {LibraryContext} context:ready - Context parsed, theme/projection/resolution seeded.
+	 * @property {ImageData} image:select - Selection changed (texture not yet loaded).
+	 * @property {{ image?: ImageData, resolution?: string, url?: string }} image:load-request - Texture load handed to renderer.
+	 * @property {{ image?: ImageData, resolution?: string, url?: string }} image:visible - Texture loaded + fade complete.
+	 * @property {{ image?: ImageData, error: string, url?: string }} image:error - Texture load failed.
+	 * @property {{ id: string, label: string }} resolution:change - Resolution variant changed.
+	 * @property {{ projection: 'gnomonic'|'stereographic' }} projection:change - Projection mode changed.
+	 * @property {{ resolved: 'light'|'dark', choice: 'auto'|'light'|'dark' }} theme:change - Theme changed.
+	 * @property {{ color: string|null }} accent:change - Accent color changed.
+	 * @property {{ enabled: boolean }} autorotate:change - Auto-rotate toggled.
+	 * @property {{ isFullscreen: boolean }} fullscreen:change - Fullscreen state changed.
+	 */
+	on(event, handler) {
+		if (!this._listeners.has(event)) {
+			this._listeners.set(event, []);
+		}
+		this._listeners.get(event).push(handler);
+		return () => this.off(event, handler);
+	}
+
+	/**
+	 * Remove a previously registered event handler.
+	 *
+	 * @param {string} event
+	 * @param {Function} handler
+	 */
+	off(event, handler) {
+		const handlers = this._listeners.get(event);
+		if (!handlers) return;
+		const idx = handlers.indexOf(handler);
+		if (idx !== -1) handlers.splice(idx, 1);
+		if (handlers.length === 0) this._listeners.delete(event);
+	}
+
+	/**
+	 * Emit an event to all registered handlers. Handlers fire in
+	 * registration order; a throwing handler does not block subsequent
+	 * handlers (error is logged to console).
+	 *
+	 * @param {string} event
+	 * @param {*} [payload]
+	 */
+	emit(event, payload) {
+		const handlers = this._listeners.get(event);
+		if (!handlers || handlers.length === 0) return;
+		const copy = handlers.slice();
+		for (const handler of copy) {
+			try {
+				handler(payload);
+			} catch (e) {
+				console.error(`[Phong360] Error in "${event}" handler:`, e);
+			}
+		}
 	}
 }
 
