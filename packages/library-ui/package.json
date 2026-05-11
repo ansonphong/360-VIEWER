@@ -1,6 +1,6 @@
 {
   "name": "@phong/360-library-ui",
-  "version": "5.0.0-rc.1",
+  "version": "5.0.0",
   "description": "Batteries-included sidebar/toolbar/info-bar for 360 panorama experiences",
   "license": "MIT",
   "main": "./dist/library-ui.umd.js",
@@ -17,7 +17,7 @@
     "./library-ui.css": "./dist/library-ui.css"
   },
   "dependencies": {
-    "@phong/360-engine": "5.0.0-rc.1"
+    "@phong/360-engine": "5.0.0"
   },
   "scripts": {
     "build": "node build.mjs",

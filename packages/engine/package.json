@@ -1,6 +1,6 @@
 {
   "name": "@phong/360-engine",
-  "version": "5.0.0-rc.1",
+  "version": "5.0.0",
   "description": "Headless 360 panorama renderer — no DOM beyond canvas",
   "license": "MIT",
   "main": "./dist/engine.umd.js",
