@@ -6,7 +6,7 @@
     "examples/*"
   ],
   "scripts": {
-    "build": "npm run build -w @phong/360-engine -w @phong/360-library-ui",
+    "build": "npm run build -w @ansonphong/360-engine -w @ansonphong/360-library-ui",
     "build:types": "npm run build:types --workspaces"
   },
   "devDependencies": {
