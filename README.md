@@ -434,4 +434,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-**Latest**: `@ansonphong/360-viewer@6.0.2` · `@ansonphong/360-viewer-library@6.0.0` | **Author**: [Phong](https://phong.com) | **License**: MIT
+**Latest**: `@ansonphong/360-viewer@6.0.3` · `@ansonphong/360-viewer-library@6.0.0` | **Author**: [Phong](https://phong.com) | **License**: MIT
